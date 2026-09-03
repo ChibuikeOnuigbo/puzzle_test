@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Eerie Breakable Game Mirror Asset</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            /* Checkerboard backdrop strictly to showcase asset transparency */
+            background-color: #1a1a1a;
+            background-image: linear-gradient(45deg, #111 25%, transparent 25%), 
+                              linear-gradient(-45deg, #111 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #111 75%), 
+                              linear-gradient(-45deg, transparent 75%, #111 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+            margin: 0;
+        }
+        canvas {
+            background-color: transparent;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="shatterMirrorCanvas" width="400" height="500"></canvas>
+
+    <script>
+        const canvas = document.getElementById('shatterMirrorCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Layout Position Parameters
+        const cx = canvas.width / 2;
+        const cy = 200; // Shifted up slightly to leave space for shards falling to the floor
+        const radiusX = 65; 
+        const radiusY = 105; 
+
+        // System States Enum Matrix
+        const STATE_NORMAL = 0;
+        const STATE_CRACK = 1;
+        const STATE_SHATTER = 2;
+        let currentGameState = STATE_NORMAL;
+
+        const colors = {
+            frameInner: '#413025',    
+            outline: '#150f0c',       
+            glassBase: '#1f2d3a',     
+            glassHighlight: '#2d3f50',
+            shadowFigure: '#0b1116',  
+            eyes: '#ebb365',
+            crackLine: 'rgba(200, 220, 240, 0.75)' // Crisp bright ice-blue reflection for cracked glass creases
+        };
+
+        // --- PARTICLE / PHYSICS CONFIGURATION ---
+        const smokeParticles = [];
+        const maxSmoke = 40;
+        const glassShards = [];
+
+        // 1. Smoke System Object class
+        class SmokeParticle {
+            constructor() { this.reset(); this.y = cy + 40 + (Math.random() * 60 - 30); }
+            reset() {
+                this.x = cx + (Math.random() * 30 - 15);
+                this.y = cy + 50;
+                this.radius = 10 + Math.random() * 15;
+                this.vx = (Math.random() * 0.4 - 0.2);
+                this.vy = -(0.3 + Math.random() * 0.5);
+                this.alpha = 0.01;
+                this.maxAlpha = 0.12 + Math.random() * 0.15;
+                this.life = 0;
+                this.maxLife = 100 + Math.random() * 80;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life++;
+                this.radius += 0.08;
+                
+                // If mirror is completely shattered, smoke escapes rapidly in all directions
+                if (currentGameState === STATE_SHATTER) {
+                    this.vx += (Math.random() * 0.2 - 0.1);
+                    this.maxAlpha = 0.05; // Becomes diffuse out in the open air
+                }
+
+                if (this.life < 30) this.alpha += (this.maxAlpha - this.alpha) * 0.1;
+                else if (this.life > this.maxLife - 40) this.alpha -= 0.005;
+
+                if (this.life >= this.maxLife || this.alpha <= 0) this.reset();
+            }
+            draw() {
+                ctx.fillStyle = `rgba(15, 23, 30, ${this.alpha})`;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+
+        // 2. Exploding Glass Shards Physics Engine Class
+        class GlassShard {
+            constructor(p1, p2, p3) {
+                // Triangle node vertices relative to the center origin coordinates
+                this.points = [p1, p2, p3];
+                
+                // Find local center structural mass point to apply uniform rotation velocities
+                this.centerX = (p1.x + p2.x + p3.x) / 3;
+                this.centerY = (p1.y + p2.y + p3.y) / 3;
+
+                // Explosion velocity impulse force vector layout
+                const angle = Math.atan2(this.centerY - cy, this.centerX - cx) + (Math.random() * 0.4 - 0.2);
+                const force = 2 + Math.random() * 5;
+                
+                this.vx = Math.cos(angle) * force;
+                this.vy = Math.sin(angle) * force - (1 + Math.random() * 3); // Upward blast pop physics
+                this.angle = 0;
+                this.rotationSpeed = (Math.random() * 0.1 - 0.05);
+                this.gravity = 0.25;
+                this.bounceLoss = 0.45; // Energy lost on bottom impact
+                this.floorY = 460;
+                this.isDead = false;
+            }
+
+            update() {
+                this.vy += this.gravity;
+                
+                // Translate all points tracking vector motion displacement updates
+                this.points.forEach(p => {
+                    p.x += this.vx;
+                    p.y += this.vy;
+                });
+                this.centerX += this.vx;
+                this.centerY += this.vy;
+                this.angle += this.rotationSpeed;
+
+                // Simple Floor Collision check simulation
+                if (this.centerY >= this.floorY && this.vy > 0) {
+                    this.vy = -this.vy * this.bounceLoss;
+                    this.vx *= 0.7; // Friction drag deceleration
+                    this.rotationSpeed *= 0.5;
+                    
+                    // Force snap adjustment clip bounds to floor base line geometry
+                    if (Math.abs(this.vy) < 0.5) {
+                        this.vy = 0;
+                        this.vx = 0;
+                        this.rotationSpeed = 0;
+                    }
+                }
+            }
+
+            draw() {
+                ctx.save();
+                // Rotate shard around its center of gravity mass node point
+                ctx.translate(this.centerX, this.centerY);
+                ctx.rotate(this.angle);
+                ctx.translate(-this.centerX, -this.centerY);
+
+                let shardGrad = ctx.createLinearGradient(this.points[0].x, this.points[0].y, this.points[1].x, this.points[1].y);
+                shardGrad.addColorStop(0, colors.glassHighlight);
+                shardGrad.addColorStop(1, colors.glassBase);
+                ctx.fillStyle = shardGrad;
+
+                ctx.beginPath();
+                ctx.moveTo(this.points[0].x, this.points[0].y);
+                ctx.lineTo(this.points[1].x, this.points[1].y);
+                ctx.lineTo(this.points[2].x, this.points[2].y);
+                ctx.closePath();
+                ctx.fill();
+
+                // Crisp bright line border so shard edges gleam distinctly in flight
+                ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        // Initialize continuous tracking matrices setup loops
+        for (let i = 0; i < maxSmoke; i++) smokeParticles.push(new SmokeParticle());
+
+        // Generate procedural shard points slices map inside the oval frame boundaries box
+        function generateShatterMesh() {
+            const innerR_X = radiusX - 5;
+            const innerR_Y = radiusY - 5;
+            const perimeterPoints = [];
+            const segments = 16;
+
+            // Generate circular outer ring perimeter coordinates anchor points
+            for(let i=0; i<segments; i++) {
+                let angle = (i / segments) * Math.PI * 2;
+                perimeterPoints.push({
+                    x: cx + Math.cos(angle) * innerR_X,
+                    y: cy + Math.sin(angle) * innerR_Y
+                });
+            }
+
+            // Core center break zone anchors
+            const innerPoints = [
+                {x: cx - 15, y: cy - 10}, {x: cx + 20, y: cy - 20},
+                {x: cx + 10, y: cy + 30}, {x: cx - 25, y: cy + 15},
+                {x: cx, y: cy} // Absolute center crack focus origin point
+            ];
+
+            // Hook vertices up into dynamic triangle mesh sets structures blocks
+            for(let i=0; i<segments; i++) {
+                let nextIdx = (i + 1) % segments;
+                let p1 = perimeterPoints[i];
+                let p2 = perimeterPoints[nextIdx];
+                let p3 = innerPoints[i % innerPoints.length];
+                glassShards.push(new GlassShard({...p1}, {...p2}, {...p3}));
+                
+                // Secondary inward clustering triangulation mesh fill arrays
+                let p4 = innerPoints[(i+1) % innerPoints.length];
+                glassShards.push(new GlassShard({...p3}, {...p4}, {...p2}));
+            }
+        }
+
+        // --- RENDERING SEPARATE STATIC VECTOR FRACTURE CRACKS ---
+        function drawSpiderwebCracks() {
+            ctx.strokeStyle = colors.crackLine;
+            ctx.shadowColor = 'rgba(255,255,255,0.4)';
+            ctx.shadowBlur = 2;
+            ctx.lineWidth = 1.5;
+            ctx.lineJoin = 'round';
+
+            // Branching crack pathways mapped procedural line traces
+            const paths = [
+                [[cx, cy], [cx-20, cy-15], [cx-45, cy-10], [cx-58, cy-25]],
+                [[cx, cy], [cx+25, cy+10], [cx+40, cy-5], [cx+62, cy+5]],
+                [[cx, cy], [cx-10, cy+35], [cx-30, cy+65], [cx-35, cy+95]],
+                [[cx, cy], [cx+15, cy-40], [cx+5, cy-75], [cx-10, cy-100]],
+                // Circular pressure stress fractures loops rings
+                [[cx-20, cy-15], [cx+5, cy-40], [cx+25, cy+10], [cx-10, cy+35], [cx-20, cy-15]]
+            ];
+
+            paths.forEach(p => {
+                ctx.beginPath();
+                ctx.moveTo(p[0][0], p[0][1]);
+                for(let i=1; i<p.length; i++) ctx.lineTo(p[i][0], p[i][1]);
+Use code with caution.ctx.stroke();});ctx.shadowBlur = 0; // Reset canvas filter buffers}// --- MAIN PIPELINE LOOP FRAME ---function animationFrameLoop() {ctx.clearRect(0, 0, canvas.width, canvas.height);// 1. SOLID WOOD BACKBONE FRAMEctx.lineWidth = 10; ctx.strokeStyle = colors.frameInner; ctx.fillStyle = '#10161d'; // Frame back cavity gets pitch dark if glass falls outctx.beginPath(); ctx.ellipse(cx, cy, radiusX, radiusY, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();ctx.lineWidth = 2; ctx.strokeStyle = colors.outline;ctx.beginPath(); ctx.ellipse(cx, cy, radiusX + 5, radiusY + 5, 0, 0, Math.PI * 2); ctx.stroke();ctx.beginPath(); ctx.ellipse(cx, cy, radiusX - 5, radiusY - 5, 0, 0, Math.PI * 2); ctx.stroke();// 2. GLASS CONTAINER REGION RENDER (Only process if not totally blown out)if (currentGameState !== STATE_SHATTER) {ctx.save();ctx.beginPath(); ctx.ellipse(cx, cy, radiusX - 5, radiusY - 5, 0, 0, Math.PI * 2); ctx.clip();let glassGrad = ctx.createLinearGradient(cx - radiusX, cy - radiusY, cx + radiusX, cy + radiusY);glassGrad.addColorStop(0, colors.glassHighlight); glassGrad.addColorStop(0.6, colors.glassBase); glassGrad.addColorStop(1, '#0e161c');ctx.fillStyle = glassGrad; ctx.fillRect(cx - radiusX, cy - radiusY, radiusX * 2, radiusY * 2);// 3. INTERNAL FAINT ENTITY VISUALLAY LOCKEDctx.save(); ctx.globalAlpha = 0.35;ctx.fillStyle = colors.shadowFigure;ctx.beginPath(); ctx.ellipse(cx, cy + 80, 48, 38, 0, 0, Math.PI * 2);ctx.ellipse(cx, cy + 25, 20, 26, 0, 0, Math.PI * 2); ctx.fill();ctx.fillStyle = colors.eyes;ctx.beginPath(); ctx.arc(cx - 7, cy + 22, 2, 0, Math.PI * 2); ctx.arc(cx + 7, cy + 22, 2, 0, Math.PI * 2); ctx.fill();ctx.restore();// 4. ACTIVE ENTRANCE SMOKE LAYERINGfor (let i = 0; i < smokeParticles.length; i++) {smokeParticles[i].update(); smokeParticles[i].draw();}// Foreground reflection glass sheen plate slashctx.fillStyle = 'rgba(255, 255, 255, 0.03)';ctx.beginPath(); ctx.moveTo(cx - radiusX, cy - radiusY + 30); ctx.lineTo(cx + radiusX - 20, cy + radiusY); ctx.lineTo(cx - radiusX, cy + radiusY); ctx.closePath(); ctx.fill();// 5. EVALUATING STRUCTURAL CRACK OVERLAYSif (currentGameState === STATE_CRACK) {drawSpiderwebCracks();}ctx.restore();} else {// If STATE_SHATTER: Smoke particles are no longer trapped by the clip mask, floating freely into spacefor (let i = 0; i < smokeParticles.length; i++) {smokeParticles[i].update(); smokeParticles[i].draw();}// Animate and apply gravity matrix updates to exploding floating shards loops arraysglassShards.forEach(shard => {shard.update();shard.draw();});}requestAnimationFrame(animationFrameLoop);}// --- INTERACTIVE EVENT LISTENERS TRIGGER CLICKS ---canvas.addEventListener('mousedown', () => {if (currentGameState === STATE_NORMAL) {currentGameState = STATE_CRACK;} else if (currentGameState === STATE_CRACK) {currentGameState = STATE_SHATTER;generateShatterMesh(); // Instantiate physical mesh explosion points allocations} else if (currentGameState === STATE_SHATTER) {// Reset loop cycle back to normal statecurrentGameState = STATE_NORMAL;glassShards.length = 0;}});// Initialize state pipeline engine ticksanimationFrameLoop();

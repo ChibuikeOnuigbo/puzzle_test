@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>HOUSE 17: a small mystery about a house that remembers</title>
+<meta name="description" content="A free browser point and click mystery. You were asked to retrieve one notebook from a house that has been empty for eleven years. The house disagrees about the 'empty' part. 20 minutes. No downloads.">
+<meta property="og:title" content="HOUSE 17">
+<meta property="og:description" content="Retrieve one notebook from a house that has been rehearsing the same evening for eleven years.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#161210">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23161210'/%3E%3Ctext x='16' y='23' font-size='18' text-anchor='middle' fill='%23e8a04c' font-family='Georgia'%3E17%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<noscript><p style="color:#d8c9a8;font-family:Georgia,serif;text-align:center;margin-top:20vh">HOUSE 17 is an interactive game and needs JavaScript to run.</p></noscript>
+
+<div id="app">
+  <!-- fixed 1280x720 logical stage, scaled to fit -->
+  <div id="stage">
+    <div id="scene-holder"></div>
+    <button id="nav-left" class="nav-arrow" aria-label="Go left" hidden>&#8249;</button>
+    <button id="nav-right" class="nav-arrow" aria-label="Go right" hidden>&#8250;</button>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+      <div id="objective"><span id="objective-text"></span></div>
+      <div id="hud-right">
+        <button class="hud-btn" id="btn-hint" title="Hint">?</button>
+        <button class="hud-btn" id="btn-menu" title="Menu">≡</button>
+      </div>
+      <div id="inventory" class="hidden"></div>
+    </div>
+
+    <!-- dialogue -->
+    <div id="dialogue" class="hidden"><p id="dialogue-text"></p><span id="dialogue-more">▸</span></div>
+
+    <!-- main menu -->
+    <div id="menu" class="screen">
+      <div class="menu-inner">
+        <div class="menu-house" aria-hidden="true">
+          <svg viewBox="0 0 200 150" width="200" height="150">
+            <rect x="40" y="60" width="120" height="80" fill="#2b241d"/>
+            <polygon points="30,62 100,18 170,62" fill="#221c16"/>
+            <rect x="88" y="95" width="24" height="45" fill="#171310"/>
+            <rect x="55" y="75" width="20" height="20" fill="#0d0b09"/>
+            <rect x="125" y="75" width="20" height="20" fill="#e8a04c" opacity="0.9">
+              <animate attributeName="opacity" values="0.9;0.9;0.15;0.9;0.9" dur="7s" repeatCount="indefinite"/>
+            </rect>
+            <text x="100" y="120" text-anchor="middle" font-family="Georgia" font-size="13" fill="#8a7a62">17</text>
+          </svg>
+        </div>
+        <h1>HOUSE&nbsp;17</h1>
+        <p class="tagline">The house has been empty for eleven years.<br>It has not been idle.</p>
+        <div class="menu-buttons">
+          <button class="btn primary" id="btn-new">New Game</button>
+          <button class="btn" id="btn-continue" disabled>Continue</button>
+          <button class="btn" id="btn-how">How to Play</button>
+          <button class="btn" id="btn-settings">Settings</button>
+          <button class="btn" id="btn-credits">Credits</button>
+        </div>
+        <p class="menu-foot">a mystery that grows the longer you look · saves automatically</p>
+      </div>
+    </div>
+
+    <!-- ending screen -->
+    <div id="ending" class="screen hidden"></div>
+
+    <!-- fader -->
+    <div id="fatigue" aria-hidden="true"></div>
+<div id="fader"></div>
+  </div>
+
+  <!-- popup layer root (outside stage scale so text stays crisp? no – keep inside for coords) -->
+  <div id="popup-root"></div>
+
+  <!-- custom cursor -->
+  <div id="cursor" aria-hidden="true"><div id="cursor-ring"></div><div id="cursor-dot"></div><div id="cursor-label"></div></div>
+
+  <!-- rotate hint for small portrait screens -->
+  <div id="rotate-hint">
+    <div>
+      <svg width="54" height="54" viewBox="0 0 54 54"><rect x="16" y="6" width="22" height="42" rx="4" fill="none" stroke="#d8c9a8" stroke-width="2.5"/><path d="M44 20 a18 18 0 0 1 4 14" fill="none" stroke="#e8a04c" stroke-width="2.5"/><path d="M50 30 l-2 6 -5 -4" fill="none" stroke="#e8a04c" stroke-width="2.5"/></svg>
+      <p>HOUSE 17 is best explored in landscape.<br>Rotate your device for a clearer look inside.</p>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/core.js"></script>
+<script src="js/rooms.js"></script>
+<script src="js/puzzles.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

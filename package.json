@@ -1,0 +1,13 @@
+{
+  "name": "house-17",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HOUSE 17 - a small browser mystery about a house that remembers",
+  "scripts": {
+    "start": "npx serve -l 3000 .",
+    "qa": "node scripts/qa/shoot.js"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.49.0"
+  }
+}

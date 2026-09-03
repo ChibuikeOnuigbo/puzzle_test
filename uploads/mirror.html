@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eerie Breakable Mirror</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    html,
+    body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        background-color: #171717;
+        background-image:
+            linear-gradient(45deg, #101010 25%, transparent 25%),
+            linear-gradient(-45deg, #101010 25%, transparent 25%),
+            linear-gradient(45deg, transparent 75%, #101010 75%),
+            linear-gradient(-45deg, transparent 75%, #101010 75%);
+
+        background-size: 20px 20px;
+        background-position:
+            0 0,
+            0 10px,
+            10px -10px,
+            -10px 0;
+    }
+
+    canvas {
+        width: min(400px, 92vw);
+        height: auto;
+        display: block;
+        cursor: pointer;
+        touch-action: manipulation;
+        user-select: none;
+    }
+</style>
+</head>
+
+<body>
+
+<canvas id="shatterMirrorCanvas" width="400" height="500"></canvas>
+
+<script>
+"use strict";
+
+/* =========================================================
+   CANVAS
+========================================================= */
+
+const canvas = document.getElementById("shatterMirrorCanvas");
+const ctx = canvas.getContext("2d");
+
+ctx.lineJoin = "round";
+ctx.lineCap = "round";
+
+
+/* =========================================================
+   MIRROR CONFIGURATION
+========================================================= */
+
+const W = canvas.width;
+const H = canvas.height;
+
+const cx = W / 2;
+const cy = 195;
+
+const radiusX = 67;
+const radiusY = 108;
+
+const floorY = 455;
+
+
+/* =========================================================
+   GAME STATES
+========================================================= */
+
+const STATE_NORMAL = 0;
+const STATE_CRACK = 1;
+const STATE_SHATTER = 2;
+
+let currentState = STATE_NORMAL;
+
+let crackTimer = 0;
+let shatterTimer = 0;
+
+
+/* =========================================================
+   COLORS
+========================================================= */
+
+const colors = {
+    frameDark: "#120c09",
+    frameMid: "#38251b",
+    frameLight: "#644431",
+
+    glassDark: "#16232e",
+    glassMid: "#263946",
+    glassLight: "#506979",
+
+    reflection: "#7891a1",
+
+    figure: "#070b0f",
+    eye: "#e8ae61",
+
+    crack: "rgba(218, 235, 245, 0.88)"
+};
+
+
+/* =========================================================
+   PARTICLES
+========================================================= */
+
+const smokeParticles = [];
+const glassShards = [];
+const impactParticles = [];
+
+const MAX_SMOKE = 45;
+
+
+/* =========================================================
+   UTILITY FUNCTIONS
+========================================================= */
+
+function random(min, max) {
+    return Math.random() * (max - min) + min;
+}
+
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+}
+
+function distance(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function pointInsideMirror(x, y) {
+    const dx = (x - cx) / radiusX;
+    const dy = (y - cy) / radiusY;
+
+    return dx * dx + dy * dy <= 1;
+}
+
+
+/* =========================================================
+   SMOKE PARTICLE
+========================================================= */
+
+class SmokeParticle {
+
+    constructor() {
+        this.reset(true);
+    }
+
+    reset(initial = false) {
+
+        this.x = cx + random(-35, 35);
+        this.y = cy + random(15, 90);
+
+        this.radius = random(8, 18);
+
+        this.vx = random(-0.18, 0.18);
+        this.vy = random(-0.6, -0.25);
+
+        this.alpha = initial
+            ? random(0.01, 0.06)
+            : 0;
+
+        this.maxAlpha = random(0.06, 0.16);
+
+        this.life = initial
+            ? random(0, 100)
+            : 0;
+
+        this.maxLife = random(90, 180);
+
+        this.expanding = false;
+    }
+
+    update() {
+
+        this.x += this.vx;
+        this.y += this.vy;
+
+        this.life++;
+
+        this.radius += 0.07;
+
+        if (currentState === STATE_SHATTER) {
+
+            this.expanding = true;
+
+            this.vx += random(-0.025, 0.025);
+            this.vy += random(-0.025, 0.025);
+
+            this.vx *= 0.995;
+            this.vy *= 0.995;
+
+            this.maxAlpha = 0.07;
+        }
+
+        if (this.life < 25) {
+            this.alpha +=
+                (this.maxAlpha - this.alpha) * 0.08;
+        }
+
+        if (this.life > this.maxLife - 35) {
+            this.alpha -= 0.004;
+        }
+
+        if (
+            this.life >= this.maxLife ||
+            this.alpha <= 0
+        ) {
+            this.reset();
+        }
+    }
+
+    draw() {
+
+        const gradient = ctx.createRadialGradient(
+            this.x,
+            this.y,
+            0,
+            this.x,
+            this.y,
+            this.radius
+        );
+
+        gradient.addColorStop(
+            0,
+            `rgba(12, 19, 24, ${this.alpha})`
+        );
+
+        gradient.addColorStop(
+            1,
+            "rgba(12, 19, 24, 0)"
+        );
+
+        ctx.fillStyle = gradient;
+
+        ctx.beginPath();
+        ctx.arc(
+            this.x,
+            this.y,
+            this.radius,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
+    }
+}
+
+
+/* =========================================================
+   IMPACT PARTICLE
+========================================================= */
+
+class ImpactParticle {
+
+    constructor(x, y) {
+
+        this.x = x;
+        this.y = y;
+
+        const angle = random(0, Math.PI * 2);
+        const speed = random(1, 5);
+
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+
+        this.life = 0;
+        this.maxLife = random(20, 45);
+
+        this.size = random(0.7, 2.2);
+    }
+
+    update() {
+
+        this.vy += 0.12;
+
+        this.x += this.vx;
+        this.y += this.vy;
+
+        this.vx *= 0.98;
+        this.vy *= 0.98;
+
+        this.life++;
+    }
+
+    draw() {
+
+        const alpha =
+            1 - this.life / this.maxLife;
+
+        ctx.fillStyle =
+            `rgba(210, 230, 240, ${alpha})`;
+
+        ctx.beginPath();
+
+        ctx.arc(
+            this.x,
+            this.y,
+            this.size,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+    }
+
+    get dead() {
+        return this.life >= this.maxLife;
+    }
+}
+
+
+/* =========================================================
+   GLASS SHARD
+========================================================= */
+
+class GlassShard {
+
+    constructor(points) {
+
+        this.points = points.map(p => ({
+            x: p.x,
+            y: p.y
+        }));
+
+        this.originalPoints = this.points.map(p => ({
+            x: p.x,
+            y: p.y
+        }));
+
+        this.centerX =
+            this.points.reduce(
+                (sum, p) => sum + p.x,
+                0
+            ) / this.points.length;
+
+        this.centerY =
+            this.points.reduce(
+                (sum, p) => sum + p.y,
+                0
+            ) / this.points.length;
+
+        const angle = Math.atan2(
+            this.centerY - cy,
+            this.centerX - cx
+        );
+
+        const force = random(2.0, 6.5);
+
+        this.vx =
+            Math.cos(angle) * force +
+            random(-1.2, 1.2);
+
+        this.vy =
+            Math.sin(angle) * force -
+            random(1.5, 4.5);
+
+        this.rotation = 0;
+
+        this.rotationSpeed =
+            random(-0.09, 0.09);
+
+        this.gravity =
+            random(0.20, 0.30);
+
+        this.bounce =
+            random(0.25, 0.48);
+
+        this.friction = 0.76;
+
+        this.alpha = 1;
+
+        this.settled = false;
+
+        this.settleTimer = 0;
+    }
+
+    update() {
+
+        if (this.settled) {
+
+            this.settleTimer++;
+
+            if (this.settleTimer > 160) {
+                this.alpha -= 0.012;
+            }
+
+            return;
+        }
+
+        this.vy += this.gravity;
+
+        this.centerX += this.vx;
+        this.centerY += this.vy;
+
+        this.rotation += this.rotationSpeed;
+
+        /*
+         * Move original points relative to shard center.
+         * This allows clean rotation around the center.
+         */
+        const cos = Math.cos(this.rotation);
+        const sin = Math.sin(this.rotation);
+
+        this.points = this.originalPoints.map(p => {
+
+            const ox = p.x - this.centerX;
+            const oy = p.y - this.centerY;
+
+            /*
+             * Because the original point positions are in
+             * world space, calculate their local coordinates
+             * from the initial center.
+             */
+            const initialOX =
+                p.x - (
+                    this.originalPoints.reduce(
+                        (s, q) => s + q.x,
+                        0
+                    ) / this.originalPoints.length
+                );
+
+            const initialOY =
+                p.y - (
+                    this.originalPoints.reduce(
+                        (s, q) => s + q.y,
+                        0
+                    ) / this.originalPoints.length
+                );
+
+            return {
+                x: this.centerX +
+                    initialOX * cos -
+                    initialOY * sin,
+
+                y: this.centerY +
+                    initialOX * sin +
+                    initialOY * cos
+            };
+        });
+
+        /*
+         * Floor collision.
+         */
+        if (
+            this.centerY >= floorY &&
+            this.vy > 0
+        ) {
+
+            this.centerY = floorY;
+
+            this.vy *= -this.bounce;
+
+            this.vx *= this.friction;
+
+            this.rotationSpeed *= 0.68;
+
+            /*
+             * Stop tiny movements.
+             */
+            if (
+                Math.abs(this.vy) < 0.55 &&
+                Math.abs(this.vx) < 0.15
+            ) {
+
+                this.vy = 0;
+                this.vx = 0;
+                this.rotationSpeed = 0;
+
+                this.settled = true;
+            }
+        }
+
+        /*
+         * Side boundaries.
+         */
+        if (
+            this.centerX < 8 &&
+            this.vx < 0
+        ) {
+            this.centerX = 8;
+            this.vx *= -0.5;
+        }
+
+        if (
+            this.centerX > W - 8 &&
+            this.vx > 0
+        ) {
+            this.centerX = W - 8;
+            this.vx *= -0.5;
+        }
+    }
+
+    draw() {
+
+        if (this.alpha <= 0) return;
+
+        ctx.save();
+
+        ctx.globalAlpha = this.alpha;
+
+        /*
+         * Rebuild points from current center.
+         */
+        const centerOriginalX =
+            this.originalPoints.reduce(
+                (s, p) => s + p.x,
+                0
+            ) / this.originalPoints.length;
+
+        const centerOriginalY =
+            this.originalPoints.reduce(
+                (s, p) => s + p.y,
+                0
+            ) / this.originalPoints.length;
+
+        const cos = Math.cos(this.rotation);
+        const sin = Math.sin(this.rotation);
+
+        const transformed = this.originalPoints.map(p => {
+
+            const ox = p.x - centerOriginalX;
+            const oy = p.y - centerOriginalY;
+
+            return {
+                x:
+                    this.centerX +
+                    ox * cos -
+                    oy * sin,
+
+                y:
+                    this.centerY +
+                    ox * sin +
+                    oy * cos
+            };
+        });
+
+        /*
+         * Glass gradient.
+         */
+        const gradient =
+            ctx.createLinearGradient(
+                transformed[0].x,
+                transformed[0].y,
+                transformed[1].x,
+                transformed[1].y
+            );
+
+        gradient.addColorStop(
+            0,
+            colors.glassLight
+        );
+
+        gradient.addColorStop(
+            0.45,
+            colors.glassMid
+        );
+
+        gradient.addColorStop(
+            1,
+            colors.glassDark
+        );
+
+        ctx.fillStyle = gradient;
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            transformed[0].x,
+            transformed[0].y
+        );
+
+        for (let i = 1; i < transformed.length; i++) {
+            ctx.lineTo(
+                transformed[i].x,
+                transformed[i].y
+            );
+        }
+
+        ctx.closePath();
+
+        ctx.fill();
+
+        /*
+         * Shard edge.
+         */
+        ctx.strokeStyle =
+            "rgba(220, 240, 250, 0.45)";
+
+        ctx.lineWidth = 0.8;
+
+        ctx.stroke();
+
+        /*
+         * Small highlight.
+         */
+        ctx.strokeStyle =
+            "rgba(255,255,255,0.14)";
+
+        ctx.lineWidth = 0.45;
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            transformed[0].x,
+            transformed[0].y
+        );
+
+        ctx.lineTo(
+            transformed[1].x,
+            transformed[1].y
+        );
+
+        ctx.stroke();
+
+        ctx.restore();
+    }
+}
+
+
+/* =========================================================
+   CREATE SMOKE
+========================================================= */
+
+for (let i = 0; i < MAX_SMOKE; i++) {
+    smokeParticles.push(
+        new SmokeParticle()
+    );
+}
+
+
+/* =========================================================
+   MIRROR PATH
+========================================================= */
+
+function createMirrorPath() {
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        cx,
+        cy,
+        radiusX,
+        radiusY,
+        0,
+        0,
+        Math.PI * 2
+    );
+}
+
+
+/* =========================================================
+   DRAW FLOOR SHADOW
+========================================================= */
+
+function drawFloor() {
+
+    const gradient =
+        ctx.createRadialGradient(
+            cx,
+            floorY,
+            5,
+            cx,
+            floorY,
+            145
+        );
+
+    gradient.addColorStop(
+        0,
+        "rgba(0,0,0,0.48)"
+    );
+
+    gradient.addColorStop(
+        1,
+        "rgba(0,0,0,0)"
+    );
+
+    ctx.fillStyle = gradient;
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        cx,
+        floorY,
+        130,
+        18,
+        0,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+}
+
+
+/* =========================================================
+   DRAW MIRROR FRAME
+========================================================= */
+
+function drawFrame() {
+
+    /*
+     * Outer shadow.
+     */
+    ctx.save();
+
+    ctx.shadowColor =
+        "rgba(0,0,0,0.8)";
+
+    ctx.shadowBlur = 18;
+
+    ctx.strokeStyle =
+        colors.frameDark;
+
+    ctx.lineWidth = 14;
+
+    createMirrorPath();
+    ctx.stroke();
+
+    ctx.restore();
+
+    /*
+     * Main frame.
+     */
+    ctx.strokeStyle =
+        colors.frameMid;
+
+    ctx.lineWidth = 11;
+
+    createMirrorPath();
+    ctx.stroke();
+
+    /*
+     * Inner highlight.
+     */
+    ctx.strokeStyle =
+        colors.frameLight;
+
+    ctx.lineWidth = 2;
+
+    ctx.globalAlpha = 0.65;
+
+    createMirrorPath();
+    ctx.stroke();
+
+    ctx.globalAlpha = 1;
+}
+
+
+/* =========================================================
+   DRAW MIRROR GLASS
+========================================================= */
+
+function drawMirrorGlass() {
+
+    ctx.save();
+
+    createMirrorPath();
+    ctx.clip();
+
+    /*
+     * Main glass gradient.
+     */
+    const glassGradient =
+        ctx.createLinearGradient(
+            cx - radiusX,
+            cy - radiusY,
+            cx + radiusX,
+            cy + radiusY
+        );
+
+    glassGradient.addColorStop(
+        0,
+        "#111b23"
+    );
+
+    glassGradient.addColorStop(
+        0.45,
+        colors.glassDark
+    );
+
+    glassGradient.addColorStop(
+        0.75,
+        colors.glassMid
+    );
+
+    glassGradient.addColorStop(
+        1,
+        "#101a21"
+    );
+
+    ctx.fillStyle = glassGradient;
+
+    ctx.fillRect(
+        cx - radiusX - 5,
+        cy - radiusY - 5,
+        radiusX * 2 + 10,
+        radiusY * 2 + 10
+    );
+
+    /*
+     * Diagonal reflected light.
+     */
+    const reflection =
+        ctx.createLinearGradient(
+            cx - 80,
+            cy + 100,
+            cx + 80,
+            cy - 100
+        );
+
+    reflection.addColorStop(
+        0,
+        "rgba(130,160,175,0)"
+    );
+
+    reflection.addColorStop(
+        0.48,
+        "rgba(150,180,195,0.03)"
+    );
+
+    reflection.addColorStop(
+        0.53,
+        "rgba(210,230,240,0.15)"
+    );
+
+    reflection.addColorStop(
+        0.58,
+        "rgba(150,180,195,0.025)"
+    );
+
+    reflection.addColorStop(
+        1,
+        "rgba(130,160,175,0)"
+    );
+
+    ctx.fillStyle = reflection;
+
+    ctx.fillRect(
+        cx - radiusX,
+        cy - radiusY,
+        radiusX * 2,
+        radiusY * 2
+    );
+
+    /*
+     * Eerie silhouette.
+     */
+    drawFigure();
+
+    /*
+     * Glass vignette.
+     */
+    const vignette =
+        ctx.createRadialGradient(
+            cx,
+            cy,
+            20,
+            cx,
+            cy,
+            radiusY
+        );
+
+    vignette.addColorStop(
+        0,
+        "rgba(0,0,0,0)"
+    );
+
+    vignette.addColorStop(
+        0.75,
+        "rgba(0,0,0,0.08)"
+    );
+
+    vignette.addColorStop(
+        1,
+        "rgba(0,0,0,0.48)"
+    );
+
+    ctx.fillStyle = vignette;
+
+    ctx.fillRect(
+        cx - radiusX,
+        cy - radiusY,
+        radiusX * 2,
+        radiusY * 2
+    );
+
+    ctx.restore();
+}
+
+
+/* =========================================================
+   EERIE FIGURE
+========================================================= */
+
+function drawFigure() {
+
+    const headY = cy - 28;
+
+    /*
+     * Body.
+     */
+    ctx.fillStyle =
+        colors.figure;
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        cx,
+        cy + 70,
+        31,
+        50,
+        0,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+    /*
+     * Neck.
+     */
+    ctx.fillRect(
+        cx - 10,
+        cy + 8,
+        20,
+        30
+    );
+
+    /*
+     * Head.
+     */
+    ctx.beginPath();
+
+    ctx.ellipse(
+        cx,
+        headY,
+        24,
+        31,
+        0,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+    /*
+     * Shoulders.
+     */
+    ctx.beginPath();
+
+    ctx.moveTo(cx - 31, cy + 46);
+
+    ctx.quadraticCurveTo(
+        cx - 52,
+        cy + 63,
+        cx - 55,
+        cy + 94
+    );
+
+    ctx.lineTo(cx + 55, cy + 94);
+
+    ctx.quadraticCurveTo(
+        cx + 52,
+        cy + 63,
+        cx + 31,
+        cy + 46
+    );
+
+    ctx.closePath();
+
+    ctx.fill();
+
+    /*
+     * Eyes.
+     */
+    ctx.fillStyle =
+        colors.eye;
+
+    ctx.shadowColor =
+        "rgba(235,179,101,0.65)";
+
+    ctx.shadowBlur = 8;
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        cx - 9,
+        headY - 3,
+        3,
+        2.3,
+        -0.1,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.ellipse(
+        cx + 9,
+        headY - 3,
+        3,
+        2.3,
+        0.1,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+}
+
+
+/* =========================================================
+   CRACK GENERATION
+========================================================= */
+
+let cracks = [];
+
+function generateCracks() {
+
+    cracks = [];
+
+    const crackCount = 13;
+
+    for (let i = 0; i < crackCount; i++) {
+
+        const angle =
+            (Math.PI * 2 / crackCount) * i +
+            random(-0.18, 0.18);
+
+        const maxLength =
+            random(65, 125);
+
+        const start = {
+            x: cx + random(-7, 7),
+            y: cy + random(-7, 7)
+        };
+
+        const points = [start];
+
+        let x = start.x;
+        let y = start.y;
+
+        const steps = Math.floor(
+            random(4, 8)
+        );
+
+        for (let j = 0; j < steps; j++) {
+
+            const progress =
+                j / steps;
+
+            const length =
+                maxLength / steps;
+
+            const jitter =
+                random(-0.32, 0.32);
+
+            const a =
+                angle + jitter;
+
+            x += Math.cos(a) * length;
+            y += Math.sin(a) * length;
+
+            /*
+             * Stop when outside mirror.
+             */
+            if (!pointInsideMirror(x, y)) {
+                break;
+            }
+
+            points.push({
+                x,
+                y
+            });
+        }
+
+        if (points.length > 1) {
+            cracks.push(points);
+        }
+    }
+
+    /*
+     * Secondary branches.
+     */
+    for (let i = 0; i < cracks.length; i++) {
+
+        if (Math.random() > 0.65) continue;
+
+        const main = cracks[i];
+
+        if (main.length < 3) continue;
+
+        const index = Math.floor(
+            random(1, main.length - 1)
+        );
+
+        const origin = main[index];
+
+        const branchAngle =
+            random(0, Math.PI * 2);
+
+        const branch = [
+            {
+                x: origin.x,
+                y: origin.y
+            }
+        ];
+
+        let x = origin.x;
+        let y = origin.y;
+
+        for (let j = 0; j < 3; j++) {
+
+            x += Math.cos(branchAngle) *
+                random(10, 18);
+
+            y += Math.sin(branchAngle) *
+                random(10, 18);
+
+            if (!pointInsideMirror(x, y)) {
+                break;
+            }
+
+            branch.push({
+                x,
+                y
+            });
+        }
+
+        cracks.push(branch);
+    }
+}
+
+
+/* =========================================================
+   DRAW CRACKS
+========================================================= */
+
+function drawCracks() {
+
+    if (
+        currentState === STATE_NORMAL ||
+        currentState === STATE_SHATTER
+    ) {
+        return;
+    }
+
+    ctx.save();
+
+    ctx.strokeStyle =
+        colors.crack;
+
+    ctx.shadowColor =
+        "rgba(210,235,255,0.45)";
+
+    ctx.shadowBlur = 3;
+
+    ctx.lineWidth = 1.15;
+
+    for (const crack of cracks) {
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            crack[0].x,
+            crack[0].y
+        );
+
+        for (let i = 1; i < crack.length; i++) {
+
+            ctx.lineTo(
+                crack[i].x,
+                crack[i].y
+            );
+        }
+
+        ctx.stroke();
+    }
+
+    /*
+     * Dark secondary crack.
+     */
+    ctx.shadowBlur = 0;
+
+    ctx.strokeStyle =
+        "rgba(0,0,0,0.65)";
+
+    ctx.lineWidth = 2.4;
+
+    ctx.globalAlpha = 0.4;
+
+    for (const crack of cracks) {
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            crack[0].x,
+            crack[0].y
+        );
+
+        for (let i = 1; i < crack.length; i++) {
+
+            ctx.lineTo(
+                crack[i].x,
+                crack[i].y
+            );
+        }
+
+        ctx.stroke();
+    }
+
+    ctx.restore();
+}
+
+
+/* =========================================================
+   SHATTER MESH
+========================================================= */
+
+function generateShatterMesh() {
+
+    glassShards.length = 0;
+
+    const points = [];
+
+    /*
+     * Center.
+     */
+    points.push({
+        x: cx,
+        y: cy
+    });
+
+    /*
+     * Inner ring.
+     */
+    const innerCount = 10;
+
+    for (let i = 0; i < innerCount; i++) {
+
+        const angle =
+            (i / innerCount) *
+            Math.PI * 2;
+
+        const rX =
+            random(18, 38);
+
+        const rY =
+            random(20, 48);
+
+        points.push({
+            x: cx + Math.cos(angle) * rX,
+            y: cy + Math.sin(angle) * rY
+        });
+    }
+
+    /*
+     * Outer ring.
+     */
+    const outerCount = 18;
+
+    for (let i = 0; i < outerCount; i++) {
+
+        const angle =
+            (i / outerCount) *
+            Math.PI * 2;
+
+        points.push({
+            x:
+                cx +
+                Math.cos(angle) *
+                radiusX *
+                random(0.84, 0.98),
+
+            y:
+                cy +
+                Math.sin(angle) *
+                radiusY *
+                random(0.84, 0.98)
+        });
+    }
+
+    /*
+     * Build triangles between center,
+     * inner ring and outer ring.
+     */
+    for (let i = 0; i < outerCount; i++) {
+
+        const outerA =
+            points[1 + innerCount + i];
+
+        const outerB =
+            points[
+                1 +
+                innerCount +
+                ((i + 1) % outerCount)
+            ];
+
+        const innerA =
+            points[
+                1 +
+                Math.floor(
+                    i * innerCount / outerCount
+                )
+            ];
+
+        const innerB =
+            points[
+                1 +
+                Math.floor(
+                    (i + 1) *
+                    innerCount /
+                    outerCount
+                ) % innerCount
+            ];
+
+        /*
+         * Two triangles per section.
+         */
+        glassShards.push(
+            new GlassShard([
+                innerA,
+                outerA,
+                outerB
+            ])
+        );
+
+        if (innerA !== innerB) {
+
+            glassShards.push(
+                new GlassShard([
+                    innerA,
+                    outerB,
+                    innerB
+                ])
+            );
+        }
+    }
+
+    /*
+     * Add center triangles.
+     */
+    for (let i = 0; i < innerCount; i++) {
+
+        const a =
+            points[1 + i];
+
+        const b =
+            points[
+                1 + ((i + 1) % innerCount)
+            ];
+
+        glassShards.push(
+            new GlassShard([
+                points[0],
+                a,
+                b
+            ])
+        );
+    }
+}
+
+
+/* =========================================================
+   SHATTER EFFECT
+========================================================= */
+
+function createShatterParticles() {
+
+    for (let i = 0; i < 65; i++) {
+
+        impactParticles.push(
+            new ImpactParticle(
+                cx + random(-35, 35),
+                cy + random(-45, 55)
+            )
+        );
+    }
+}
+
+
+/* =========================================================
+   BREAK MIRROR
+========================================================= */
+
+function shatterMirror() {
+
+    currentState = STATE_SHATTER;
+
+    generateShatterMesh();
+
+    createShatterParticles();
+
+    /*
+     * Give smoke an outward impulse.
+     */
+    smokeParticles.forEach(p => {
+
+        p.vx += random(-0.8, 0.8);
+        p.vy += random(-0.8, 0.8);
+    });
+
+    shatterTimer = 0;
+}
+
+
+/* =========================================================
+   INPUT
+========================================================= */
+
+canvas.addEventListener("pointerdown", () => {
+
+    if (currentState === STATE_NORMAL) {
+
+        /*
+         * First click creates cracks.
+         */
+        currentState = STATE_CRACK;
+
+        crackTimer = 0;
+
+        generateCracks();
+
+        return;
+    }
+
+    if (currentState === STATE_CRACK) {
+
+        /*
+         * Second click immediately shatters.
+         */
+        shatterMirror();
+
+        return;
+    }
+
+    if (currentState === STATE_SHATTER) {
+
+        /*
+         * Reset.
+         */
+        resetMirror();
+    }
+});
+
+
+/* =========================================================
+   RESET
+========================================================= */
+
+function resetMirror() {
+
+    currentState = STATE_NORMAL;
+
+    crackTimer = 0;
+    shatterTimer = 0;
+
+    cracks.length = 0;
+    glassShards.length = 0;
+    impactParticles.length = 0;
+
+    smokeParticles.forEach(
+        p => p.reset(true)
+    );
+}
+
+
+/* =========================================================
+   UPDATE
+========================================================= */
+
+function update() {
+
+    /*
+     * Automatically shatter after
+     * approximately 2.5 seconds.
+     */
+    if (currentState === STATE_CRACK) {
+
+        crackTimer++;
+
+        if (crackTimer > 150) {
+            shatterMirror();
+        }
+    }
+
+    if (currentState === STATE_SHATTER) {
+        shatterTimer++;
+    }
+
+    /*
+     * Smoke.
+     */
+    smokeParticles.forEach(
+        particle => particle.update()
+    );
+
+    /*
+     * Shards.
+     */
+    glassShards.forEach(
+        shard => shard.update()
+    );
+
+    /*
+     * Impact particles.
+     */
+    for (let i = impactParticles.length - 1; i >= 0; i--) {
+
+        const particle =
+            impactParticles[i];
+
+        particle.update();
+
+        if (particle.dead) {
+            impactParticles.splice(i, 1);
+        }
+    }
+}
+
+
+/* =========================================================
+   DRAW
+========================================================= */
+
+function draw() {
+
+    ctx.clearRect(
+        0,
+        0,
+        W,
+        H
+    );
+
+    /*
+     * Floor shadow.
+     */
+    drawFloor();
+
+    /*
+     * Smoke behind mirror.
+     */
+    smokeParticles.forEach(
+        particle => particle.draw()
+    );
+
+    /*
+     * Normal mirror.
+     */
+    if (currentState !== STATE_SHATTER) {
+
+        drawMirrorGlass();
+
+        drawCracks();
+
+        drawFrame();
+    }
+
+    /*
+     * Shattered shards.
+     */
+    if (currentState === STATE_SHATTER) {
+
+        glassShards.forEach(
+            shard => shard.draw()
+        );
+
+        /*
+         * Keep a subtle frame after glass
+         * disappears.
+         */
+        drawFrame();
+    }
+
+    /*
+     * Flying impact particles.
+     */
+    impactParticles.forEach(
+        particle => particle.draw()
+    );
+
+    /*
+     * Ground line.
+     */
+    if (currentState === STATE_SHATTER) {
+
+        ctx.strokeStyle =
+            "rgba(255,255,255,0.035)";
+
+        ctx.lineWidth = 1;
+
+        ctx.beginPath();
+
+        ctx.moveTo(40, floorY + 2);
+        ctx.lineTo(W - 40, floorY + 2);
+
+        ctx.stroke();
+    }
+}
+
+
+/* =========================================================
+   MAIN LOOP
+========================================================= */
+
+function animate() {
+
+    update();
+    draw();
+
+    requestAnimationFrame(animate);
+}
+
+animate();
+
+</script>
+
+</body>
+</html>
