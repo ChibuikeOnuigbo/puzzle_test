@@ -562,7 +562,10 @@ const Game = (() => {
     const lineIv = setInterval(() => { i = (i + 1) % LINES.length; if (line) line.textContent = LINES[i]; }, 720);
     let p = 0;
     const barIv = setInterval(() => { p = Math.min(100, p + 13); if (bar) bar.style.width = p + "%"; if (p >= 100) clearInterval(barIv); }, 190);
+    let finished = false;
     const done = () => {
+      if (finished) return;
+      finished = true;
       clearInterval(lineIv); clearInterval(barIv);
       if (bar) bar.style.width = "100%";
       loader.classList.add("done");
@@ -570,6 +573,7 @@ const Game = (() => {
     };
     if (document.readyState === "complete") setTimeout(done, 1500);
     else window.addEventListener("load", () => setTimeout(done, 500));
+    setTimeout(done, 3600); // never let the loader outstay its welcome
   }
 
   function boot() {
