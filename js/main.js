@@ -320,7 +320,8 @@ const Game = (() => {
         <p><b style="color:var(--amber)">Click.</b> Inspect, open, count, read. The house explains itself to people who pay attention.</p>
         <p><b style="color:var(--amber)">Connect.</b> Every code, symbol and rhythm you need is somewhere in the house, usually pretending to be ordinary.</p>
         <p><b style="color:var(--amber)">Stuck?</b> The <b>?</b> button offers three tiers of hints, from a nudge to nearly-the-answer.</p>
-        <p class="small-note">Progress saves automatically. Esc closes windows. There are five optional discoveries for the observant.</p>`,
+        <p class="small-note">Press Enter to skip dialogue. The arrow keys move you through doors, up stairs, and down hallways. Every key can be rebound in the menu.</p>
+        <p class="small-note">Progress saves automatically. Esc closes windows. There are five optional discoveries for the observant, and one lens for the ones who read the walls.</p>`,
     });
   }
   function openCredits() {

@@ -1606,8 +1606,13 @@ const Rooms = (() => {
     // so re-append in descending area order (last-in-DOM = topmost in SVG)
     const group = holder.querySelector("#hotspots");
     if (group) {
+      const dim = (el, attr) => {
+        const v = el[attr];
+        if (v && v.baseVal) return v.baseVal.value;
+        return parseFloat(el.getAttribute(attr)) || 0;
+      };
       [...group.querySelectorAll(".hotspot")]
-        .sort((a, b) => (b.width.baseVal.value * b.height.baseVal.value) - (a.width.baseVal.value * a.height.baseVal.value))
+        .sort((a, b) => (dim(b, "width") * dim(b, "height")) - (dim(a, "width") * dim(a, "height")))
         .forEach(el => group.appendChild(el));
     }
     holder.querySelectorAll(".hotspot").forEach(el => {
