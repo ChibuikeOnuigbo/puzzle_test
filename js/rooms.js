@@ -53,6 +53,137 @@ const Rooms = (() => {
       <path d="M${x - s * 0.2},${y} L${x - s * 0.16},${y - s * 0.6} Q${x},${y - s * 0.72} ${x + s * 0.16},${y - s * 0.6} L${x + s * 0.2},${y} Z" fill="${col}"/>
     </g>`;
 
+  /* ---- pixel-art trees: hand bitmapped, monochrome with dark pixels ----
+     No visual assets are loaded; the trees are drawn cell by cell from these
+     bitmaps. Rows may be ragged; the renderer walks each row as a run of
+     colour and emits one rect per run, so a whole row of foliage is a single
+     node. Palette keys: t trunk, D dark speckle, M foliage, L moonlit rim. */
+  const PX_PAL = { t: "#07090c", D: "#05070a", M: "#0a0e15", L: "#121a26" };
+  function pxArt(rows, px, x, y, flip) {
+    let out = "";
+    for (let r = 0; r < rows.length; r++) {
+      const row = flip ? [...rows[r]].reverse().join("") : rows[r];
+      let c = 0;
+      while (c < row.length) {
+        const ch = row[c];
+        if (ch === "." || ch === " ") { c++; continue; }
+        let run = c + 1;
+        while (run < row.length && row[run] === ch) run++;
+        out += `<rect x="${x + c * px}" y="${y + r * px}" width="${(run - c) * px}" height="${px}" fill="${PX_PAL[ch] || PX_PAL.M}"/>`;
+        c = run;
+      }
+    }
+    return out;
+  }
+  const TREE_OAK = [
+    ".........DDD..........",
+    ".......DDMMMDD........",
+    "......DMMMMMMMD.......",
+    ".....DMMMMMMMMMD......",
+    "....DMMMMMMMMMMMD.....",
+    "...DMMMMMMMMMMMMMD....",
+    "..DMMMMMMMMMMMMMMMD...",
+    "..DMMMMMMMMMMMMMMMD...",
+    ".DMMMMMMMMMMMMMMMMMLD.",
+    ".DMMMMDDMMMMMMMMMMMLD.",
+    "DDMMMMMDDMMMMMMMMMMMLD",
+    "DDMMMMMDMMMMMMMMMMMLD.",
+    ".DMMMMMDMMMMMMMMMMMD..",
+    ".DMMMMMMMMMMDDMMMMMD..",
+    "..DMMMMMMMMMMDMMMMD...",
+    "..DMMMMMMMMMMMMMMMD...",
+    "...DMMMMMMMMMMMMMD....",
+    "...DDMMMMMMMMMMMDD....",
+    "....DDMMMMMMMMMDD.....",
+    ".....DDDMMMMMDDD......",
+    "......DDDMMMDDD.......",
+    "........DDDDD.........",
+    "..........tt..........",
+    "..........ttt.........",
+    ".........tttt.........",
+    ".........tttt.........",
+    ".........tttt.........",
+    "..........ttt.........",
+    "..........ttt.........",
+    "...........t..........",
+  ];
+  const TREE_DEAD = [
+    "........ttt...........",
+    ".......tttttt.........",
+    "......ttt.tttt........",
+    ".....tttt..ttttt......",
+    "....ttttt...ttttt.....",
+    "...tttttt....ttttt....",
+    "..ttttttt.....ttttt...",
+    ".ttttttt.......ttttt..",
+    ".tttttt.........ttttt.",
+    "ttttttt..........ttttt",
+    ".ttttt...........tttt.",
+    "..tttt............tt..",
+    "...ttt..............tt",
+    "....tt..............tt",
+    ".....tt............tt.",
+    "......tt..........tt..",
+    ".......tt........tt...",
+    "........tt......tt....",
+    ".........tt....tt.....",
+    "..........tt..tt......",
+    "...........tttt.......",
+    "............tt........",
+    "............tt........",
+    "............tt........",
+    "............tt........",
+    "............tt........",
+  ];
+  const TREE_CONIFER = [
+    ".......t.......",
+    ".......tt......",
+    ".......tt......",
+    "......tttt.....",
+    "......ttttt....",
+    ".....ttttttt...",
+    ".....ttttttt...",
+    "....ttttttttt..",
+    "....ttttttttt..",
+    "...ttttttttttt.",
+    "...ttttttttttt.",
+    "..tttttttttttt.",
+    "..tttttttttttt.",
+    ".ttttttttttttt.",
+    ".ttttttttttttt.",
+    ".ttttttttttttt.",
+    "..ttttttttttt..",
+    "..ttttttttttt..",
+    "...ttttttttt...",
+    "...ttttttttt...",
+    "....ttttttt....",
+    "....ttttttt....",
+    ".....ttttt.....",
+    "......ttt......",
+    ".......tt......",
+    ".......tt......",
+    ".......tt......",
+  ];
+  /* a small perched bird: head, body, tail, and a soft dark shadow beneath */
+  const bird = (x, y, s = 1) => `
+    <ellipse cx="${x + 5 * s}" cy="${y + 5 * s}" rx="${7 * s}" ry="${2 * s}" fill="#04060a" opacity="0.5"/>
+    <rect x="${x + 3 * s}" y="${y}" width="${6 * s}" height="${3 * s}" fill="#0a0e15"/>
+    <rect x="${x}" y="${y + 1 * s}" width="${3 * s}" height="${2 * s}" fill="#0a0e15"/>
+    <rect x="${x + 9 * s}" y="${y + 1 * s}" width="${4 * s}" height="${1 * s}" fill="#0a0e15"/>
+    <rect x="${x + 2 * s}" y="${y + 1 * s}" width="${1 * s}" height="${1 * s}" fill="#121a26"/>`;
+
+  /* a tuft of night grass: three thin blades */
+  const tuft = (x, y, c) => `
+    <g stroke="${c || "#162019"}" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.9">
+      <path d="M${x},${y} q3,-9 7,-11"/>
+      <path d="M${x},${y} q0,-12 0,-13"/>
+      <path d="M${x},${y} q-3,-9 -7,-11"/>
+    </g>`;
+
+  /* a fallen leaf, small and dull */
+  const leaf = (x, y, r, rot, c) => `
+    <ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 0.6}" fill="${c || "#2a231a"}" opacity="0.75" transform="rotate(${rot} ${x} ${y})"/>`;
+
 
   /* =====================================================================
      DINING ROOM — and, when the house has deleted a room, THE ARCHIVE
@@ -269,41 +400,72 @@ const Rooms = (() => {
   ===================================================================== */
   function svgPorch() {
     const hasKey = State.hasItem("houseKey");
+    const reducedMotion = Settings.get("reducedMotion");
     return `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
     <defs><filter id="blurf"><feGaussianBlur stdDeviation="3"/></filter></defs>
     <g id="layer-back">
       <rect width="1280" height="720" fill="url(#nightg)"/>
       ${[...Array(26)].map((_, i) => `<circle cx="${(i * 137 + 40) % 1280}" cy="${(i * 61) % 200 + 12}" r="${i % 3 === 0 ? 1.6 : 1}" fill="#cfd8e0" opacity="${0.25 + (i % 5) * 0.1}"/>`).join("")}
+      ${reducedMotion ? "" : `
+      <!-- an occasional shooting star, gone almost before it is seen -->
+      <g transform="translate(310,120)">
+        <g opacity="0">
+          <animate attributeName="opacity" values="0;0;0.9;0.9;0;0" keyTimes="0;0.90;0.905;0.925;0.93;1" dur="19s" repeatCount="indefinite"/>
+          <g>
+            <animateTransform attributeName="transform" type="translate" values="0,0;0,0;150,90;150,90;0,0" keyTimes="0;0.90;0.905;0.925;0.93;1" dur="19s" repeatCount="indefinite"/>
+            <line x1="0" y1="0" x2="-34" y2="16" stroke="#c9d8e6" stroke-width="2" stroke-linecap="round"/>
+            <line x1="0" y1="0" x2="-20" y2="9" stroke="#eaf2f8" stroke-width="1.2" opacity="0.8"/>
+            <circle cx="0" cy="0" r="1.8" fill="#ffffff"/>
+          </g>
+        </g>
+      </g>
+      <g transform="translate(840,70)">
+        <g opacity="0">
+          <animate attributeName="opacity" values="0;0;0.85;0.85;0;0" keyTimes="0;0.86;0.87;0.89;0.895;1" dur="27s" repeatCount="indefinite"/>
+          <g>
+            <animateTransform attributeName="transform" type="translate" values="0,0;0,0;120,80;120,80;0,0" keyTimes="0;0.86;0.87;0.89;0.895;1" dur="27s" repeatCount="indefinite"/>
+            <line x1="0" y1="0" x2="-30" y2="14" stroke="#c9d8e6" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="0" cy="0" r="1.6" fill="#ffffff"/>
+          </g>
+        </g>
+      </g>`}
       <circle cx="1120" cy="90" r="34" fill="#d8dce0" opacity="0.85"/>
       <circle cx="1108" cy="82" r="30" fill="#1d2733"/>
-      <!-- FOV depth: the house is not alone out here. Trees stand at three distances. -->
-      <g id="v_trees" filter="url(#blurf)" opacity="0.92">
-        <g transform="translate(0,0)">
-          <rect x="78" y="300" width="12" height="250" fill="#0a0e14"/>
-          <polygon points="20,330 84,150 148,330" fill="#0a0e14"/>
-          <polygon points="40,256 84,110 128,256" fill="#0a0e14"/>
-          <polygon points="56,196 84,70 112,196" fill="#0a0e14"/>
-        </g>
-        <g transform="translate(-34,-30)" opacity="0.7">
-          <rect x="170" y="300" width="11" height="250" fill="#0b1016"/>
-          <polygon points="116,330 176,180 236,330" fill="#0b1016"/>
-          <polygon points="134,262 176,150 218,262" fill="#0b1016"/>
-        </g>
-        <g transform="translate(0,0)">
-          <rect x="1164" y="290" width="13" height="260" fill="#0a0e14"/>
-          <polygon points="1102,330 1170,138 1238,330" fill="#0a0e14"/>
-          <polygon points="1122,250 1170,100 1218,250" fill="#0a0e14"/>
-          <polygon points="1140,188 1170,62 1200,188" fill="#0a0e14"/>
-        </g>
-        <g transform="translate(60,-26)" opacity="0.66">
-          <rect x="1216" y="300" width="10" height="250" fill="#0b1016"/>
-          <polygon points="1170,330 1222,196 1274,330" fill="#0b1016"/>
-          <polygon points="1186,270 1222,172 1258,270" fill="#0b1016"/>
-        </g>
+      <!-- distant treeline: a thin, blurred stand of pines and oaks on the ridge -->
+      <g id="v_treeline" filter="url(#blurf)" opacity="0.5">
+        ${[...Array(20)].map((_, i) => {
+          const rows = [TREE_CONIFER, TREE_OAK, TREE_DEAD][i % 3];
+          const px = 3, h = rows.length * px, x = i * 66 - 8, base = 428 + (i % 3) * 5;
+          return pxArt(rows, px, x, base - h, i % 2 === 1);
+        }).join("")}
+      </g>
+      <!-- mid distance trees: crisp pixel oaks and deadwood flanking the house -->
+      <g id="v_trees">
+        ${pxArt(TREE_DEAD, 7, 2, 560 - TREE_DEAD.length * 7)}
+        ${pxArt(TREE_OAK, 7, 48, 560 - TREE_OAK.length * 7)}
+        ${pxArt(TREE_OAK, 7, 112, 562 - TREE_OAK.length * 7, true)}
+        ${bird(90, 364)}
+        ${bird(118, 384)}
+        ${pxArt(TREE_OAK, 7, 1126, 560 - TREE_OAK.length * 7)}
+        ${pxArt(TREE_DEAD, 7, 1196, 560 - TREE_DEAD.length * 7)}
+        ${pxArt(TREE_CONIFER, 7, 1232, 560 - TREE_CONIFER.length * 7)}
+        ${bird(1172, 366)}
+        ${bird(1198, 384)}
       </g>
       <rect x="0" y="540" width="1280" height="180" fill="#12161c"/>
       <rect x="0" y="536" width="1280" height="6" fill="#0c0f13"/>
+      <!-- packed dirt path from the step, widening toward the viewer -->
+      <polygon points="600,574 680,574 830,720 452,720" fill="#1a1e27" opacity="0.92"/>
+      <polygon points="600,574 680,574 812,720 470,720" fill="#151923" opacity="0.6"/>
+      <!-- stepping stones down the path -->
+      <ellipse cx="640" cy="600" rx="34" ry="9" fill="#23272f"/>
+      <ellipse cx="640" cy="603" rx="34" ry="9" fill="none" stroke="#10131a" stroke-width="2" opacity="0.6"/>
+      <ellipse cx="626" cy="636" rx="40" ry="10" fill="#1f232b"/>
+      <ellipse cx="626" cy="639" rx="40" ry="10" fill="none" stroke="#10131a" stroke-width="2" opacity="0.6"/>
+      <ellipse cx="658" cy="674" rx="46" ry="11" fill="#23272f"/>
+      <ellipse cx="658" cy="677" rx="46" ry="11" fill="none" stroke="#10131a" stroke-width="2" opacity="0.6"/>
+      <ellipse cx="636" cy="710" rx="52" ry="12" fill="#1f232b"/>
     </g>
     <g id="layer-mid">
       <!-- house facade -->
@@ -347,12 +509,53 @@ const Rooms = (() => {
         <circle cx="222" cy="556" r="30" fill="#141a12"/><circle cx="250" cy="564" r="24" fill="#141a12"/><circle cx="196" cy="566" r="22" fill="#10160f"/>
         <circle cx="1056" cy="556" r="32" fill="#141a12"/><circle cx="1026" cy="566" r="24" fill="#141a12"/><circle cx="1084" cy="564" r="22" fill="#10160f"/>
       </g>
+      <!-- stones lining the path and half sunk in the lawn -->
       <g id="v_stones">
         <ellipse cx="300" cy="580" rx="13" ry="6" fill="#2a2f36"/>
         <ellipse cx="332" cy="586" rx="10" ry="5" fill="#232830"/>
         <ellipse cx="922" cy="584" rx="11" ry="5" fill="#2a2f36"/>
         <ellipse cx="952" cy="578" rx="14" ry="6" fill="#232830"/>
         <ellipse cx="1120" cy="590" rx="9" ry="4" fill="#262b32"/>
+        <ellipse cx="238" cy="600" rx="9" ry="4" fill="#262b32"/>
+        <ellipse cx="1010" cy="600" rx="10" ry="5" fill="#232830"/>
+        <ellipse cx="470" cy="616" rx="11" ry="5" fill="#262b32"/>
+        <ellipse cx="806" cy="620" rx="9" ry="4" fill="#232830"/>
+        <ellipse cx="560" cy="648" rx="8" ry="3.6" fill="#262b32"/>
+        <ellipse cx="726" cy="652" rx="9" ry="4" fill="#232830"/>
+      </g>
+      <!-- grass tufts creeping over the lawn and path edges -->
+      <g id="v_grass">
+        ${tuft(250, 586)}
+        ${tuft(283, 596, "#1b241d")}
+        ${tuft(1014, 582)}
+        ${tuft(1048, 592, "#1b241d")}
+        ${tuft(392, 606)}
+        ${tuft(452, 640, "#1b241d")}
+        ${tuft(828, 604)}
+        ${tuft(756, 646, "#1b241d")}
+        ${tuft(500, 666, "#162019")}
+        ${tuft(700, 668)}
+        ${tuft(560, 700, "#1b241d")}
+        ${tuft(734, 706)}
+      </g>
+      <!-- fallen leaves: a drift of them under each tree, a few blown onto the path -->
+      <g id="v_leaves">
+        ${leaf(52, 566, 4, 20)}
+        ${leaf(70, 574, 3.4, -30, "#23271e")}
+        ${leaf(96, 570, 3.6, 60, "#2b1f16")}
+        ${leaf(128, 580, 4, -12)}
+        ${leaf(150, 588, 3, 40, "#23271e")}
+        ${leaf(86, 590, 3, 8, "#2b1f16")}
+        ${leaf(1122, 566, 4, -20)}
+        ${leaf(1150, 576, 3.4, 30, "#23271e")}
+        ${leaf(1180, 570, 3.6, -55, "#2b1f16")}
+        ${leaf(1214, 582, 4, 12)}
+        ${leaf(1236, 592, 3, -35, "#23271e")}
+        ${leaf(1166, 592, 3, 5, "#2b1f16")}
+        ${leaf(600, 622, 3, 30, "#23271e")}
+        ${leaf(662, 656, 3.4, -20, "#2b1f16")}
+        ${leaf(648, 700, 3, 14, "#23271e")}
+        ${leaf(704, 692, 2.8, -40)}
       </g>
       <!-- pots: two in the light, one in shadow right of door -->
       <g id="v_pot0"><path d="M356,520 L394,520 L388,556 L362,556 Z" fill="#7a4a34"/><ellipse cx="375" cy="520" rx="19" ry="5" fill="#8a5a40"/><path d="M375,506 q-11,8 -3,14 q9,-2 3,-14" fill="#5d6b4a"/></g>
@@ -378,6 +581,13 @@ const Rooms = (() => {
       <rect x="0" y="690" width="1280" height="30" fill="#0b0d10"/>
       <path d="M0,700 Q120,660 200,706 L0,720 Z" fill="#0e1116"/>
       <path d="M1280,700 Q1150,656 1080,708 L1280,720 Z" fill="#0e1116"/>
+      <!-- foreground framing: two huge dark trees at the very edges, near the lens -->
+      <g id="v_near" opacity="0.96">
+        <ellipse cx="50" cy="712" rx="120" ry="16" fill="#04060a" opacity="0.6"/>
+        ${pxArt(TREE_OAK, 8, -46, 712 - TREE_OAK.length * 8)}
+        <ellipse cx="1236" cy="720" rx="120" ry="16" fill="#04060a" opacity="0.6"/>
+        ${pxArt(TREE_DEAD, 8, 1206, 720 - TREE_DEAD.length * 8, true)}
+      </g>
     </g>
     <g id="hotspots">
       ${hs("note", 580, 288, 76, 82, "A note, pinned to the door", "v_note")}
