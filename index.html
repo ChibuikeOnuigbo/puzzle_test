@@ -16,6 +16,25 @@
 <noscript><p style="color:#d8c9a8;font-family:Georgia,serif;text-align:center;margin-top:20vh">HOUSE 17 is an interactive game and needs JavaScript to run.</p></noscript>
 
 <div id="app">
+  <!-- boot loader: the house wakes up before the menu appears -->
+  <div id="loader" aria-hidden="true">
+    <div class="loader-inner">
+      <svg viewBox="0 0 200 150" width="150" height="112">
+        <rect x="40" y="60" width="120" height="80" fill="#2b241d"/>
+        <polygon points="30,62 100,18 170,62" fill="#221c16"/>
+        <rect x="88" y="95" width="24" height="45" fill="#171310"/>
+        <rect x="55" y="75" width="20" height="20" fill="#0d0b09"/>
+        <rect x="125" y="75" width="20" height="20" fill="#e8a04c" opacity="0.9">
+          <animate attributeName="opacity" values="0.9;0.15;0.9" dur="2.4s" repeatCount="indefinite"/>
+        </rect>
+        <text x="100" y="120" text-anchor="middle" font-family="Georgia" font-size="13" fill="#8a7a62">17</text>
+      </svg>
+      <div class="loader-title">HOUSE&nbsp;17</div>
+      <div class="loader-bar"><div id="loader-bar"></div></div>
+      <div id="loader-line" class="loader-line">the house is waking up</div>
+    </div>
+  </div>
+
   <!-- fixed 1280x720 logical stage, scaled to fit -->
   <div id="stage">
     <div id="scene-holder"></div>
@@ -26,6 +45,8 @@
     <div id="hud" class="hidden">
       <div id="objective"><span id="objective-text"></span></div>
       <div id="hud-right">
+        <button class="hud-btn" id="btn-lens" title="Room labels" hidden><svg viewBox="0 0 24 24" width="20" height="20"><ellipse cx="10" cy="10" rx="6" ry="6" fill="none" stroke="currentColor" stroke-width="1.6"/><ellipse cx="10" cy="10" rx="3.4" ry="3.4" fill="currentColor" opacity="0.5"/><path d="M14.5,14.5 L20,20" stroke="currentColor" stroke-width="1.8"/></svg></button>
+        <button class="hud-btn" id="btn-notes" title="Mission notes" hidden><svg viewBox="0 0 24 24" width="20" height="20"><rect x="5" y="3" width="14" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="8" y1="8" x2="16" y2="8" stroke="currentColor" stroke-width="1.6"/><line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="1.6"/><line x1="8" y1="16" x2="13" y2="16" stroke="currentColor" stroke-width="1.6"/></svg></button>
         <button class="hud-btn" id="btn-hint" title="Hint">?</button>
         <button class="hud-btn" id="btn-menu" title="Menu">≡</button>
       </div>
@@ -33,7 +54,7 @@
     </div>
 
     <!-- dialogue -->
-    <div id="dialogue" class="hidden"><p id="dialogue-text"></p><span id="dialogue-more">▸</span></div>
+    <div id="dialogue" class="hidden"><p id="dialogue-text"></p><span class="dialogue-hint">press <span id="dialogue-key" class="dialogue-keycap">Enter</span> to skip</span><span id="dialogue-more">▸</span></div>
 
     <!-- main menu -->
     <div id="menu" class="screen">
@@ -71,7 +92,7 @@
 <div id="fader"></div>
   </div>
 
-  <!-- popup layer root (outside stage scale so text stays crisp? no – keep inside for coords) -->
+  <!-- popup layer root (kept inside the app so coordinates stay consistent) -->
   <div id="popup-root"></div>
 
   <!-- custom cursor -->
@@ -91,6 +112,8 @@
 <script src="js/core.js"></script>
 <script src="js/rooms.js"></script>
 <script src="js/puzzles.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/mirror.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

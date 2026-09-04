@@ -271,6 +271,15 @@ const HouseTricks = (() => {
       ]);
       return;
     }
+    /* the house shut the closet while the player was elsewhere */
+    if (room === "landing" && State.flag("closetAutoClosed")) {
+      State.setFlag("closetAutoClosed", false);
+      State.addAware(2);
+      Dialogue.say([
+        "The linen closet is shut. I left it open. The house closed it while I was gone, like a host straightening a room I should not have been in.",
+      ]);
+      return;
+    }
     /* the child's room can be unwritten from the corridor */
     if (room === "landing" && State.flag("act2") && State.flag("visitedChild")
         && !State.flag("roomDeleted_child") && !State.flag("childRestored") && !QA()) {
@@ -318,7 +327,7 @@ const HouseTricks = (() => {
 
 /* ---------------- room hotspot actions ---------------- */
 /* ---------- shared horror helpers ---------- */
-let tapT0 = null, tapT1 = null, tapT2 = null, tapT3 = null, atticT1 = null, atticT2 = null;
+let tapT0 = null, tapT1 = null, tapT2 = null, tapT3 = null, atticT1 = null, atticT2 = null, closetT = null;
 
 const NUMWORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"];
 function numword(n) { return NUMWORDS[n] || String(n); }
@@ -386,6 +395,27 @@ function armTapTimers() {
 }
 function disarmTapTimers() { clearTimeout(tapT0); clearTimeout(tapT1); clearTimeout(tapT2); clearTimeout(tapT3); }
 
+/* the house is live: leave the linen closet open and it will quietly shut it */
+function armClosetTimer() {
+  clearTimeout(closetT);
+  closetT = setTimeout(() => {
+    if (!State.flag("closetOpen")) return;
+    State.setFlag("closetOpen", false);
+    State.setFlag("closetAutoClosed", true);
+    State.addAware(2);
+    if (State.get().room === "landing") {
+      State.setFlag("closetAutoClosed", false);
+      try { AudioM.creakDoor(); } catch (e) {}
+      Rooms.render();
+      Dialogue.say([
+        "The closet door just closed by itself. Gently. With a click I felt in my teeth.",
+        "I left it open. The house does not like its cupboards left ajar. Noted. Deeply noted.",
+      ]);
+    }
+  }, 45000);
+}
+function disarmClosetTimer() { clearTimeout(closetT); }
+
 function stopAtticTimers() { clearTimeout(atticT1); clearTimeout(atticT2); }
 function startAtticTimers() {
   stopAtticTimers();
@@ -447,6 +477,7 @@ const RoomActions = {
         State.removeItem("houseKey");
         AudioM.creakDoor();
         State.setObjective("find_study");
+        State.setCheckpoint("Inside House 17. The house has begun its evening.");
         Rooms.goto("hallway", [
           "The door opens before I finish turning the key. As if it was pulled.",
           "Eleven years empty. Then why is there no dust in the air?",
@@ -481,6 +512,7 @@ const RoomActions = {
       }
       State.addItem("houseKey");
       AudioM.pickup();
+      State.setCheckpoint("The house key. Cold. The door has one use in mind.");
       Dialogue.say([
         "This pot sits in the dark, out of the lamp's reach. And underneath…",
         "A house key. Cold. Colder than the night is.",
@@ -563,62 +595,8 @@ const RoomActions = {
       }
     },
     mirror() {
-      /* the mirror keeps a one way ledger: whole, cracked, open. Never back. */
-      if (State.flag("mirrorShattered")) {
-        State.addAware(1);
-        Dialogue.say(Dialogue.pick("mirror4", [
-          "The hollow behind the frame is empty now. Or it is very good at being looked at.",
-          "Two points of lamplight, child height, far too far back for the depth of that wall.",
-          "I am not sweeping up the glass. The house can file its own breakage.",
-          "No wall behind the glass. Eleven years I would have called that impossible. It is not even the strangest thing on this corridor.",
-        ]));
-        return;
-      }
-      if (State.flag("mirrorCracked")) {
-        State.setFlag("mirrorShattered");
-        AudioM.error();
-        AudioM.dread();
-        State.addAware(4);
-        Rooms.render();
-        if (typeof MirrorReturn !== "undefined") MirrorReturn.start();
-        Dialogue.say(State.flag("mirrorReturned") ? [
-          "It mended itself once. Now it opens itself again.",
-          "It broke! The whole glass let go at once. Not outward. Inward, like something inhaled it.",
-          "Behind it there is no wall. The same small dark hollow, and the same two points of lamplight at child height, looking back.",
-          "The house did not break the mirror. It opened it. Again.",
-        ] : [
-          "It broke! The whole glass let go at once. Not outward. Inward, like something inhaled it.",
-          "Behind it there is no wall. A small dark hollow, and two points of lamplight at child height, looking back.",
-          "The house did not break the mirror. It opened it.",
-        ]);
-        return;
-      }
-      if (State.flag("act2")) {
-        const n = State.bumpClick("mirror_act2");
-        if (n >= 3) {
-          State.setFlag("mirrorCracked");
-          AudioM.error();
-          State.addAware(2);
-          Rooms.render();
-          Dialogue.say([
-            "What?! A crack ran through the glass while I watched. Nothing touched it.",
-            "It starts exactly where my face was, and branches, like the glass is keeping notes on me.",
-          ]);
-          return;
-        }
-        Dialogue.say(Dialogue.pick("mirror2", [
-          "Writing on the glass, reversed: “LOOK AGAIN.” The notebook said the same thing.",
-          "“LOOK AGAIN.” Backwards, so only the mirror can read it properly. My reflection has not come back into the glass.",
-          "The mirror wants me to look again. At the photograph? At everything? The glass stays black where my face should be.",
-        ]));
-      } else {
-        Dialogue.say(Dialogue.pick("mirror1", [
-          "My reflection is black in this glass. Not shadowed. Black, like the mirror opens onto nothing.",
-          "Every mirror should show me standing here. This one keeps only the black, and I cannot decide if that is better.",
-          "An old mirror in an old hallway, and no reflection in it. The room behind me is not in there either. Just black.",
-          "The glass is clean. Cleaner than anything else here. Someone uses this mirror, and it still shows nobody.",
-        ]));
-      }
+      if (typeof Mirror !== "undefined" && Mirror.tap) { Mirror.tap(); return; }
+      Dialogue.say("The mirror is dark. It keeps whatever it reflects.");
     },
     udoor() {
       if (State.flag("act2")) {
@@ -689,6 +667,7 @@ const RoomActions = {
         Dialogue.say(Dialogue.pick("hlampOn", [
           "Click. Warm light again. Someone chose this bulb to be gentle.",
           "The lamp comes back without a flicker. Steadiest thing in this house, including me.",
+          "Two flies drift up to the shade the moment it warms. This hallway is so clean it makes them look like intruders.",
         ]));
       }
       Rooms.render();
@@ -879,6 +858,7 @@ const RoomActions = {
         code: C.code,
         onSolve() {
           State.setFlag("lockboxOpen");
+          State.setCheckpoint("The lockbox. The house knows I can count now.");
           Dialogue.say([
             `Milk, bread, apples, batteries. ${capword(C.milk)}, ${numword(C.bread)}, ${numword(C.apples)}, ${numword(C.batteries)}.`,
             "The list wasn't a list. It was the combination, hiding in plain sight for eleven years.",
@@ -931,6 +911,8 @@ const RoomActions = {
         "The garden outside is overgrown. Except one path of flattened grass, from the back door to the fence.",
         "Clouds crossing the moon. For a second the reflection in the glass showed this kitchen with the lights off.",
         "Nothing out there. The window is more interested in reflecting this room than showing me the garden.",
+        "A few flies are gathered by the hanging lamp, orbiting the bulb like it owes them something.",
+        "This kitchen is the one room the house has not bothered to keep. Everything else is spotless. Here, the house just gave up, or got hungry.",
       ]));
     },
     chair1() {
@@ -1151,6 +1133,7 @@ const RoomActions = {
         State.removeItem("studyKey");
         if (State.get().objective === "study_locked") State.setObjective("find_study");
         AudioM.unlock();
+        State.setCheckpoint("The study is open. The errand is one room away.");
         Dialogue.say("The study key fits. The lock turns like it was oiled yesterday. All that way down and back up for one small brass turn.");
         Rooms.render();
       } else {
@@ -1230,16 +1213,22 @@ const RoomActions = {
       if (!State.flag("closetOpen")) {
         State.setFlag("closetOpen");
         AudioM.open();
+        armClosetTimer();
         Dialogue.say([
-          "Sheets and blankets, folded once and never touched again.",
+          "Sheets and blankets, folded once and never touched again. Cobwebs in the corners, and a small spider, very still, minding its own business.",
           "Something metal glints on the bottom shelf.",
         ]);
         Rooms.render();
       } else {
-        Dialogue.say(Dialogue.pick("closet2", [
-          "Linen, pressed flat by years. The folds are too perfect. Machine perfect.",
-          "The shelves are labeled in pencil. The bottom label says number seventeen. It is shelf number three.",
+        State.setFlag("closetOpen", false);
+        AudioM.close();
+        disarmClosetTimer();
+        Dialogue.say(Dialogue.pick("closetC", [
+          "I shut the closet. The spider did not object. It is the only thing in this house that has not moved.",
+          "Closed. I leave it shut. Some doors in this house are happier that way.",
+          "I close it properly this time. The house notices. The house always notices.",
         ]));
+        Rooms.render();
       }
     },
     torch() {
@@ -1384,9 +1373,10 @@ const RoomActions = {
     cwin() {
       State.addAware(2);
       Dialogue.say(Dialogue.pick("cwin", [
-        "Rain on this window. Dry night on the kitchen window. Daylight on the corridor window.",
-        "The rain streaks move, but no drops ever land. It is a recording of rain.",
-        "Three windows, three different skies. The house cannot decide what tonight is.",
+        "Rain on this window. Real rain, falling and running down the glass. And a crack, low in the corner, where a thrown stone would have hit.",
+        "The crack is new. Or it was always there and I am only now looking long enough to see it.",
+        "It is actually raining on the other side of this glass. Drops land, slide, gather. This room keeps its own weather, and its weather is honest.",
+        "Three windows, three different skies. This is the only one honest enough to rain, and to crack.",
       ]));
     },
   },
@@ -1402,6 +1392,7 @@ const RoomActions = {
         State.setFlag("atticTruth");
         stopAtticTimers();
         State.addAware(10);
+        State.setCheckpoint("The fifth chair. The house's secret photograph.");
         AudioM.open();
         AudioM.discover();
         Puzzles.paperPopup("PHOTOGRAPH: THE KITCHEN TABLE", `
@@ -1543,6 +1534,20 @@ const RoomActions = {
         "The ribbon is worn through in exactly eleven places.",
         "The keys are clean except the N, the O, the V. I'm done touching the typewriter.",
       ]));
+    },
+    lens() {
+      State.addItem("lens");
+      AudioM.pickup();
+      State.logEvent("item", "took the surveyor's lens");
+      toast("Taken · A surveyor's lens");
+      Dialogue.say([
+        "A surveyor's lens, brass and cool, left at the edge of the desk like someone set it down mid thought.",
+        "It is not for distance. It is for reading what the house writes on its own walls.",
+        "The little labels. A small room. The study. I can switch them on when I want them now. Or leave the walls honest.",
+        "The house will not mind either way. It would rather I looked at it, not at its handwriting.",
+      ]);
+      Rooms.render();
+      if (typeof Game !== "undefined") Game.refreshHUD();
     },
     oldphoto() {
       if (State.foundSecret("oldphoto")) {

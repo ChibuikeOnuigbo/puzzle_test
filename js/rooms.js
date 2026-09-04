@@ -28,6 +28,11 @@ const Rooms = (() => {
     <linearGradient id="metalg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#4a4d50"/><stop offset="1" stop-color="#2e3134"/>
     </linearGradient>
+    <!-- soft blur bank for the FX light system: no hard vector edges on light -->
+    <filter id="fxblur2"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="fxblur4"><feGaussianBlur stdDeviation="4"/></filter>
+    <filter id="fxblur8"><feGaussianBlur stdDeviation="8"/></filter>
+    <filter id="fxblur10"><feGaussianBlur stdDeviation="10"/></filter>
   </defs>`;
 
   const hs = (id, x, y, w, h, label, target) =>
@@ -86,7 +91,6 @@ const Rooms = (() => {
       <line x1="640" y1="0" x2="640" y2="96" stroke="#241c13" stroke-width="5"/>
       <path d="M604,96 L676,96 L656,126 L624,126 Z" fill="#3a2c1e"/>
       <ellipse cx="640" cy="130" rx="17" ry="8" fill="#e8c87a" opacity="0.9"/>
-      <ellipse cx="640" cy="420" rx="330" ry="210" fill="#e8c87a" opacity="0.07"/>
       <!-- doorframe to the kitchen, height marks pencilled on it -->
       <g id="v_marks">
         <rect x="1196" y="150" width="20" height="400" fill="#3a2c1e"/>
@@ -96,13 +100,13 @@ const Rooms = (() => {
       </g>
       <g id="v_dback">
         <rect x="1216" y="150" width="64" height="400" fill="#171310"/>
-        <text x="1248" y="596" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">kitchen</text>
+        <text x="1248" y="596" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">kitchen</text>
       </g>
       ${archive ? `
       <!-- THE ARCHIVE: the house filed a room here -->
       <g id="v_chalk">
         <rect x="380" y="560" width="560" height="130" fill="none" stroke="#8f8778" stroke-width="3" stroke-dasharray="10 8" opacity="0.4"/>
-        <text x="660" y="648" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b6154" font-style="italic" opacity="0.8">something stood here</text>
+        <text x="660" y="648" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b6154" font-style="italic" opacity="0.8">something stood here</text>
       </g>
       <g id="v_shelves">
         <rect x="380" y="270" width="560" height="16" fill="#3a2c1e"/>
@@ -210,6 +214,31 @@ const Rooms = (() => {
       ${[...Array(26)].map((_, i) => `<circle cx="${(i * 137 + 40) % 1280}" cy="${(i * 61) % 200 + 12}" r="${i % 3 === 0 ? 1.6 : 1}" fill="#cfd8e0" opacity="${0.25 + (i % 5) * 0.1}"/>`).join("")}
       <circle cx="1120" cy="90" r="34" fill="#d8dce0" opacity="0.85"/>
       <circle cx="1108" cy="82" r="30" fill="#1d2733"/>
+      <!-- FOV depth: the house is not alone out here. Trees stand at three distances. -->
+      <g id="v_trees" filter="url(#blurf)" opacity="0.92">
+        <g transform="translate(0,0)">
+          <rect x="78" y="300" width="12" height="250" fill="#0a0e14"/>
+          <polygon points="20,330 84,150 148,330" fill="#0a0e14"/>
+          <polygon points="40,256 84,110 128,256" fill="#0a0e14"/>
+          <polygon points="56,196 84,70 112,196" fill="#0a0e14"/>
+        </g>
+        <g transform="translate(-34,-30)" opacity="0.7">
+          <rect x="170" y="300" width="11" height="250" fill="#0b1016"/>
+          <polygon points="116,330 176,180 236,330" fill="#0b1016"/>
+          <polygon points="134,262 176,150 218,262" fill="#0b1016"/>
+        </g>
+        <g transform="translate(0,0)">
+          <rect x="1164" y="290" width="13" height="260" fill="#0a0e14"/>
+          <polygon points="1102,330 1170,138 1238,330" fill="#0a0e14"/>
+          <polygon points="1122,250 1170,100 1218,250" fill="#0a0e14"/>
+          <polygon points="1140,188 1170,62 1200,188" fill="#0a0e14"/>
+        </g>
+        <g transform="translate(60,-26)" opacity="0.66">
+          <rect x="1216" y="300" width="10" height="250" fill="#0b1016"/>
+          <polygon points="1170,330 1222,196 1274,330" fill="#0b1016"/>
+          <polygon points="1186,270 1222,172 1258,270" fill="#0b1016"/>
+        </g>
+      </g>
       <rect x="0" y="540" width="1280" height="180" fill="#12161c"/>
       <rect x="0" y="536" width="1280" height="6" fill="#0c0f13"/>
     </g>
@@ -242,16 +271,26 @@ const Rooms = (() => {
         <line x1="602" y1="335" x2="628" y2="333" stroke="#6b5b45" stroke-width="2"/>
         <circle cx="619" cy="303" r="3" fill="#8a4a3a"/>
       </g>
-      <!-- porch light + cone -->
+      <!-- porch light: fixture only; the beam and pool come from the FX light layer -->
       <g id="v_plight">
         <rect x="440" y="270" width="10" height="26" fill="#2c241c"/>
         <path d="M430,296 L460,296 L452,326 L438,326 Z" fill="#3a2f22"/>
-        <ellipse cx="445" cy="322" rx="9" ry="6" fill="#f0c884"><animate attributeName="opacity" values="1;1;0.75;1" dur="6s" repeatCount="indefinite"/></ellipse>
+        <polygon points="437,324 453,324 449,332 441,332" fill="#f0c884"><animate attributeName="opacity" values="1;1;0.75;1" dur="6s" repeatCount="indefinite"/></polygon>
       </g>
-      <polygon points="432,320 458,320 560,552 320,552" fill="#e8a04c" opacity="0.10"/>
-      <ellipse cx="440" cy="552" rx="130" ry="16" fill="#e8a04c" opacity="0.10"/>
       <!-- porch floor -->
       <rect x="180" y="548" width="920" height="26" fill="#2b211a"/>
+      <!-- the overgrown front yard: bushes flank the step, stones line the path -->
+      <g id="v_yard" filter="url(#blurf)">
+        <circle cx="222" cy="556" r="30" fill="#141a12"/><circle cx="250" cy="564" r="24" fill="#141a12"/><circle cx="196" cy="566" r="22" fill="#10160f"/>
+        <circle cx="1056" cy="556" r="32" fill="#141a12"/><circle cx="1026" cy="566" r="24" fill="#141a12"/><circle cx="1084" cy="564" r="22" fill="#10160f"/>
+      </g>
+      <g id="v_stones">
+        <ellipse cx="300" cy="580" rx="13" ry="6" fill="#2a2f36"/>
+        <ellipse cx="332" cy="586" rx="10" ry="5" fill="#232830"/>
+        <ellipse cx="922" cy="584" rx="11" ry="5" fill="#2a2f36"/>
+        <ellipse cx="952" cy="578" rx="14" ry="6" fill="#232830"/>
+        <ellipse cx="1120" cy="590" rx="9" ry="4" fill="#262b32"/>
+      </g>
       <!-- pots: two in the light, one in shadow right of door -->
       <g id="v_pot0"><path d="M356,520 L394,520 L388,556 L362,556 Z" fill="#7a4a34"/><ellipse cx="375" cy="520" rx="19" ry="5" fill="#8a5a40"/><path d="M375,506 q-11,8 -3,14 q9,-2 3,-14" fill="#5d6b4a"/></g>
       <g id="v_pot1"><path d="M436,516 L480,516 L473,558 L443,558 Z" fill="#7a4a34"/><ellipse cx="458" cy="516" rx="22" ry="6" fill="#8a5a40"/><path d="M458,498 q-13,10 -4,18 q11,-3 4,-18" fill="#5d6b4a"/><path d="M462,500 q10,9 1,16" fill="none" stroke="#5d6b4a" stroke-width="3"/></g>
@@ -264,6 +303,15 @@ const Rooms = (() => {
       <g id="v_mat"><rect x="576" y="556" width="128" height="22" rx="3" fill="#4a3a2a"/><rect x="584" y="560" width="112" height="14" rx="2" fill="none" stroke="#5d4a35" stroke-width="2"/></g>
     </g>
     <g id="layer-front">
+      <!-- ground fog: slow thin wisps breathing across the yard -->
+      <ellipse cx="420" cy="620" rx="260" ry="22" fill="#7a8492" opacity="0.09" filter="url(#blurf)">
+        <animateTransform attributeName="transform" type="translate" values="-180,0;360,0;-180,0" dur="96s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.09;0.14;0.09" dur="41s" repeatCount="indefinite"/>
+      </ellipse>
+      <ellipse cx="900" cy="636" rx="300" ry="24" fill="#7a8492" opacity="0.07" filter="url(#blurf)">
+        <animateTransform attributeName="transform" type="translate" values="260,0;-200,0;260,0" dur="120s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.07;0.11;0.07" dur="53s" repeatCount="indefinite"/>
+      </ellipse>
       <rect x="0" y="690" width="1280" height="30" fill="#0b0d10"/>
       <path d="M0,700 Q120,660 200,706 L0,720 Z" fill="#0e1116"/>
       <path d="M1280,700 Q1150,656 1080,708 L1280,720 Z" fill="#0e1116"/>
@@ -298,8 +346,13 @@ const Rooms = (() => {
       <clipPath id="kdoorclip"><polygon points="66,176 234,176 234,494 66,494"/></clipPath>
       <clipPath id="mirrorclip"><ellipse cx="720" cy="256" rx="58" ry="82"/></clipPath>
       <linearGradient id="mirrorglass" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#101820"/><stop offset="0.45" stop-color="#16232e"/>
-        <stop offset="0.75" stop-color="#263946"/><stop offset="1" stop-color="#101a21"/>
+        <stop offset="0" stop-color="#1b2731"/><stop offset="0.45" stop-color="#243541"/>
+        <stop offset="0.75" stop-color="#33495a"/><stop offset="1" stop-color="#1a2730"/>
+      </linearGradient>
+      <linearGradient id="mirrorreflect" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#e8a04c" stop-opacity="0"/>
+        <stop offset="0.55" stop-color="#e8a04c" stop-opacity="0.10"/>
+        <stop offset="1" stop-color="#e8a04c" stop-opacity="0"/>
       </linearGradient>
       <linearGradient id="mirrorstreak" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="#d2e6f0" stop-opacity="0"/>
@@ -410,8 +463,22 @@ const Rooms = (() => {
         ${person(510, 292, 52, "#5a4a3a")}${person(545, 292, 50, "#6b5544")}${person(575, 294, 38, "#4a5568")}${person(596, 296, 30, "#7a5a50")}
         ${act2 ? person(492, 293, 46, "#8f8778", true) : ""}
       </g>
+      ${State.flag("mirrorBlood") ? `
+      <!-- the wall writes back: STOP, covering a third of the plaster -->
+      <g id="v_blood">
+        <g filter="url(#mirrorblur)" opacity="0.5">
+          <text x="500" y="320" text-anchor="middle" font-family="Georgia" font-size="150" letter-spacing="10" fill="#5a120c" transform="rotate(-6 500 300)">STOP</text>
+        </g>
+        <text x="500" y="320" text-anchor="middle" font-family="Georgia" font-size="150" letter-spacing="10" fill="#7a1f16" transform="rotate(-6 500 300)">STOP</text>
+        <path d="M416,330 q6,46 -2,84 M470,346 q4,52 2,96 M540,338 q-4,58 2,102 M596,332 q-6,40 -4,80" stroke="#7a1f16" stroke-width="7" fill="none" opacity="0.8"/>
+        <path d="M470,346 q4,52 2,96 M540,338 q-4,58 2,102" stroke="#5a120c" stroke-width="3" fill="none" opacity="0.6"/>
+        <ellipse cx="430" cy="318" rx="26" ry="9" fill="#3a1a10" opacity="0.7" transform="rotate(-14 430 318)"/>
+        <ellipse cx="566" cy="330" rx="30" ry="10" fill="#2a130a" opacity="0.7" transform="rotate(10 566 330)"/>
+        <path d="M470,426 q30,-8 56,4 q24,12 52,2" stroke="#2a130a" stroke-width="5" fill="none" opacity="0.5"/>
+      </g>` : ""}
+      ${State.flag("mirrorMoved") ? `<rect x="660" y="160" width="120" height="196" fill="none" stroke="#5d4f3e" stroke-width="2" stroke-dasharray="5 6" opacity="0.25"/>` : ""}
       <!-- mirror -->
-      <g id="v_mirror">
+      <g id="v_mirror" ${State.flag("mirrorMoved") === 1 ? 'transform="translate(46,-10)"' : State.flag("mirrorMoved") === 2 ? 'transform="translate(-74,-18) rotate(-3 720 256)"' : ""}>
         <!-- soft wall shadow behind the frame -->
         <ellipse cx="720" cy="352" rx="74" ry="13" fill="#0d0a08" opacity="0.22"/>
         <!-- frame: blurred outer shadow, dark body, warm ring, lit inner rim -->
@@ -456,8 +523,10 @@ const Rooms = (() => {
         <!-- the glass: black and deep, one cold streak, a dark rim -->
         <g clip-path="url(#mirrorclip)">
           <ellipse cx="720" cy="256" rx="58" ry="82" fill="url(#mirrorglass)"/>
+          <rect x="662" y="174" width="116" height="164" fill="url(#mirrorreflect)"/>
           <path d="M662,326 L702,204 L730,214 L690,338 Z" fill="url(#mirrorstreak)"/>
-          ${act2 && !State.flag("mirrorCracked") ? `<text x="720" y="264" text-anchor="middle" font-family="Georgia" font-size="17" fill="#8f8778" opacity="0.55" transform="scale(-1,1) translate(-1440,0)">LOOK AGAIN</text>` : ""}
+          <path d="M700,200 L720,206 L708,330 Z" fill="url(#mirrorstreak)" opacity="0.6"/>
+          ${act2 && !State.flag("mirrorCracked") ? `<text x="720" y="264" text-anchor="middle" font-family="Georgia" font-size="17" fill="#c9bb9b" opacity="0.6" transform="matrix(-1,0,0,1,1440,0)">LOOK AGAIN</text>` : ""}
           ${State.flag("mirrorCracked") ? `
           <g fill="none" stroke="#0d0e10" stroke-width="2.4" opacity="0.35">
             <path d="M720,256 L695,242 L665,248 L649,229"/>
@@ -485,7 +554,6 @@ const Rooms = (() => {
         <rect x="660" y="420" width="120" height="12" fill="#3f2f20"/><rect x="672" y="432" width="10" height="70" fill="#33261a"/><rect x="758" y="432" width="10" height="70" fill="#33261a"/>
         <path d="M700,372 L740,372 L732,398 L708,398 Z" fill="${hallLampOn ? "#c9a35f" : "#4a3d2c"}" opacity="0.9"/>
         <rect x="717" y="398" width="6" height="22" fill="#2c241c"/>
-        ${hallLampOn ? `<ellipse cx="720" cy="380" rx="90" ry="60" fill="url(#lampglow)"/>` : ""}
       </g>
       <!-- staircase pushed further right so its foot clears the hatch; the flight runs off the frame edge -->
       <g id="v_stairs">
@@ -589,19 +657,17 @@ const Rooms = (() => {
         ${falseK ? `<rect x="525" y="125" width="230" height="170" fill="#2a1f2e" opacity="0.55"/>` : `<circle cx="700" cy="160" r="14" fill="#d8dce0" opacity="0.7"/>`}
         <path d="M530,290 q40,-26 80,0 q30,-20 60,0 q40,-24 80,0 Z" fill="#232d3a" opacity="0.8"/>
       </g>
-      <ellipse cx="640" cy="240" rx="220" ry="130" fill="url(#coldglow)" opacity="0.5"/>
-      <!-- hanging lamp -->
+      <!-- hanging lamp: fixture only; the beam and pool come from the FX light layer -->
       <line x1="640" y1="0" x2="640" y2="66" stroke="#1c1610" stroke-width="4"/>
       <path d="M612,66 L668,66 L654,92 L626,92 Z" fill="#3a2f22"/>
       <ellipse cx="640" cy="96" rx="14" ry="8" fill="#f0c884"><animate attributeName="opacity" values="1;0.85;1;1" dur="7s" repeatCount="indefinite"/></ellipse>
-      <ellipse cx="640" cy="330" rx="270" ry="180" fill="url(#lampglow)" opacity="0.55"/>
     </g>
     <g id="layer-mid">
       <!-- wall clock 8:17 -->
       <!-- doorway to the dining room -->
       <g id="v_ddoor">
         <rect x="0" y="166" width="58" height="386" fill="#171310" stroke="#3f342a" stroke-width="8"/>
-        <text x="30" y="596" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">dining</text>
+        <text x="30" y="596" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">dining</text>
       </g>
       <g id="v_kclock">${falseK ? clockFace(180, 190, 46, 217, 84) : CLOCK_817(180, 190, 46)}</g>
       <!-- fridge: closed by default, door swings open on click -->
@@ -820,7 +886,7 @@ const Rooms = (() => {
       </g>
       <!-- doorway back -->
       <g id="v_back"><rect x="1216" y="170" width="64" height="380" fill="#171310" stroke="#3f342a" stroke-width="8"/></g>
-      <text x="1248" y="600" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">hall</text>
+      <text x="1248" y="600" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">hall</text>
     </g>
     <g id="layer-front">${falseK ? `<rect width="1280" height="720" fill="#4a2a3a" opacity="0.08"/>` : ""}</g>
     <g id="hotspots">
@@ -878,7 +944,6 @@ const Rooms = (() => {
         <line x1="540" y1="216" x2="760" y2="216" stroke="#2c241c" stroke-width="7"/>
         <circle cx="600" cy="172" r="20" fill="#f2e3b8" opacity="0.95"/>
         <path d="M548,300 q46,-20 90,0 q40,-16 76,0 q26,-10 40,0 Z" fill="#8a915f" opacity="0.75"/>
-        <ellipse cx="650" cy="240" rx="180" ry="110" fill="#f2e3b8" opacity="0.10"/>
       </g>
     </g>
     <g id="layer-mid">
@@ -889,7 +954,7 @@ const Rooms = (() => {
         ${[...Array(5)].map((_, i) => `<line x1="${128 + i * 32}" y1="142" x2="${128 + i * 32}" y2="498" stroke="#352c23" stroke-width="12" opacity="0.35"/>`).join("")}
         <rect x="120" y="150" width="150" height="340" fill="none" stroke="#2c241c" stroke-width="2" opacity="0.35" stroke-dasharray="6 10"/>
         <path d="M150,430 q14,-10 24,2" stroke="#a5503c" stroke-width="2" fill="none" opacity="0.2"/>
-        <text x="195" y="640" text-anchor="middle" font-family="Georgia" font-size="15" fill="#5d5347" font-style="italic">there was a room here</text>
+        <text x="195" y="640" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="15" fill="#5d5347" font-style="italic">there was a room here</text>
       </g>` : `
       <g id="v_cdoor">
         <rect x="120" y="150" width="150" height="340" fill="#3a2c1e" stroke="#1c1510" stroke-width="6"/>
@@ -897,7 +962,7 @@ const Rooms = (() => {
         <rect x="234" y="162" width="24" height="316" fill="#0f0c09"/>
         <circle cx="146" cy="330" r="6" fill="#8a7148"/>
         <path d="M150,430 q14,-10 24,2 M180,438 q10,-14 22,-2 M154,452 q20,-8 34,4" stroke="#a5503c" stroke-width="3" fill="none" opacity="0.7"/>
-        <text x="195" y="640" text-anchor="middle" font-family="Georgia" font-size="15" fill="#6b5d4a" font-style="italic">a small room</text>
+        <text x="195" y="640" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="15" fill="#6b5d4a" font-style="italic">a small room</text>
       </g>`}
       <!-- THE STUDY: a destination, not a menu button -->
       <g id="v_sdoor">
@@ -908,7 +973,7 @@ const Rooms = (() => {
         <rect x="792" y="304" width="102" height="150" fill="#2c211a" stroke="#1c1510" stroke-width="3"/>
         <circle cx="794" cy="342" r="7" fill="#8a7148"/>
         ${studyOpen ? "" : `<rect x="784" y="356" width="18" height="22" rx="2" fill="#171310" stroke="#4a3826" stroke-width="2"/><circle cx="793" cy="364" r="3" fill="#0d0a08"/>`}
-        <text x="843" y="640" text-anchor="middle" font-family="Georgia" font-size="15" fill="#6b5d4a" font-style="italic">the study</text>
+        <text x="843" y="640" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="15" fill="#6b5d4a" font-style="italic">the study</text>
       </g>
       <!-- linen closet -->
       <g id="v_closet">
@@ -925,7 +990,7 @@ const Rooms = (() => {
           <line x1="1010" y1="180" x2="1010" y2="490" stroke="#1c1510" stroke-width="4"/>
           <circle cx="998" cy="340" r="5" fill="#8a7148"/><circle cx="1022" cy="340" r="5" fill="#8a7148"/>
         `}
-        <text x="1010" y="640" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">closet</text>
+        <text x="1010" y="640" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">closet</text>
       </g>
       <!-- attic hatch in the ceiling with a pull cord -->
       <g id="v_ahatch">
@@ -948,12 +1013,7 @@ const Rooms = (() => {
       <g id="v_scratch" transform="translate(-88,0)">
         <path d="M690,486 l6,-14 M700,486 l0,-14 M704,472 l8,0 M708,472 l0,14" stroke="#8f8778" stroke-width="2" fill="none" opacity="0.55"/>
       </g>
-      <!-- stairwell down -->
-      <g id="v_down">
-        <rect x="1180" y="150" width="100" height="420" fill="#171310"/>
-        ${[...Array(5)].map((_, i) => `<rect x="${1190 + i * 18}" y="${480 + i * 26}" width="${90 - i * 18}" height="12" fill="#2b1f14"/>`).join("")}
-        <text x="1228" y="620" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">down</text>
-      </g>
+      <!-- the stairs down are behind the player: the right arrow carries the exit -->
     </g>
     <g id="layer-front">
       <rect width="1280" height="720" fill="#0b0806" opacity="${act2 ? "0.16" : "0.07"}"/>
@@ -984,12 +1044,18 @@ const Rooms = (() => {
       ${[...Array(16)].map((_, i) => `<circle cx="${60 + i * 80}" cy="${140 + (i % 3) * 120}" r="10" fill="#4a415c" opacity="0.5"/>`).join("")}
       <rect x="0" y="500" width="1280" height="220" fill="url(#floorg)"/>
       <ellipse cx="500" cy="620" rx="260" ry="46" fill="#5d5a7a" opacity="0.35"/>
-      <!-- rain window -->
+      <!-- rain window: live rain is drawn by the FX layer, plus one honest crack -->
       <g id="v_cwin">
         <rect x="900" y="120" width="220" height="190" fill="url(#nightg)" stroke="#2c241c" stroke-width="10"/>
         <line x1="1010" y1="120" x2="1010" y2="310" stroke="#2c241c" stroke-width="7"/>
-        ${[...Array(9)].map((_, i) => `<line x1="${916 + i * 22}" y1="${128 + (i % 3) * 8}" x2="${910 + i * 22}" y2="${180 + (i % 4) * 24}" stroke="#7fa8c9" stroke-width="1.6" opacity="0.4"/>`).join("")}
-        <ellipse cx="1010" cy="215" rx="150" ry="95" fill="url(#coldglow)" opacity="0.4"/>
+        <line x1="900" y1="215" x2="1120" y2="215" stroke="#2c241c" stroke-width="7"/>
+        <!-- a little crack, low in the left pane -->
+        <g stroke="#bfe0f2" stroke-width="1.4" fill="none" opacity="0.55">
+          <path d="M934,290 L956,272 L968,282 L986,258"/>
+          <path d="M956,272 L948,254 L958,242"/>
+          <path d="M968,282 L984,292"/>
+        </g>
+        <circle cx="934" cy="290" r="2" fill="#bfe0f2" opacity="0.6"/>
       </g>
     </g>
     <g id="layer-mid">
@@ -1217,11 +1283,10 @@ const Rooms = (() => {
         <rect x="726" y="332" width="68" height="20" fill="#d8c9a8"/>
         ${[...Array(9)].map((_, i) => `<circle cx="${714 + i * 12}" cy="${390}" r="4" fill="#4a4d50"/>`).join("")}
       </g>
-      <!-- desk lamp -->
+      <!-- desk lamp: fixture only; the beam and pool come from the FX light layer -->
       <g id="v_slamp">
         <rect x="452" y="380" width="8" height="22" fill="#2c241c"/>
         <path d="M436,364 L478,364 L468,384 L446,384 Z" fill="${lampOn ? "#c9a35f" : "#4a3d2c"}"/>
-        ${lampOn ? `<ellipse cx="520" cy="400" rx="180" ry="80" fill="url(#lampglow)"/>` : ""}
       </g>
       <!-- side table with tape recorder -->
       <g id="v_tape">
@@ -1236,6 +1301,14 @@ const Rooms = (() => {
         <rect x="806" y="372" width="34" height="28" fill="#221a12" stroke="#4a3826" stroke-width="3" transform="rotate(7 823 386)"/>
         <rect x="811" y="376" width="24" height="19" fill="#c9bb9b" transform="rotate(7 823 386)"/>
       </g>
+      <!-- a surveyor's lens, forgotten at the edge of the desk -->
+      ${State.hasItem("lens") ? "" : `<g id="v_lens">
+        <ellipse cx="852" cy="404" rx="13" ry="4" fill="#0d0a08" opacity="0.35"/>
+        <ellipse cx="852" cy="398" rx="11" ry="11" fill="none" stroke="#8a7148" stroke-width="3"/>
+        <ellipse cx="852" cy="398" rx="7.5" ry="7.5" fill="#6a86a8" opacity="0.55"/>
+        <path d="M843,392 q9,-6 18,0" stroke="#c9d8e6" stroke-width="2.5" fill="none" opacity="0.5"/>
+        <rect x="849" y="407" width="6" height="8" fill="#8a7148"/>
+      </g>`}
       <!-- rug + door back -->
       <ellipse cx="620" cy="640" rx="230" ry="40" fill="#3f3428" opacity="0.9"/>
       <g id="v_sback"><rect x="0" y="170" width="52" height="380" fill="#171310" stroke="#3f342a" stroke-width="8"/></g>
@@ -1253,6 +1326,7 @@ const Rooms = (() => {
       ${hs("slamp", 428, 350, 62, 56, "The desk lamp", "v_slamp")}
       ${hs("type", 690, 322, 140, 88, "A typewriter", "v_type")}
       ${hs("oldphoto", 796, 360, 56, 48, "A small framed photo", "v_oldphoto")}
+      ${State.hasItem("lens") ? "" : hs("lens", 830, 382, 44, 34, "A small brass lens", "v_lens")}
       ${hs("swin", 948, 98, 244, 286, "The window", "v_swin")}
       ${hs("drawer1", 396, 430, 120, 84, "Desk drawers", "v_desk")}
       ${State.flag("act2") && !State.flag("hasBag") ? hs("satchel", 552, 488, 132, 94, "A small satchel under the desk", "v_satchel") : ""}
@@ -1283,7 +1357,6 @@ const Rooms = (() => {
       <rect x="0" y="46" width="1280" height="16" fill="#3c4043"/>
       <rect x="0" y="70" width="1280" height="8" fill="#33363a"/>
       <circle cx="300" cy="54" r="14" fill="#4a4d50"/><circle cx="880" cy="54" r="14" fill="#4a4d50"/>
-      ${power ? `<ellipse cx="640" cy="180" rx="420" ry="180" fill="url(#lampglow)" opacity="0.35"/>` : ""}
       <line x1="640" y1="62" x2="640" y2="120" stroke="#1c1610" stroke-width="4"/>
       <ellipse cx="640" cy="126" rx="12" ry="7" fill="${power ? "#f0c884" : "#3a3428"}">${power ? '<animate attributeName="opacity" values="1;0.7;1;0.9;1" dur="4s" repeatCount="indefinite"/>' : ""}</ellipse>
     </g>
@@ -1381,10 +1454,8 @@ const Rooms = (() => {
         ${[...Array(6)].map((_, i) => `<rect x="${1031 + (i % 2) * 16}" y="${309 + Math.floor(i / 2) * 16}" width="12" height="11" rx="2" fill="#17191b" opacity="0.7"/><rect x="${1030 + (i % 2) * 16}" y="${308 + Math.floor(i / 2) * 16}" width="12" height="11" rx="2" fill="${kpOk ? "#3a4a40" : "#4a4d50"}"/><line x1="${1031 + (i % 2) * 16}" y1="${309 + Math.floor(i / 2) * 16}" x2="${1040 + (i % 2) * 16}" y2="${309 + Math.floor(i / 2) * 16}" stroke="#6a7076" stroke-width="1" opacity="0.6"/>`).join("")}
         <circle cx="1045" cy="358" r="3.4" fill="${kpOk ? "#9ec7a8" : "#a5503c"}"/>
       </g>
-      <!-- stairs back up -->
-      <g id="v_bstairs">
-        ${[...Array(5)].map((_, i) => `<rect x="${-30 + i * 22}" y="${560 - i * 78}" width="180" height="20" fill="#2b1f14"/>`).join("")}
-      </g>
+      <!-- the way up is the open hatch: a shaft of light falls down from above,
+           drawn by the FX layer with drifting motes so you know which way is out -->
     </g>
     <g id="layer-front">
       ${power ? "" : `<rect width="1280" height="720" fill="#060505" opacity="0.55"/>`}
@@ -1420,7 +1491,6 @@ const Rooms = (() => {
       <ellipse cx="640" cy="158" rx="13" ry="8" fill="#f0c884">
         <animate attributeName="opacity" values="1;0.8;1;0.65;1" dur="5s" repeatCount="indefinite"/>
       </ellipse>
-      <ellipse cx="640" cy="380" rx="330" ry="240" fill="url(#lampglow)" opacity="0.4"/>
       <!-- faint figure at the back -->
       <g id="v_figure" filter="url(#blurf2)" opacity="0.28">
         ${person(1050, 470, 120, "#8f8778")}
@@ -1482,6 +1552,7 @@ const Rooms = (() => {
     wireParallax(holder);
     if (room === "attic") wireTorch(holder);
     updateNavArrows(holder, room);
+    if (typeof FX !== "undefined" && FX.apply) FX.apply(holder, room);
     // object loops only sound while you are in the room with them
     AudioM.syncLoops({
       water: room === "kitchen" && !!State.flag("tapOn"),
@@ -1584,11 +1655,11 @@ const Rooms = (() => {
       /* the shattered mirror, if the house has quietly put it back, is noticed now */
       if (room === "hallway" && State.flag("mirrorReturned") && !State.flag("mirrorReturnSeen")) {
         State.setFlag("mirrorReturnSeen");
-        Dialogue.say([
+        const lines = (typeof Mirror !== "undefined" && Mirror.returnLines) ? Mirror.returnLines() : [
           "What? No. I broke this mirror.",
           "It hangs where it always hung. Cracked, watching the hallway, as if it never came apart.",
-          "Nothing in this house stays broken for long. Or nothing in this house was ever really broken.",
-        ]);
+        ];
+        Dialogue.say(lines);
       }
       AudioM.randomCreak();
     });

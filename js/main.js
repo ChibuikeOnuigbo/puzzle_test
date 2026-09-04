@@ -13,6 +13,8 @@ const Game = (() => {
     paper: { name: "Blank sheet", svg: `<svg viewBox="0 0 40 40"><rect x="10" y="7" width="20" height="26" fill="#ded4bb"/><rect x="10" y="7" width="20" height="26" fill="none" stroke="#8f8778" stroke-width="1.4"/></svg>` },
     page17: { name: "The rewritten page", svg: `<svg viewBox="0 0 40 40"><rect x="10" y="7" width="20" height="26" fill="#ded4bb"/><path d="M13,13 h14 M13,18 h14 M13,23 h9" stroke="#5d4a35" stroke-width="1.6"/><text x="24" y="30" font-size="9" fill="#8a3a2c" font-family="Georgia">17</text></svg>` },
     notePage: { name: "The loose page", svg: `<svg viewBox="0 0 40 40"><rect x="11" y="8" width="18" height="24" fill="#d8c9a8" transform="rotate(6 20 20)"/><path d="M14,14 h11 M14,18 h11 M14,22 h7" stroke="#6b5544" stroke-width="1.4" transform="rotate(6 20 20)"/></svg>` },
+    lens: { name: "Surveyor's lens", svg: `<svg viewBox="0 0 40 40"><ellipse cx="20" cy="20" rx="12" ry="12" fill="none" stroke="#c9a35f" stroke-width="3.2"/><ellipse cx="20" cy="20" rx="8" ry="8" fill="#6a86a8" opacity="0.65"/><path d="M18,13 q2,-5 5,0" stroke="#c9d8e6" stroke-width="2" fill="none"/><rect x="28" y="28" width="4" height="9" rx="1.6" fill="#c9a35f" transform="rotate(45 30 32)"/></svg>` },
+    shard: { name: "A sliver of black glass", svg: `<svg viewBox="0 0 40 40"><polygon points="20,4 32,16 24,34 12,22" fill="#1a2730" stroke="#c9d8e6" stroke-width="1.2"/><polygon points="20,4 24,12 16,14" fill="#3a5266" opacity="0.8"/></svg>` },
   };
 
   /* ---------- the satchel: five pockets, one appetite ---------- */
@@ -77,6 +79,10 @@ const Game = (() => {
   function refreshHUD() {
     const st = State.get();
     document.getElementById("objective-text").innerHTML = OBJECTIVES[st.objective] || "";
+    const lensBtn = document.getElementById("btn-lens");
+    if (lensBtn) { lensBtn.hidden = !State.hasItem("lens"); lensBtn.classList.toggle("on", !!Settings.get("labelsOn")); }
+    const notesBtn = document.getElementById("btn-notes");
+    if (notesBtn) notesBtn.hidden = State.notesList().length === 0;
     const inv = document.getElementById("inventory");
     const hasBag = !!State.flag("hasBag");
     if (st.inventory.length === 0 && !hasBag) { inv.classList.add("hidden"); return; }
@@ -110,6 +116,8 @@ const Game = (() => {
       pen: ["A fountain pen from the sideboard. Still full. Ink keeps in a house where nothing is allowed to run out.", "The good pen. Someone bought it for letters that were never sent."],
       paper: ["A blank sheet from the bottom of the drawing stack. It smells faintly of crayon.", "Blank paper. The most dangerous thing in this house, according to this house."],
       page17: ["Entry 17, rewritten in my own hand. It stays in my coat.", "My copy of the page. The house ate the original. It does not get this one."],
+      lens: ["The surveyor's lens. It reads what the house writes on itself.", "Through it, the little labels appear when I ask them to. The house has been labeling its rooms the whole time."],
+      shard: ["A sliver of black glass from the mirror. Cold through cloth. It is a gift, and a warning that the house keeps its own doors.", "I turn the shard over. My reflection is not in it either. Some habits are hard to break."],
     };
     return Dialogue.pick("item_" + id, lines[id] || ["An object with opinions."]);
   }
@@ -136,6 +144,18 @@ const Game = (() => {
       AudioM.click();
     }));
     Popups.open({ title: "A QUIET WORD", bodyEl: el });
+  }
+
+  /* ---------- mission notes: checkpoints the house let you keep ---------- */
+  function openNotes() {
+    const notes = State.notesList();
+    const el = document.createElement("div");
+    el.innerHTML = `
+      ${notes.length
+        ? notes.slice(-12).map(n => `<div class="note-row"><span class="note-t">${n.note}</span><span class="note-room">${ROOM_CONFIG[n.room] ? ROOM_CONFIG[n.room].name : n.room}</span></div>`).join("")
+        : `<p class="dim">No notes yet. The house has not given you anything worth writing down.</p>`}
+      <p class="small-note">You have spoken ${State.monologue()} lines out loud. The house has written down every one of them.</p>`;
+    Popups.open({ title: "MISSION NOTES", bodyEl: el });
   }
 
   /* ---------- pause menu ---------- */
@@ -173,9 +193,18 @@ const Game = (() => {
   }
 
   /* ---------- settings (paged) ---------- */
+  const CONTROL_ACTIONS = [
+    { id: "skip", name: "Skip dialogue" },
+    { id: "left", name: "Left direction" },
+    { id: "right", name: "Right direction" },
+    { id: "hints", name: "Hints" },
+    { id: "pause", name: "Pause menu" },
+    { id: "labels", name: "Room labels" },
+  ];
+
   function openSettings() {
     let page = 0;
-    const pages = ["SOUND", "MOTION & TEXT", "GAME"];
+    const pages = ["SOUND", "MOTION & TEXT", "GAME", "CONTROLS"];
     const el = document.createElement("div");
 
     const slider = (key, label) => `
@@ -208,6 +237,15 @@ const Game = (() => {
           ${tog("tiredness", "Tiredness", "late in the game, staying awake becomes something you do")}
           <div class="set-row"><label>Erase save data<span class="sub">removes progress and discoveries</span></label>
             <button class="btn small danger" id="wipe">Erase</button></div>
+        </div>
+        <div class="spage">
+          ${CONTROL_ACTIONS.map(a => `
+            <div class="set-row key-row" data-action="${a.id}">
+              <label>${a.name}</label>
+              <button class="btn small keybind" data-action="${a.id}"><span class="keycap">${Controls.label(Controls.get(a.id))}</span></button>
+            </div>`).join("")}
+          <div class="set-row"><label>Restore default keys</label><button class="btn small" id="resetkeys">Reset</button></div>
+          <p class="small-note">Click a key to rebind it. Press the new key, or Escape to cancel. Every key on the keyboard is on the table.</p>
         </div>
       </div>
       <div class="spager">
@@ -246,6 +284,29 @@ const Game = (() => {
         ],
       });
     });
+
+    /* controls page: rebind any action to any key */
+    const repaintKeys = () => {
+      el.querySelectorAll(".keybind").forEach(b => {
+        b.querySelector(".keycap").textContent = Controls.label(Controls.get(b.dataset.action));
+      });
+      if (typeof Dialogue !== "undefined") Dialogue.refreshKeycap();
+    };
+    const bindKey = (btn) => {
+      btn.classList.add("capturing");
+      btn.querySelector(".keycap").textContent = "press…";
+      const handler = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        window.removeEventListener("keydown", handler, true);
+        btn.classList.remove("capturing");
+        if (e.key === "Escape") { repaintKeys(); return; }
+        Controls.set(btn.dataset.action, e.key);
+        repaintKeys();
+      };
+      window.addEventListener("keydown", handler, true);
+    };
+    el.querySelectorAll(".keybind").forEach(b => b.addEventListener("click", () => bindKey(b)));
+    el.querySelector("#resetkeys").addEventListener("click", () => { Controls.reset(); repaintKeys(); });
 
     const handle = Popups.open({ title: "SETTINGS · SOUND", bodyEl: el });
   }
@@ -290,6 +351,7 @@ const Game = (() => {
       onClose() {
         State.setFlag("act2");
         State.setObjective("after_notebook");
+        State.setCheckpoint("The notebook is open. The house noticed.");
         AudioM.flicker();
         Rooms.render();
         Dialogue.say([
@@ -489,8 +551,29 @@ const Game = (() => {
   }
 
   /* ---------- boot ---------- */
+  function bootLoader() {
+    const loader = document.getElementById("loader");
+    if (!loader) return;
+    const bar = document.getElementById("loader-bar");
+    const line = document.getElementById("loader-line");
+    const LINES = ["the house is waking up", "dusting the hallway", "checking the locks", "setting your place at the table", "counting to seventeen"];
+    let i = 0;
+    const lineIv = setInterval(() => { i = (i + 1) % LINES.length; if (line) line.textContent = LINES[i]; }, 720);
+    let p = 0;
+    const barIv = setInterval(() => { p = Math.min(100, p + 13); if (bar) bar.style.width = p + "%"; if (p >= 100) clearInterval(barIv); }, 190);
+    const done = () => {
+      clearInterval(lineIv); clearInterval(barIv);
+      if (bar) bar.style.width = "100%";
+      loader.classList.add("done");
+      setTimeout(() => loader.remove(), 700);
+    };
+    if (document.readyState === "complete") setTimeout(done, 1500);
+    else window.addEventListener("load", () => setTimeout(done, 500));
+  }
+
   function boot() {
     Settings.load();
+    bootLoader();
     Stage.init();
     Cursor.init();
     Dialogue.initEvents();
@@ -515,15 +598,35 @@ const Game = (() => {
     document.getElementById("btn-credits").addEventListener("click", openCredits);
     document.getElementById("btn-hint").addEventListener("click", openHints);
     document.getElementById("btn-menu").addEventListener("click", openPause);
+    document.getElementById("btn-lens").addEventListener("click", () => {
+      if (typeof FX !== "undefined") FX.labelsOn(!Settings.get("labelsOn"));
+      AudioM.click();
+      refreshHUD();
+    });
+    document.getElementById("btn-notes").addEventListener("click", openNotes);
     document.getElementById("btn-continue").disabled = !State.hasSave();
 
     EVENTS.on("objective", refreshHUD);
     EVENTS.on("inventory", refreshHUD);
     EVENTS.on("secret", () => {});
 
+    if (typeof FX !== "undefined" && FX.trackPointer) FX.trackPointer();
+
     window.addEventListener("keydown", (e) => {
-      if (e.key === "h" || e.key === "H") { if (!document.getElementById("hud").classList.contains("hidden")) openHints(); }
-      if (e.key === "p" || e.key === "P") { if (!document.getElementById("hud").classList.contains("hidden") && Popups.count() === 0) openPause(); }
+      if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+      const hudHidden = document.getElementById("hud").classList.contains("hidden");
+      if (e.key === Controls.get("hints")) { if (!hudHidden) openHints(); }
+      if (e.key === Controls.get("pause")) { if (!hudHidden && Popups.count() === 0) openPause(); }
+      if (e.key === Controls.get("labels")) { if (!hudHidden && State.hasItem("lens")) { if (typeof FX !== "undefined") FX.labelsOn(!Settings.get("labelsOn")); refreshHUD(); } }
+      if (!hudHidden && Popups.count() === 0) {
+        if (e.key === Controls.get("left")) {
+          const b = document.getElementById("nav-left");
+          if (b && !b.hidden) { e.preventDefault(); b.click(); }
+        } else if (e.key === Controls.get("right")) {
+          const b = document.getElementById("nav-right");
+          if (b && !b.hidden) { e.preventDefault(); b.click(); }
+        }
+      }
     });
 
     // graceful error fallback — never a blank screen
