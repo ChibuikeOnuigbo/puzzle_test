@@ -38,14 +38,21 @@ const FX = (() => {
       { src: [640, 96], floorY: 500, spread: [360, 940], color: "#e8a04c",
         cone: [[624, 96], [656, 96], [740, 500], [540, 500]],
         pool: [[540, 500], [740, 500], [720, 528], [560, 528]], op: 0.16, poolOp: 0.22, motes: 16 },
-      { src: [700, 160], floorY: 470, spread: [520, 880], color: "#7fa8c9",
-        cone: [[690, 148], [714, 150], [780, 460], [640, 460]],
-        pool: [[640, 470], [780, 470], [766, 494], [656, 494]], op: 0.08, poolOp: 0.1, motes: 8 },
+      // moon shaft from the window over the sink, drifting with a cloud shadow
+      { src: [640, 160], floorY: 470, spread: [470, 810], color: "#9cc3dc",
+        cone: [[608, 152], [672, 152], [760, 470], [520, 470]],
+        pool: [[520, 478], [760, 478], [740, 506], [540, 506]], op: 0.1, poolOp: 0.14, motes: 16,
+        shadow: { pts: [[560, 478], [720, 478], [710, 506], [570, 506]], drift: 22 } },
     ],
     diningroom: [
       { src: [640, 130], floorY: 560, spread: [360, 940], color: "#e8c87a",
         cone: [[624, 128], [656, 128], [760, 560], [520, 560]],
         pool: [[520, 560], [760, 560], [736, 588], [544, 588]], op: 0.14, poolOp: 0.2, motes: 14 },
+      // dawn window: a slanted shaft of cold light, with a drifting curtain shadow
+      { src: [220, 235], floorY: 560, spread: [60, 380], color: "#9fb0c2",
+        cone: [[150, 235], [290, 235], [382, 560], [42, 560]],
+        pool: [[42, 560], [382, 560], [358, 590], [66, 590]], op: 0.11, poolOp: 0.15, motes: 16,
+        shadow: { pts: [[180, 560], [340, 560], [330, 592], [190, 592]], drift: 26 } },
     ],
     study: [
       { src: [520, 396], floorY: 560, spread: [330, 720], color: "#e8a04c",
@@ -81,8 +88,19 @@ const FX = (() => {
     attic: [],
   };
 
-  /* flies may gather in these rooms; keep them occasional, never everywhere */
-  const FLY_ROOMS = { hallway: 0.5, kitchen: 0.65, diningroom: 0.45, attic: 0.6, basement: 0.55, study: 0.3, childroom: 0.25, porch: 0.18 };
+  /* flies may gather in these rooms; keep them occasional, never everywhere.
+     The dining room rots, so its flies are frequent and loyal to the mess. */
+  const FLY_ROOMS = { hallway: 0.5, kitchen: 0.65, diningroom: 0.9, attic: 0.6, basement: 0.55, study: 0.3, childroom: 0.25, porch: 0.18 };
+  const FLY_COUNTS = { diningroom: [8, 13], kitchen: [3, 6], attic: [3, 6], basement: [3, 6], hallway: [3, 6] };
+
+  /* places flies actually want to be: garbage, spoilt food, open wounds of light */
+  const FLY_ATTRACTORS = {
+    diningroom: [
+      { x: 390, y: 608, when: () => !State.flag("diningTidied") },  // the plate gone bad
+      { x: 955, y: 596, when: () => !State.flag("diningTidied") },  // the rubbish bags
+      { x: 640, y: 610 },                                            // the laid feast
+    ],
+  };
 
   function lightLayer(spec, i) {
     const g = mk("g", { class: "fx-light", "data-fx": "light" });
@@ -116,6 +134,16 @@ const FX = (() => {
       fill: "url(#" + poolId + ")", filter: "url(#fxblur10)", opacity: spec.poolOp, "mix-blend-mode": "screen",
     }, g);
     mk("animate", { attributeName: "opacity", values: `${spec.poolOp};${spec.poolOp * 0.7};${spec.poolOp}`, dur: `${rnd(5, 9)}s`, repeatCount: "indefinite" }, pool);
+
+    // an object shadow that slowly slides across the light: keeps the room breathing
+    if (spec.shadow) {
+      const sh = mk("polygon", {
+        points: spec.shadow.pts.map(p => p.join(",")).join(" "),
+        fill: "#0a0c10", filter: "url(#fxblur8)", opacity: 0.22,
+      }, g);
+      const d = spec.shadow.drift || 20;
+      mk("animateTransform", { attributeName: "transform", type: "translate", values: `0,0;${d},0;0,0;-${d},0;0,0`, dur: `${rnd(11, 18)}s`, repeatCount: "indefinite" }, sh);
+    }
 
     // a small bright core near the source (small slanted quad, not a circle)
     const core = mk("polygon", {
@@ -163,8 +191,10 @@ const FX = (() => {
       if (State.flag("mirrorShattered") || State.flag("mirrorCracked")) specs.push({ x: 720, y: 256 });
       if (State.flag("mirrorBlood")) specs.push({ x: 460, y: 300 });
     }
+    (FLY_ATTRACTORS[room] || []).forEach(a => { if (!a.when || a.when()) specs.push({ x: a.x, y: a.y }); });
     if (!specs.length) specs.push({ x: 640, y: 200 });
-    const count = 3 + Math.floor(rnd(0, 4));
+    const base = (FLY_COUNTS[room] || [3, 6]);
+    const count = base[0] + Math.floor(rnd(0, base[1] - base[0] + 1));
     for (let i = 0; i < count; i++) {
       const fx0 = rnd(80, 1200), fy0 = rnd(120, 520);
       const f = mk("circle", { class: "fx-fly", cx: fx0, cy: fy0, r: rnd(1.4, 2.2), fill: "#0c0a08", opacity: 0.75 }, group);

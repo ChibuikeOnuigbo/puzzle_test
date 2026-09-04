@@ -343,7 +343,7 @@ const Dialogue = (() => {
     const k = keycap();
     if (!k) return;
     const key = (typeof Controls !== "undefined" ? Controls.get("skip") : "Enter");
-    k.textContent = (typeof Controls !== "undefined" ? Controls.glyph(key) : "Enter");
+    k.textContent = (typeof Controls !== "undefined" ? Controls.label(key) : "Enter");
     k.setAttribute("aria-label", "Skip with " + key);
   }
 
@@ -383,14 +383,25 @@ const Dialogue = (() => {
       hideTimer = setTimeout(() => next(), Math.max(1500, full.length * 30));
     }
   }
+  /* advance right now: completes the typewriter and moves to the next line
+     (or hides the box when the queue runs dry). Enter uses this so skipping
+     is instant and repeatable; the pointer keeps its one-advance-per-event rule. */
+  function advanceNow() {
+    clearTimeout(timer); clearTimeout(hideTimer);
+    if (typing) { txt().textContent = full; typing = false; }
+    if (queue.length) next();
+    else hide();
+  }
   function skipOrAdvance(fromKey) {
-    if (advancing) return;           // consume: one advance per event
-    advancing = true;
-    setTimeout(() => { advancing = false; }, 120);
     if (fromKey) {
       const k = keycap();
       if (k) { k.classList.remove("pressed"); void k.offsetWidth; k.classList.add("pressed"); }
+      advanceNow();
+      return;
     }
+    if (advancing) return;           // consume: one advance per pointer event
+    advancing = true;
+    setTimeout(() => { advancing = false; }, 120);
     if (typing) { clearTimeout(timer); txt().textContent = full; typing = false; hideTimer = setTimeout(() => next(), Math.max(1400, full.length * 26)); }
     else { clearTimeout(hideTimer); next(); }
   }
@@ -398,6 +409,8 @@ const Dialogue = (() => {
   function clear() { queue = []; clearTimeout(timer); clearTimeout(hideTimer); typing = false; hide(); }
   function initEvents() {
     box().addEventListener("pointerdown", (e) => { e.stopPropagation(); if (Popups.count() > 0) return; skipOrAdvance(false); });
+    const k = keycap();
+    if (k) k.addEventListener("pointerdown", (e) => { e.stopPropagation(); if (Popups.count() > 0) return; skipOrAdvance(true); });
     refreshKeycap();
     window.addEventListener("keydown", (e) => {
       const key = (typeof Controls !== "undefined" ? Controls.get("skip") : "Enter");

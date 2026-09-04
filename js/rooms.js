@@ -79,7 +79,7 @@ const Rooms = (() => {
         <rect x="116" y="228" width="208" height="20" fill="#a8935f" opacity="0.4"/>
         <line x1="220" y1="120" x2="220" y2="350" stroke="#2c241c" stroke-width="7"/>
         <line x1="110" y1="235" x2="330" y2="235" stroke="#2c241c" stroke-width="7"/>
-        <ellipse cx="220" cy="240" rx="150" ry="80" fill="#9aa3ad" opacity="0.06"/>
+        <!-- the window's light falls as a slanted shaft + moving shadows in the FX layer -->
       </g>
       <!-- portrait: hung facing the wall -->
       <g id="v_portrait">
@@ -98,10 +98,7 @@ const Rooms = (() => {
         <line x1="1198" y1="452" x2="1214" y2="452" stroke="#c9bb9b" stroke-width="2.4" opacity="0.7"/>
         <path d="M1196,444 L1216,460 M1216,444 L1196,460" stroke="#a5503c" stroke-width="3" opacity="0.8"/>
       </g>
-      <g id="v_dback">
-        <rect x="1216" y="150" width="64" height="400" fill="#171310"/>
-        <text x="1248" y="596" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">kitchen</text>
-      </g>
+      <!-- the kitchen exit lives in the side arrow; no door drawn here -->
       ${archive ? `
       <!-- THE ARCHIVE: the house filed a room here -->
       <g id="v_chalk">
@@ -125,6 +122,9 @@ const Rooms = (() => {
       </g>` : `
       <!-- the long table, laid for five, plates for four -->
       <g id="v_smallchair" transform="translate(${moved ? -258 : 0},0)">
+        <rect x="840" y="474" width="64" height="8" rx="4" fill="#4a3826"/>
+        <rect x="846" y="482" width="7" height="46" rx="3" fill="#3a2c1e"/>
+        <rect x="889" y="482" width="7" height="46" rx="3" fill="#3a2c1e"/>
         <rect x="836" y="560" width="9" height="120" fill="#3a2c1e"/>
         <rect x="892" y="560" width="9" height="120" fill="#3a2c1e"/>
         <circle cx="840" cy="557" r="4.5" fill="#4a3826"/>
@@ -135,20 +135,31 @@ const Rooms = (() => {
       </g>
       ${[420, 560, 700].map(x => `
       <g transform="translate(${x},0)">
+        <rect x="6" y="470" width="68" height="9" rx="4" fill="#4a3826"/>
+        <rect x="12" y="479" width="7" height="50" rx="3" fill="#3a2c1e"/>
+        <rect x="61" y="479" width="7" height="50" rx="3" fill="#3a2c1e"/>
         <rect x="0" y="536" width="10" height="150" fill="#3a2c1e"/>
         <rect x="70" y="536" width="10" height="150" fill="#3a2c1e"/>
         <circle cx="5" cy="533" r="5" fill="#4a3826"/>
         <circle cx="75" cy="533" r="5" fill="#4a3826"/>
         <rect x="8" y="548" width="64" height="9" rx="3" fill="#4a3826"/>
         <polygon points="-2,596 82,596 90,614 -10,614" fill="#4a3826"/>
+        <polygon points="-2,596 82,596 88,608 -8,608" fill="#5d4a35"/>
       </g>`).join("")}
       <g id="v_dtable">
-        <polygon points="360,614 960,614 1010,668 310,668" fill="#4a3826"/>
+        <ellipse cx="660" cy="700" rx="360" ry="16" fill="#0d0a08" opacity="0.4"/>
+        <polygon points="360,614 960,614 1010,668 310,668" fill="url(#woodg)"/>
+        <polygon points="360,614 960,614 1010,668 310,668" fill="#4a3826" opacity="0.55"/>
+        <path d="M360,614 L960,614 M346,632 L974,632 M334,650 L988,650" stroke="#33261a" stroke-width="1.4" opacity="0.45"/>
+        <polygon points="470,614 850,614 880,656 440,656" fill="#8a7454" opacity="0.9"/>
+        <path d="M470,614 L440,656 M850,614 L880,656" stroke="#6b5544" stroke-width="1.4" opacity="0.5"/>
         <polygon points="310,668 1010,668 1010,680 310,680" fill="#33261a"/>
         <rect x="330" y="680" width="14" height="40" fill="#2c2115"/>
         <rect x="976" y="680" width="14" height="40" fill="#2c2115"/>
         <rect x="430" y="680" width="12" height="34" fill="#2c2115"/>
         <rect x="878" y="680" width="12" height="34" fill="#2c2115"/>
+        <ellipse cx="337" cy="721" rx="12" ry="4" fill="#0d0a08" opacity="0.5"/>
+        <ellipse cx="982" cy="721" rx="12" ry="4" fill="#0d0a08" opacity="0.5"/>
         ${[430, 560, 690, 820].map(x => `<ellipse cx="${x}" cy="${638}" rx="30" ry="9" fill="#cfc4a8"/><ellipse cx="${x}" cy="${637}" rx="22" ry="6.5" fill="#ded4bb"/>`).join("")}
         <rect x="906" y="630" width="52" height="14" rx="3" fill="#6b5544"/>
         <path d="M918,628 l0,-10 M926,628 l0,-10" stroke="#8f8778" stroke-width="2"/>
@@ -161,7 +172,56 @@ const Rooms = (() => {
         <rect x="612" y="584" width="56" height="8" rx="4" fill="#e0d5c0"/>
         ${act2 ? [...Array(17)].map((_, i) => `<line x1="${615 + i * 3.2}" y1="580" x2="${615 + i * 3.2}" y2="574" stroke="#a5503c" stroke-width="1.6"/>`).join("") : ""}
         <rect x="674" y="606" width="34" height="5" rx="2" fill="#8f9691"/>
-      </g>`}
+      </g>
+      <!-- the feast: food the house keeps impossibly fresh -->
+      <g id="v_feast">
+        <ellipse cx="500" cy="612" rx="44" ry="11" fill="#6b5544"/>
+        <ellipse cx="500" cy="610" rx="40" ry="9" fill="#c9a878"/>
+        <path d="M470,606 q30,-24 60,0 q-26,8 -60,0 Z" fill="#a5673c"/>
+        <path d="M478,600 q22,-16 44,0" fill="none" stroke="#d8a25c" stroke-width="3" opacity="0.7"/>
+        <line x1="532" y1="608" x2="546" y2="602" stroke="#e8e0d0" stroke-width="3" stroke-linecap="round"/>
+        <path d="M586,606 q24,16 0,24 q-24,-8 0,-24 Z" fill="#4a6a4a"/>
+        <path d="M588,608 q8,-10 16,-4 q4,10 -6,12 q-8,0 -10,-8 Z" fill="#6f9a54"/>
+        <path d="M606,608 q8,-8 14,-2 q2,8 -8,10 Z" fill="#8ab45e"/>
+        <circle cx="700" cy="616" r="9" fill="#c99a58"/>
+        <circle cx="720" cy="614" r="8" fill="#d3a563"/>
+        <circle cx="738" cy="616" r="9" fill="#c99a58"/>
+        <path d="M700,610 l0,3 M700,615 l0,3 M720,608 l0,3 M720,613 l0,3 M738,610 l0,3 M738,615 l0,3" stroke="#8a6238" stroke-width="1.6"/>
+        <path d="M808,600 q-2,-22 12,-24 q14,2 12,24 Z" fill="#c9d4d8" opacity="0.9"/>
+        <path d="M806,606 q-4,8 2,10" stroke="#c9d4d8" stroke-width="3" fill="none"/>
+        <path d="M812,580 q14,-4 26,0" stroke="#a8b8c0" stroke-width="3" fill="none"/>
+        <rect x="812" y="578" width="3" height="22" fill="#e4ecef" opacity="0.6"/>
+        <rect x="378" y="588" width="7" height="20" rx="2" fill="#e8e4d8"/>
+        <path d="M381.5,584 q0,-7 3,-4 q3,3 0,6 q-2,1 -3,-2 Z" fill="#e8913f"/>
+        <rect x="878" y="588" width="7" height="20" rx="2" fill="#e8e4d8"/>
+        <path d="M881.5,584 q0,-7 3,-4 q3,3 0,6 q-2,1 -3,-2 Z" fill="#e8913f"/>
+      </g>
+      ${State.flag("diningTidied") ? "" : `
+      <!-- the plate gone bad: what the house did not bother keeping -->
+      <g id="v_spoilt">
+        <ellipse cx="368" cy="612" rx="34" ry="9" fill="#5a5648"/>
+        <path d="M350,608 q10,-10 20,-4 q8,6 6,10 q-14,8 -26,-6 Z" fill="#7a8a5e"/>
+        <path d="M356,604 q4,-6 10,-4 q4,4 2,8 q-8,4 -12,-4 Z" fill="#9aa888" opacity="0.8"/>
+        <path d="M368,606 q3,-5 8,-3 q3,3 1,7 q-6,3 -9,-4 Z" fill="#6b7a52"/>
+        <path d="M352,602 q2,-5 6,-6 M362,600 q3,-4 7,-4 M372,602 q2,-4 6,-5" stroke="#b8c4a8" stroke-width="1.6" fill="none" opacity="0.8"/>
+        <path d="M420,614 l-4,-14 l8,0 Z" fill="#9fb6c0" opacity="0.5" transform="rotate(28 420 606)"/>
+        <ellipse cx="428" cy="614" rx="7" ry="3" fill="#5a3a34" opacity="0.7"/>
+        <circle cx="400" cy="618" r="6" fill="#6a4a32"/>
+        <path d="M400,612 q2,-4 5,-2" stroke="#8a6a4a" stroke-width="1.6" fill="none"/>
+        <path d="M397,620 q3,2 6,0" stroke="#3a2a1e" stroke-width="1.4" fill="none" opacity="0.7"/>
+      </g>
+      <!-- the rubbish the house is still deciding what to do with -->
+      <g id="v_garbage">
+        <ellipse cx="1120" cy="640" rx="66" ry="10" fill="#0d0a08" opacity="0.45"/>
+        <path d="M1070,640 q0,-44 26,-46 q30,2 24,46 q-24,20 -50,0 Z" fill="#171410"/>
+        <path d="M1076,636 q-2,-34 16,-34 q16,0 12,34 q-16,18 -28,0 Z" fill="#23201c" opacity="0.8"/>
+        <path d="M1078,600 q-6,-8 -2,-14 q6,4 4,14 Z" fill="#171410"/>
+        <path d="M1118,640 q0,-38 22,-40 q26,2 20,40 q-20,18 -42,0 Z" fill="#14110e"/>
+        <path d="M1126,636 q-2,-28 14,-28 q14,0 10,28 q-14,16 -24,0 Z" fill="#1f1c18" opacity="0.85"/>
+        <path d="M1126,600 q-5,-7 -2,-12 q5,3 4,12 Z" fill="#14110e"/>
+        <path d="M1080,600 q2,12 8,22" stroke="#3a3a36" stroke-width="2" fill="none" opacity="0.6"/>
+        <path d="M1128,600 q2,10 6,20" stroke="#2f2f2b" stroke-width="2" fill="none" opacity="0.6"/>
+      </g>`}`}
       <!-- sideboard -->
       <g id="v_sideboard">
         <rect x="1000" y="404" width="180" height="120" rx="4" fill="#3a2c1e" stroke="#241a11" stroke-width="4"/>
@@ -195,8 +255,11 @@ const Rooms = (() => {
       ${hs("chalk", 380, 556, 560, 138, "A chalk outline on the floor", "v_chalk")}` : `
       ${hs("dtable", 340, 600, 620, 90, "The table, laid for dinner", "v_dtable")}
       ${hs("dcake", 592, 556, 120, 64, "A cake under glass", "v_dcake")}
+      ${hs("feast", 460, 552, 300, 70, "Dinner, still warm", "v_feast")}
+      ${State.flag("diningTidied") ? "" : hs("spoilt", 336, 556, 116, 62, "A plate gone bad", "v_spoilt")}
+      ${State.flag("diningTidied") ? "" : hs("garbage", 1048, 540, 160, 112, "Rubbish bags", "v_garbage")}
       ${hs("smallchair", moved ? 570 : 820, 548, 96, 140, "A small chair with a cushion", "v_smallchair")}`}
-      ${hs("dback", 1210, 140, 70, 420, "Back to the kitchen", "v_dback")}
+      ${hs("dback", 1210, 140, 70, 420, "Back to the kitchen", "")}
     </g>
     </svg>`;
   }
@@ -396,51 +459,9 @@ const Rooms = (() => {
       </g>
     </g>
     <g id="layer-mid">
-      <!-- kitchen doorway (left): open, showing the kitchen through the opening -->
-      <g id="v_kdoor">
-        <rect x="60" y="170" width="180" height="330" fill="#171310"/>
-        <rect x="60" y="170" width="180" height="330" fill="none" stroke="#3f342a" stroke-width="10"/>
-        <!-- the kitchen, masked by the doorway so only what the eye could see shows -->
-        <g clip-path="url(#kdoorclip)">
-          <!-- far wall with the window over the sink, receding to the left -->
-          <rect x="66" y="176" width="168" height="150" fill="#26251f"/>
-          <rect x="82" y="200" width="34" height="26" fill="#1d1c16" stroke="#14130e" stroke-width="3"/>
-          <rect x="122" y="200" width="34" height="26" fill="#1d1c16" stroke="#14130e" stroke-width="3"/>
-          <rect x="82" y="234" width="96" height="66" fill="#10151d" stroke="#1a140f" stroke-width="5"/>
-          <line x1="130" y1="234" x2="130" y2="300" stroke="#1a140f" stroke-width="4"/>
-          <line x1="82" y1="266" x2="178" y2="266" stroke="#1a140f" stroke-width="4"/>
-          <circle cx="160" cy="250" r="6" fill="#cfd8e0" opacity="0.5"/>
-          ${State.flag("falseKitchen") ? `<rect x="82" y="234" width="96" height="66" fill="#2a1f2e" opacity="0.5"/>` : ""}
-          <!-- the kitchen lamp, far off to the left, breathing -->
-          <ellipse cx="96" cy="260" rx="110" ry="95" fill="url(#lampglow)" opacity="0.3">
-            ${reducedMotion ? "" : `<animate attributeName="opacity" values="0.3;0.22;0.28;0.3" dur="7s" repeatCount="indefinite"/>`}
-          </ellipse>
-          <!-- receding floor -->
-          <polygon points="66,494 234,494 234,330 66,368" fill="url(#floorg)"/>
-          <path d="M104,368 L102,494 M150,348 L151,494 M198,332 L200,494" stroke="#100c09" stroke-width="2" opacity="0.5"/>
-          <!-- counter run along the far wall: top surface, then cabinet fronts -->
-          <polygon points="66,366 200,328 200,338 66,378" fill="#4a3826"/>
-          <polygon points="66,378 200,338 200,394 66,434" fill="#33261a"/>
-          <line x1="70" y1="394" x2="196" y2="360" stroke="#241a11" stroke-width="3"/>
-          <rect x="92" y="356" width="58" height="6" rx="3" fill="#7a817c"/>
-          <!-- stove at the far left end of the run -->
-          <rect x="66" y="398" width="30" height="74" fill="#4a4e52" stroke="#22262a" stroke-width="3"/>
-          <rect x="72" y="434" width="18" height="24" rx="2" fill="#15181b"/>
-          <!-- fridge beside the door, close to us on the right, in shadow -->
-          <rect x="198" y="252" width="40" height="242" fill="#565b56"/>
-          <line x1="198" y1="252" x2="198" y2="494" stroke="#3d413d" stroke-width="4"/>
-          <line x1="216" y1="258" x2="216" y2="490" stroke="#6a706b" stroke-width="3" opacity="0.7"/>
-          <!-- the little darkness: deeper toward the far wall and the far corner -->
-          <rect x="66" y="176" width="168" height="318" fill="url(#peekdark)"/>
-          <rect x="66" y="176" width="168" height="318" fill="url(#peekdeep)"/>
-          <!-- hallway lamplight spilling over the threshold -->
-          <polygon points="66,494 234,494 234,472 66,486" fill="#e8a04c" opacity="0.08"/>
-        </g>
-        <!-- inner reveal of the opening -->
-        <polygon points="66,176 234,176 234,494 66,494" fill="none" stroke="#1c1510" stroke-width="6" opacity="0.85"/>
-        <line x1="70" y1="179" x2="230" y2="179" stroke="#4a3826" stroke-width="4" opacity="0.5"/>
-      </g>
-      <!-- front door (behind player, far left edge) -->
+      <!-- the kitchen exit lives in the side arrow; the left wall is just wall -->
+      <!-- front door (behind player, far left edge): the only door left in this room,
+           because it is the way you came in, not a step the arrows can carry -->
       <g id="v_fdoor"><rect x="0" y="150" width="34" height="360" fill="#2c211a" stroke="#1a140f" stroke-width="4"/></g>
       <!-- grandfather clock: pendulum visibly swings -->
       <g id="v_gclock">
@@ -611,7 +632,7 @@ const Rooms = (() => {
       ${hallLampOn ? "" : `<rect x="0" y="0" width="1280" height="720" fill="#0b0d12" opacity="0.22"/>`}
     </g>
     <g id="hotspots">
-      ${hs("gokitchen", 52, 160, 196, 350, "Go to the kitchen", "v_kdoor")}
+      ${hs("gokitchen", 52, 160, 196, 350, "Go to the kitchen", "")}
       ${hs("photo", 458, 188, 174, 134, "Family photograph", "v_photo")}
       ${hs("gclock", 288, 188, 110, 336, "Grandfather clock", "v_gclock")}
       ${hs("mirror", 650, 166, 140, 182, "An old mirror", "v_mirror")}
@@ -636,7 +657,10 @@ const Rooms = (() => {
     const stoveOn = State.flag("stoveOn");
     const tapOverflow = State.flag("tapOverflow");
     const wetFloor = State.flag("wetFloor");
-    const tapThin = State.flag("tapThin");
+    const tapHouseOff = State.flag("tapHouseOff");
+    const tapFloodFast = State.flag("tapFloodFast");
+    const tapDrained = State.flag("tapDrained");
+    const tapMoist = State.flag("tapMoist");
     const falseK = State.flag("falseKitchen");
     const C = (State.get().counts) || { milk: 3, bread: 1, apples: 4, batteries: 2, code: "3142" };
     const drawerHitH = drawerOpen ? 104 : 56;
@@ -664,11 +688,7 @@ const Rooms = (() => {
     </g>
     <g id="layer-mid">
       <!-- wall clock 8:17 -->
-      <!-- doorway to the dining room -->
-      <g id="v_ddoor">
-        <rect x="0" y="166" width="58" height="386" fill="#171310" stroke="#3f342a" stroke-width="8"/>
-        <text x="30" y="596" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">dining</text>
-      </g>
+      <!-- the left and right edges are exits handled by the side arrows; no door drawn -->
       <g id="v_kclock">${falseK ? clockFace(180, 190, 46, 217, 84) : CLOCK_817(180, 190, 46)}</g>
       <!-- fridge: closed by default, door swings open on click -->
       <g id="v_fridge">
@@ -694,7 +714,7 @@ const Rooms = (() => {
           </g>
           <polygon points="990,300 920,336 920,570 990,540" fill="#7a817c" stroke="#5d635f" stroke-width="3"/>
           <polygon points="928,436 984,414 984,426 928,448" fill="#6a716c"/>
-          <ellipse cx="1000" cy="430" rx="70" ry="120" fill="url(#lampglow)" opacity="0.28"/>
+          <polygon points="950,336 1046,336 1080,540 918,540" fill="url(#lampglow)" opacity="0.2"/>
         ` : `
           <rect x="1000" y="320" width="8" height="90" rx="4" fill="#5d635f"/>
         `}
@@ -717,9 +737,9 @@ const Rooms = (() => {
         <ellipse cx="155" cy="437" rx="36" ry="7" fill="#1a1d20" stroke="#565b60" stroke-width="2"/>
         <line x1="123" y1="437" x2="187" y2="437" stroke="#565b60" stroke-width="2" opacity="0.6"/>
         ${stoveOn ? `
-          <ellipse cx="155" cy="428" rx="70" ry="34" fill="url(#lampglow)" opacity="0.55">
-            <animate attributeName="opacity" values="0.55;0.35;0.5;0.55" dur="0.9s" repeatCount="indefinite"/>
-          </ellipse>
+          <polygon points="102,420 208,418 220,472 92,476" fill="url(#lampglow)" opacity="0.42">
+            <animate attributeName="opacity" values="0.42;0.26;0.38;0.42" dur="0.9s" repeatCount="indefinite"/>
+          </polygon>
           <g>
             ${[126, 138, 168, 180].map((fx, i) => `
               <path d="M${fx},438 q${i % 2 ? 4 : -4},-${9 + (i % 3) * 3} ${i % 2 ? 7 : -1},0 z" fill="#e8913f" opacity="0.9"/>
@@ -751,9 +771,9 @@ const Rooms = (() => {
         <rect x="592" y="440" width="104" height="5" rx="2.5" fill="#565b60"/>
         <path d="M600,436 q0,-30 26,-30 q20,0 20,18" fill="none" stroke="#7a817c" stroke-width="7"/>
         <rect x="585" y="416" width="16" height="8" rx="3" fill="${tapOn ? "#c9a35f" : "#8f9691"}" ${tapOn ? 'transform="rotate(-28 593 420)"' : ""}/>
-        ${tapOn ? `
-          <rect x="${tapThin ? 644.5 : 642}" y="424" width="${tapThin ? 2.5 : 7}" height="21" rx="1.5" fill="#a8c8da" opacity="${tapThin ? 0.5 : 0.7}">
-            <animate attributeName="opacity" values="${tapThin ? "0.5;0.3;0.5" : "0.7;0.5;0.7"}" dur="0.5s" repeatCount="indefinite"/>
+        ${tapOn && !tapHouseOff ? `
+          <rect x="642" y="424" width="7" height="21" rx="1.5" fill="#a8c8da" opacity="0.7">
+            <animate attributeName="opacity" values="0.7;0.5;0.7" dur="0.5s" repeatCount="indefinite"/>
           </rect>
           <line x1="645.5" y1="424" x2="645.5" y2="445" stroke="#e4f0f6" stroke-width="2" stroke-dasharray="3 5" opacity="0.8">
             <animate attributeName="stroke-dashoffset" values="0;-16" dur="0.35s" repeatCount="indefinite"/>
@@ -761,18 +781,54 @@ const Rooms = (() => {
           <ellipse cx="646" cy="446" rx="12" ry="3.4" fill="#a8c8da" opacity="0.5">
             <animate attributeName="rx" values="9;14;9" dur="0.7s" repeatCount="indefinite"/>
           </ellipse>` : ""}
-        ${tapOverflow && tapOn ? `
+        ${tapOverflow && !tapDrained ? `
           <rect x="598" y="446" width="94" height="5" rx="2" fill="#a8c8da" opacity="0.5"/>
           <path d="M602,450 q3,60 -1,120 M690,450 q5,62 8,122" stroke="#a8c8da" stroke-width="5" fill="none" opacity="0.4">
             <animate attributeName="opacity" values="0.4;0.25;0.4" dur="0.6s" repeatCount="indefinite"/>
-          </path>` : ""}
+          </path>
+          <g fill="#bfdcee">
+            <circle cx="606" cy="480" r="3">
+              <animate attributeName="cy" values="470;645" dur="0.5s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.9;0.1" dur="0.5s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="668" cy="500" r="2.6">
+              <animate attributeName="cy" values="470;650" dur="0.64s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.9;0.1" dur="0.64s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="632" cy="492" r="2.4">
+              <animate attributeName="cy" values="470;642" dur="0.57s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.9;0.1" dur="0.57s" repeatCount="indefinite"/>
+            </circle>
+          </g>` : ""}
       </g>
-      ${wetFloor ? `
+      ${wetFloor && !tapMoist ? `
       <g id="v_puddle">
-        <ellipse cx="730" cy="652" rx="${tapOverflow && tapOn ? 165 : 120}" ry="21" fill="#7fa8c9" opacity="0.26"/>
-        <ellipse cx="730" cy="652" rx="84" ry="11" fill="#a8c8da" opacity="0.2"/>
-        <ellipse cx="790" cy="660" rx="34" ry="6" fill="#a8c8da" opacity="0.17"/>
-        ${act2 ? `<path d="M716,646 q6,-16 11,-2 q4,-11 8,0" stroke="#d8dce0" stroke-width="2.4" fill="none" opacity="0.22"/>` : ""}
+        <path d="M560,664 q80,-26 176,-8 q66,12 148,-4 q56,-10 104,2 q28,8 8,22 q-64,30 -178,28 q-130,-2 -220,-10 q-46,-4 -38,-30 Z" fill="#7fa8c9" opacity="0.26" filter="url(#fxblur2)"/>
+        ${tapFloodFast ? `
+          <g stroke="#cfe6f2" fill="none" opacity="0.55">
+            <ellipse cx="700" cy="650" rx="30" ry="8">
+              <animate attributeName="rx" values="20;120" dur="0.7s" repeatCount="indefinite"/>
+              <animate attributeName="ry" values="6;26" dur="0.7s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.6;0" dur="0.7s" repeatCount="indefinite"/>
+            </ellipse>
+            <ellipse cx="760" cy="654" rx="20" ry="6">
+              <animate attributeName="rx" values="16;90" dur="0.9s" repeatCount="indefinite"/>
+              <animate attributeName="ry" values="5;20" dur="0.9s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.5;0" dur="0.9s" repeatCount="indefinite"/>
+            </ellipse>
+          </g>` : `
+          <path d="M620,650 q30,-8 66,-6 q30,2 56,0" stroke="#d8ecf6" stroke-width="2.4" fill="none" opacity="0.4">
+            <animateTransform attributeName="transform" type="translate" values="0,0;10,0;0,0" dur="9s" repeatCount="indefinite"/>
+          </path>
+          <path d="M740,656 q24,-6 50,-4" stroke="#d8ecf6" stroke-width="2" fill="none" opacity="0.3">
+            <animateTransform attributeName="transform" type="translate" values="0,0;-8,0;0,0" dur="11s" repeatCount="indefinite"/>
+          </path>`}
+      </g>` : ""}
+      ${tapMoist ? `
+      <g id="v_moist">
+        <path d="M560,664 q80,-26 176,-8 q66,12 148,-4 q56,-10 104,2 q28,8 8,22 q-64,30 -178,28 q-130,-2 -220,-10 q-46,-4 -38,-30 Z" fill="#8a9aa0" opacity="0.28" filter="url(#fxblur4)"/>
+        <path d="M600,658 q60,-18 130,-8 q50,8 100,-2" stroke="#aab8bc" stroke-width="1.6" fill="none" opacity="0.4"/>
+        ${[...Array(10)].map((_, i) => `<circle cx="${600 + i * 26}" cy="${656 + (i % 3) * 8}" r="1.4" fill="#9fb0b4" opacity="0.5"/>`).join("")}
       </g>` : ""}
       <!-- bread board + 1 loaf -->
       <g id="v_bread">
@@ -884,9 +940,7 @@ const Rooms = (() => {
           <animate attributeName="opacity" values="0.8;0.3;0.8" dur="3s" repeatCount="indefinite"/>
         </path>
       </g>
-      <!-- doorway back -->
-      <g id="v_back"><rect x="1216" y="170" width="64" height="380" fill="#171310" stroke="#3f342a" stroke-width="8"/></g>
-      <text x="1248" y="600" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">hall</text>
+      <!-- the right edge exit is the side arrow; no door drawn -->
     </g>
     <g id="layer-front">${falseK ? `<rect width="1280" height="720" fill="#4a2a3a" opacity="0.08"/>` : ""}</g>
     <g id="hotspots">
@@ -894,7 +948,7 @@ const Rooms = (() => {
       ${fridgeOpen ? hs("milk", 1004, 340, 148, 100, "Bottles of milk", "v_milk") : ""}
       ${hs("fridge", fridgeOpen ? 912 : 984, fridgeOpen ? 294 : 174, fridgeOpen ? 254 : 182, fridgeOpen ? 282 : 372, "The refrigerator", "v_fridge")}
       ${hs("stove", 64, 378, 180, 200, "The stove", "v_stove")}
-      ${hs("godining", 0, 156, 66, 406, "Through to the dining room", "v_ddoor")}
+      ${hs("godining", 0, 156, 66, 406, "Through to the dining room", "")}
       ${hs("tap", 552, 392, 176, 64, "The tap", "v_tap")}
       ${hs("bread", 276, 392, 120, 56, "The bread board", "v_bread")}
       ${hs("bowl", 392, 556, 158, 64, "A bowl of apples", "v_bowl")}
@@ -905,7 +959,7 @@ const Rooms = (() => {
       ${hs("kwin", 508, 108, 264, 204, "The window", "v_kwin")}
       ${hs("chair1", chairHitX, 528, 116, 178, "A chair", "v_chair1")}
       ${wetFloor ? hs("puddle", 600, 624, 300, 60, "Water on the floor", "v_puddle") : ""}
-      ${hs("goback", 1204, 160, 76, 400, "Back to the hallway", "v_back")}
+      ${hs("goback", 1204, 160, 76, 400, "Back to the hallway", "")}
     </g>
     </svg>`;
   }
@@ -1027,7 +1081,7 @@ const Rooms = (() => {
       ${hs("gostudy", 758, 140, 170, 366, studyOpen ? "The study" : "A locked door", "v_sdoor")}
       ${hs("frames", 318, 172, 88, 312, "Three small frames", "v_frames")}
       ${hs("scratch", 588, 458, 48, 40, "A scratch in the skirting", "v_scratch")}
-      ${hs("godown", 1168, 140, 112, 440, "Back downstairs", "v_down")}
+      ${hs("godown", 1168, 140, 112, 440, "Back downstairs", "")}
     </g>
     </svg>`;
   }
@@ -1110,7 +1164,7 @@ const Rooms = (() => {
       ${hs("cbooks", 58, 120, 224, 80, "A shelf of books", "v_cbooks")}
       ${hs("bed", 118, 370, 424, 260, "The bed", "v_bed")}
       ${hs("cwin", 888, 108, 244, 214, "The window", "v_cwin")}
-      ${hs("cback", 1180, 340, 100, 380, "Back to the corridor", "v_cwin")}
+      ${hs("cback", 1180, 340, 100, 380, "Back to the corridor", "")}
     </g>
     </svg>`;
   }
@@ -1190,7 +1244,7 @@ const Rooms = (() => {
       ${hs("tally", 344, 280, 190, 60, "Marks on the beam", "v_tally")}
       ${hs("boxes", 138, 368, 320, 240, "Stacked boxes", "v_boxes")}
       ${hs("awin", 586, 128, 110, 110, "A round window", "v_boxes")}
-      ${hs("aback", 1150, 400, 130, 320, "Climb back down", "v_boxes")}
+      ${hs("aback", 1150, 400, 130, 320, "Climb back down", "")}
     </g>
     </svg>`;
   }
@@ -1309,9 +1363,8 @@ const Rooms = (() => {
         <path d="M843,392 q9,-6 18,0" stroke="#c9d8e6" stroke-width="2.5" fill="none" opacity="0.5"/>
         <rect x="849" y="407" width="6" height="8" fill="#8a7148"/>
       </g>`}
-      <!-- rug + door back -->
+      <!-- rug; the hallway exit lives in the side arrow -->
       <ellipse cx="620" cy="640" rx="230" ry="40" fill="#3f3428" opacity="0.9"/>
-      <g id="v_sback"><rect x="0" y="170" width="52" height="380" fill="#171310" stroke="#3f342a" stroke-width="8"/></g>
     </g>
     <g id="layer-front">
       ${lampOn ? "" : `<rect width="1280" height="720" fill="#0b0d12" opacity="0.42"/>`}
@@ -1330,7 +1383,7 @@ const Rooms = (() => {
       ${hs("swin", 948, 98, 244, 286, "The window", "v_swin")}
       ${hs("drawer1", 396, 430, 120, 84, "Desk drawers", "v_desk")}
       ${State.flag("act2") && !State.flag("hasBag") ? hs("satchel", 552, 488, 132, 94, "A small satchel under the desk", "v_satchel") : ""}
-      ${hs("sback", 0, 160, 60, 400, "Back to the hallway", "v_sback")}
+      ${hs("sback", 0, 160, 60, 400, "Back to the hallway", "")}
     </g>
     </svg>`;
   }
@@ -1472,7 +1525,7 @@ const Rooms = (() => {
         ${hs("mdoor", 1064, 140, 192, 372, kpOk ? "The knocker" : "A sealed metal door", "v_mdoor")}
         ${hs("boiler", 58, 208, 176, 326, "The boiler", "v_boiler")}
       ` : ""}
-      ${hs("goup", 0, 460, 160, 220, "Back up the stairs", "v_bstairs")}
+      ${hs("goup", 0, 460, 160, 220, "Back up the stairs", "")}
     </g>
     </svg>`;
   }
@@ -1553,11 +1606,13 @@ const Rooms = (() => {
     if (room === "attic") wireTorch(holder);
     updateNavArrows(holder, room);
     if (typeof FX !== "undefined" && FX.apply) FX.apply(holder, room);
-    // object loops only sound while you are in the room with them
+    // object loops only sound while you are in the room with them;
+    // once the house shuts the tap, the full flow dies and only drips remain
     AudioM.syncLoops({
-      water: room === "kitchen" && !!State.flag("tapOn"),
+      water: room === "kitchen" && !!State.flag("tapOn") && !State.flag("tapHouseOff"),
       fire: room === "kitchen" && !!State.flag("stoveOn"),
     });
+    if (AudioM.dripLoop) AudioM.dripLoop(room === "kitchen" && !!State.flag("tapOverflow") && !State.flag("tapDrained"));
   }
 
   /* edge arrows: shown only when that direction is a real, currently

@@ -149,6 +149,20 @@ const AudioM = (() => {
     syncLoops(map) {
       Object.keys(map).forEach(k => map[k] ? this.startLoop(k) : this.stopLoop(k));
     },
+    /* a slow, soft drip while the sink overflows or the house has cut the tap */
+    _dripIv: null,
+    dripLoop(on) {
+      if (on && !this._dripIv) {
+        this._dripIv = setInterval(() => this.dripPlink(), 820);
+      } else if (!on && this._dripIv) {
+        clearInterval(this._dripIv); this._dripIv = null;
+      }
+    },
+    dripPlink() {
+      if (!ctx) return;
+      tone(1500 + Math.random() * 500, "sine", 0.05, 0.014, 0, null, 200);
+      tone(900 + Math.random() * 300, "sine", 0.04, 0.012, 0.03, null, 300);
+    },
     ignite() { noiseBurst(0.12, 0.1, 900, 0, 0.8); tone(90, "sine", 0.2, 0.06); },
     tapSqueak() { tone(1500, "sine", 0.07, 0.03, 0, null, 900); },
 
