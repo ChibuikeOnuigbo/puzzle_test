@@ -5,9 +5,11 @@
   "description": "HOUSE 17 - a small browser mystery about a house that remembers",
   "scripts": {
     "start": "npx serve -l 3000 .",
-    "qa": "node scripts/qa/shoot.js"
+    "qa": "node scripts/qa/shoot.js",
+    "check": "node scripts/qa/jsdom_check.js"
   },
   "devDependencies": {
+    "jsdom": "^24.1.0",
     "playwright-core": "^1.49.0"
   }
 }
