@@ -71,47 +71,147 @@ g[data-vis]{transition:filter .15s ease}
 #objective{
   position:absolute;top:14px;left:50%;transform:translateX(-50%);
   background:rgba(22,18,16,.82);border:1px solid var(--panel-edge);
-  padding:7px 20px;border-radius:3px;max-width:640px;text-align:center;
+  padding:7px 20px;border-radius:3px;max-width:560px;text-align:center;
   font-size:calc(15px * var(--tx));color:var(--paper-dim);
   letter-spacing:.4px;pointer-events:none;
 }
 #objective b{color:var(--paper);font-weight:normal}
-#hud-right{position:absolute;top:12px;right:14px;display:flex;gap:8px;pointer-events:auto}
+
+/* top-left: pause, hint, note — large and calm. Nothing else lives here. */
+#hud-left{position:absolute;top:12px;left:14px;display:flex;gap:10px;pointer-events:auto}
 .hud-btn{
-  width:42px;height:42px;border-radius:3px;border:1px solid var(--panel-edge);
-  background:rgba(22,18,16,.85);color:var(--paper-dim);font-size:20px;font-family:var(--font-body);
-  transition:color .12s,border-color .12s,transform .08s;
+  width:56px;height:56px;border-radius:4px;border:1px solid var(--panel-edge);
+  background:rgba(22,18,16,.85);color:var(--paper-dim);
+  font-size:24px;font-family:var(--font-body);
+  display:flex;align-items:center;justify-content:center;
+  transition:color .12s,border-color .12s,transform .08s,box-shadow .2s;
 }
+.hud-btn svg{width:26px;height:26px}
 .hud-btn:hover{color:var(--amber);border-color:var(--amber-dim)}
 .hud-btn:active{transform:scale(.93)}
-#inventory{
-  position:absolute;bottom:14px;left:14px;display:flex;gap:8px;pointer-events:auto;
+
+/* the hint button warms up when the player is lost: it never shouts, it glows */
+.hud-btn.glow{
+  color:var(--amber);border-color:var(--amber);
+  animation:hintGlow 1.8s ease-in-out infinite;
 }
-.inv-item{
+@keyframes hintGlow{
+  0%,100%{box-shadow:0 0 4px rgba(232,160,76,.25)}
+  50%{box-shadow:0 0 22px rgba(232,160,76,.75),0 0 44px rgba(232,160,76,.28)}
+}
+body.reduced .hud-btn.glow{animation:none;box-shadow:0 0 14px rgba(232,160,76,.5)}
+
+/* bottom-centre inventory: one calm row. The satchel's five pockets,
+   the item in hand, and the I key. Nothing scrolls, nothing overflows. */
+#hud-bottom{
+  position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:9px;pointer-events:auto;
+}
+#pocket-bar{display:flex;gap:8px}
+.pocket{
   width:56px;height:56px;background:rgba(22,18,16,.88);border:1px solid var(--panel-edge);
-  border-radius:3px;display:flex;align-items:center;justify-content:center;
+  border-radius:4px;display:flex;align-items:center;justify-content:center;
   transition:border-color .12s,transform .1s;position:relative;
 }
-.inv-item:hover{border-color:var(--amber-dim);transform:translateY(-2px)}
-.inv-item svg{width:40px;height:40px}
-.inv-item.new{animation:invPop .5s ease}
-@keyframes invPop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+.pocket svg{width:38px;height:38px}
+.pocket.full{border-color:rgba(201,163,95,.4)}
+.pocket:hover{border-color:var(--amber-dim);transform:translateY(-2px)}
+.pocket .pocket-num{
+  position:absolute;top:2px;left:5px;font-family:var(--font-ui);font-size:9px;
+  color:#5d5140;letter-spacing:1px;
+}
+.pocket .pocket-empty{width:20px;height:20px;border:1px dashed #4a3f33;border-radius:3px;opacity:.7}
+#hand-slot{
+  width:56px;height:56px;background:rgba(20,15,11,.92);border:1px solid var(--amber-dim);
+  border-radius:4px;display:flex;align-items:center;justify-content:center;position:relative;
+}
+#hand-slot svg{width:38px;height:38px}
+#hand-slot::after{
+  content:"hand";position:absolute;bottom:-15px;left:50%;transform:translateX(-50%);
+  font-family:var(--font-ui);font-size:8.5px;letter-spacing:2.5px;color:#6b6154;text-transform:uppercase;
+}
+#hand-slot.using{box-shadow:0 0 14px rgba(232,160,76,.55)}
+#bar-key{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  color:#6b6154;font-family:var(--font-ui);font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;
+}
+.keycap-mini{
+  display:flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;
+  background:linear-gradient(180deg,#3a3128,#241e18);border:1px solid var(--amber-dim);border-bottom-width:3px;
+  border-radius:4px;color:var(--amber);font-weight:600;font-size:12px;font-family:var(--font-ui);
+}
+
+/* ---------- inventory modal: satchel left, tools right ---------- */
+.inv-grid{display:grid;grid-template-columns:minmax(220px,5fr) minmax(260px,6fr);gap:18px}
+@media (max-width:640px){ .inv-grid{grid-template-columns:1fr} }
+.inv-pane h3{color:var(--amber);font-weight:normal;letter-spacing:2px;font-size:calc(14px*var(--tx));margin:0 0 10px}
+.inv-satchel{
+  border:1px solid #3a2f22;border-radius:8px;padding:14px 14px 12px;
+  background:linear-gradient(175deg,rgba(62,46,30,.55),rgba(30,22,15,.55));
+}
+.inv-bag-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #3a2f22;border-radius:7px;background:rgba(20,15,11,.5);margin-bottom:8px}
+.inv-bag-row.empty{border-style:dashed;opacity:.6}
+.inv-bag-row svg{width:30px;height:30px;flex:none}
+.inv-bag-row .ib-name{flex:1;color:var(--paper);font-size:13.5px}
+.inv-bag-row .ib-name .dim{color:#6b6154;font-style:italic;font-size:12px}
+.inv-tool{
+  display:flex;align-items:center;gap:12px;padding:9px 11px;border:1px solid #3a2f22;border-radius:7px;
+  background:rgba(20,15,11,.5);margin-bottom:8px;cursor:pointer;transition:border-color .12s,background .12s;
+}
+.inv-tool:hover{border-color:rgba(201,163,95,.4)}
+.inv-tool.selected{border-color:var(--amber-dim);background:rgba(46,35,24,.66);box-shadow:inset 0 0 0 1px rgba(232,160,76,.22)}
+.inv-tool svg{width:38px;height:38px;flex:none}
+.inv-tool .it-body{flex:1;min-width:0}
+.inv-tool .it-name{color:var(--paper);font-size:14.5px}
+.inv-tool .it-found{color:var(--teal);font-size:12px;margin-top:1px;font-style:italic}
+.inv-tool .it-does{color:var(--paper-dim);font-size:12.5px;margin-top:2px;line-height:1.5}
+.inv-tool .it-use{
+  flex:none;font-family:var(--font-body);font-size:12px;letter-spacing:.5px;color:var(--amber);
+  border:1px solid var(--amber-dim);border-radius:4px;background:rgba(40,30,20,.6);padding:6px 10px;cursor:pointer;
+}
+.inv-tool .it-use:hover{background:#3a2c1e}
+.inv-foot-note{color:#5d5140;font-size:12px;letter-spacing:.4px;margin-top:12px;text-align:center}
+.inv-empty{color:#6b6154;font-style:italic;font-size:13.5px}
 
 /* ---------- dialogue ---------- */
 #dialogue{
-  position:absolute;bottom:24px;left:50%;transform:translateX(-50%);
-  width:640px;max-width:88%;background:rgba(20,16,13,.92);
-  border:1px solid var(--panel-edge);border-radius:3px;
-  padding:16px 22px 14px;z-index:var(--z-dialogue);pointer-events:auto;
-  box-shadow:0 8px 30px rgba(0,0,0,.5);
+  position:absolute;bottom:22px;left:50%;transform:translateX(-50%);
+  width:960px;max-width:96%;
+  background:rgba(18,14,11,.95);
+  border:1px solid var(--panel-edge);border-radius:4px;
+  padding:24px 26px;z-index:var(--z-dialogue);pointer-events:auto;
+  box-shadow:0 10px 36px rgba(0,0,0,.55);
+  display:flex;align-items:center;gap:24px;
 }
-#dialogue p{font-size:calc(17px * var(--tx));line-height:1.55;color:var(--paper);font-style:italic}
-#dialogue-more{position:absolute;right:12px;bottom:8px;color:var(--amber-dim);font-size:13px;animation:blink 1.2s infinite}
-@keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
+#dialogue p{font-size:calc(23px * var(--tx));line-height:1.62;color:var(--paper);font-style:italic;flex:1 1 auto;margin:0;min-height:2.4em}
+.dialogue-keycap{
+  flex:0 0 auto;
+  min-width:82px;height:72px;padding:0 16px;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,#4a3e30,#2a2219);
+  border:1px solid var(--amber-dim);border-bottom-width:5px;border-radius:8px;
+  color:var(--amber);font-family:var(--font-ui);font-size:21px;font-weight:700;letter-spacing:.5px;
+  box-shadow:0 5px 16px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.07);
+  user-select:none;cursor:pointer;
+}
+.dialogue-keycap.pressed{transform:translateY(3px);border-bottom-width:2px;box-shadow:0 0 20px rgba(232,160,76,.5), inset 0 1px 0 rgba(255,255,255,.07)}
 
 /* ---------- screens ---------- */
 .screen{position:absolute;inset:0;z-index:var(--z-screen);display:flex;align-items:center;justify-content:center;background:var(--bg)}
 .hidden{display:none !important}
+
+/* ---------- boot loader ---------- */
+#loader{
+  position:fixed;inset:0;z-index:2100;background:#0d0b09;
+  display:flex;align-items:center;justify-content:center;
+  transition:opacity .55s ease;
+}
+#loader.done{opacity:0;pointer-events:none}
+.loader-inner{text-align:center}
+.loader-title{font-family:var(--font-body);font-size:30px;letter-spacing:12px;color:var(--paper);margin:10px 0 22px;text-shadow:0 0 24px rgba(232,160,76,.18)}
+.loader-bar{width:240px;height:3px;background:#241e18;border-radius:2px;margin:0 auto;overflow:hidden}
+#loader-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--amber-dim),var(--amber));border-radius:2px;transition:width .2s ease}
+.loader-line{color:#6b6154;font-style:italic;font-size:13px;margin-top:12px;min-height:18px}
 .menu-inner{text-align:center;animation:fadeUp .8s ease}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 .menu-house{margin-bottom:6px}
@@ -294,6 +394,18 @@ body.reduced .ripple{display:none}
 }
 @keyframes toastIn{0%{opacity:0;transform:translate(-50%,-8px)}12%{opacity:1;transform:translate(-50%,0)}80%{opacity:1}100%{opacity:0}}
 
+/* unrecorded mini-missions: transient tasks that never reach the notes */
+.mission-toast{
+  position:absolute;top:118px;left:50%;transform:translateX(-50%);
+  background:rgba(20,16,13,.94);border:1px solid var(--amber-dim);color:var(--paper);
+  padding:9px 20px;border-radius:3px;font-size:14.5px;letter-spacing:.4px;z-index:var(--z-toast);
+  display:flex;align-items:baseline;gap:10px;white-space:nowrap;
+  animation:toastIn 4.4s ease forwards;pointer-events:none;
+}
+.mission-tag{
+  color:var(--amber);font-size:10.5px;letter-spacing:2.5px;text-transform:uppercase;opacity:.9;font-family:var(--font-ui);
+}
+
 /* touch devices: show OS cursor, bigger buttons */
 body.touch, body.touch *{cursor:auto !important}
 body.touch #cursor{display:none}
@@ -340,6 +452,62 @@ body.reduced #fatigue.f3, body.reduced #fatigue.f4 { backdrop-filter: none; anim
 #nav-right{ right:10px; }
 #nav-left[hidden], #nav-right[hidden]{ display:none; }
 @media (max-width:820px){ .nav-arrow{ width:40px; height:76px; font-size:32px; } }
+
+/* ---- room labels (surveyor's lens) ---- */
+text[data-roomlabel]{display:none}
+body.labels-on text[data-roomlabel]{display:inline}
+
+/* ---- the flies: a soft wing flicker, cheaper than one SMIL node per fly ---- */
+.fx-fly{animation:flyFlicker .7s ease-in-out infinite}
+@keyframes flyFlicker{0%,100%{opacity:.72}50%{opacity:.42}}
+body.reduced .fx-fly{animation:none}
+
+/* ---- controls (rebindable keys) ---- */
+.key-row .keybind{min-width:96px;display:flex;align-items:center;justify-content:center;gap:6px;font-family:var(--font-ui)}
+.keybind .keycap{
+  display:inline-block;min-width:34px;padding:3px 10px;text-align:center;
+  background:linear-gradient(180deg,#3a3128,#241e18);border:1px solid var(--amber-dim);border-bottom-width:3px;
+  border-radius:4px;color:var(--amber);font-weight:600;font-size:13px;
+}
+.keybind.capturing{border-color:var(--red);color:#d68a76;animation:capturePulse 1s infinite}
+@keyframes capturePulse{0%,100%{box-shadow:0 0 0 rgba(165,80,60,0)}50%{box-shadow:0 0 14px rgba(165,80,60,.5)}}
+
+/* ---- mission notes ---- */
+.note-row{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:10px 2px;border-bottom:1px dotted rgba(90,77,60,.35)}
+.note-t{color:var(--paper);font-style:italic;font-size:calc(14.5px*var(--tx))}
+.note-room{color:#5d5140;font-size:calc(12px*var(--tx));white-space:nowrap}
+.congrats{color:#9ec7a8;margin-top:10px}
+
+/* ---- the mirror's hand ---- */
+#mirror-hand{position:fixed;inset:0;z-index:1600;pointer-events:none;overflow:hidden}
+#mirror-hand svg{position:absolute;inset:0;width:100%;height:100%}
+.mh-vignette{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 62%,transparent 22%,rgba(5,3,2,.9) 100%)}
+.mh-arm{fill:#0a0e13}
+.mh-palm{fill:#0d1218}
+.mh-finger{fill:#0a0e13}
+.mh-f1{fill:#0c1117}
+.mh-f2{fill:#0a0f15}
+.mh-f3{fill:#0b1016}
+.mh-f4{fill:#0d131a}
+.mh-thumb{fill:#0a0e13}
+#mirror-hand .mh-hand path{stroke:#2a3a48;stroke-width:1.1;stroke-opacity:.35}
+#mirror-hand .mh-hand path{filter:drop-shadow(0 -2px 10px rgba(120,150,180,.12))}
+#mirror-hand .mh-hand{transform-origin:640px 460px;animation:handReach 1.9s ease-out forwards}
+@keyframes handReach{
+  0%{transform:translateY(160px) scale(.92);opacity:0}
+  28%{transform:translateY(0) scale(1);opacity:1}
+  100%{transform:translateY(0) scale(1.06);opacity:1}
+}
+#scene-holder.shake{animation:camShake .5s linear infinite}
+@keyframes camShake{
+  0%{transform:translate(0,0) rotate(0) scale(1)}
+  20%{transform:translate(-6px,3px) rotate(.4deg) scale(1.006)}
+  40%{transform:translate(5px,-4px) rotate(-.5deg) scale(1.008)}
+  60%{transform:translate(-4px,-2px) rotate(.3deg) scale(1.006)}
+  80%{transform:translate(3px,4px) rotate(-.3deg) scale(1.004)}
+  100%{transform:translate(0,0) rotate(0) scale(1)}
+}
+body.reduced #scene-holder.shake{animation:none}
 
 /* ---- the satchel ---- */
 .bag-slots{display:flex;flex-direction:column;gap:8px;margin:12px 0}

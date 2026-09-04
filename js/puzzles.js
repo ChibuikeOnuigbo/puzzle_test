@@ -148,6 +148,36 @@ const Puzzles = (() => {
 })();
 
 /* =====================================================================
+   MINI-MISSIONS: unrecorded, unimportant nudges that only exist to help.
+   They are never written to objectives or notes and never saved; the
+   in-memory "shown" set means each fires at most once per session.
+===================================================================== */
+const MiniMissions = (() => {
+  const shown = {};
+  function hint(text) {
+    if (typeof mission === "function") mission(text);
+  }
+  function onRoom(room) {
+    if (room !== "hallway") return;
+    const lampOn = State.flag("hallLampOn") === true;
+    if (!lampOn && !shown.lamp) {
+      shown.lamp = true;
+      hint("Turn on the hallway light. It is too dark to trust, and this house keeps its doors in the dark.");
+    } else if (lampOn && !shown.clock) {
+      shown.clock = true;
+      hint("Check the grandfather clock. It has been keeping a time, and I should know what time that is.");
+    }
+  }
+  function lampOn() {
+    if (!shown.clock) {
+      shown.clock = true;
+      hint("Check the grandfather clock. It has been keeping a time, and I should know what time that is.");
+    }
+  }
+  return { onRoom, lampOn };
+})();
+
+/* =====================================================================
    HOUSE TRICKS: the house acts on rooms as the player enters them.
    Small tamperings escalate in count (one, three, four... seventeen),
    a false copy of the kitchen can appear, and one room can be deleted
@@ -171,7 +201,10 @@ const HouseTricks = (() => {
   function tamper(room) {
     const tc = (State.flag("trickCount") || 0) + 1;
     if (room === "kitchen" && !State.flag("tapOn")) {
-      State.setFlag("tapOn", true); State.setFlag("tapThin", false);
+      State.setFlag("tapOn", true); State.setFlag("tapHouseOff", false);
+      State.setFlag("tapOverflow", false); State.setFlag("wetFloor", false);
+      State.setFlag("tapFloodFast", false); State.setFlag("tapDrained", false);
+      State.setFlag("tapMoist", false); State.setFlag("tapCatchup", false);
       armTapTimers(); AudioM.tapSqueak(); Rooms.render();
       State.setFlag("trickCount", tc); State.addAware(2);
       trickLine("The tap is running. It was off when I left this room. I have not touched it.", tc);
@@ -189,7 +222,7 @@ const HouseTricks = (() => {
       trickLine("The linen closet is open. I closed that door. I remember the click.", tc);
       return true;
     }
-    if (room === "hallway" && State.flag("hallLampOn") !== false) {
+    if (room === "hallway" && State.flag("hallLampOn") === true) {
       State.setFlag("hallLampOn", false); AudioM.flicker(); Rooms.render();
       State.setFlag("trickCount", tc); State.addAware(2);
       trickLine("The lamp went out the second I stepped in. Not a flicker. A choice.", tc);
@@ -235,6 +268,8 @@ const HouseTricks = (() => {
   }
 
   function onEnter(room) {
+    /* unrecorded nudges first: they never compete with the house's own lines */
+    MiniMissions.onRoom(room);
     /* the satchel is the house's pocket: paper stored in it gets eaten */
     if (State.flag("pageInBag")) {
       const n = (State.flag("bagRooms") || 0) + 1;
@@ -262,12 +297,44 @@ const HouseTricks = (() => {
       State.setFlag("falseKitchen", false);
     }
     /* the house shut the tap off while the player was elsewhere */
-    if (room === "kitchen" && State.flag("tapAutoOffPending")) {
-      State.setFlag("tapAutoOffPending", false);
+    if (room === "kitchen" && State.flag("tapCatchup")) {
+      State.setFlag("tapCatchup", false);
       State.addAware(3);
       Dialogue.say([
-        "The tap is off. I left it running. The basin is drained and the steel is wiped almost dry.",
-        "The house did not want the water running. I keep thinking about how gently it must have turned the handle.",
+        "The tap is off. I left it running. The handle has been turned, gently, and the sink has given up its water.",
+        "The house did not want the water running. I keep thinking about how softly it must have turned the handle.",
+      ]);
+      return;
+    }
+    /* the house put the stove out while the player was elsewhere */
+    if (room === "kitchen" && State.flag("stoveCatchup")) {
+      State.setFlag("stoveCatchup", false);
+      State.addAware(2);
+      Dialogue.say([
+        "The stove is cold. I left it burning. The knob is back at off, and the kitchen holds no warmth.",
+        "The house turned it off the moment I was not looking. It does not like fires left unattended.",
+      ]);
+      return;
+    }
+    /* the dining room tidied its mess while the player was elsewhere */
+    if (room === "diningroom") {
+      if (State.flag("diningCatchup")) {
+        State.setFlag("diningCatchup", false);
+        State.addAware(2);
+        Dialogue.say([
+          "The rubbish bags and the spoiled plate are gone. I was only gone a moment. The house has been cleaning while I was away.",
+          "It left the feast and took the rot. I am not sure whether that is hospitality or a warning.",
+        ]);
+        return;
+      }
+      if (!State.flag("diningTidied")) armDiningTimer();
+    }
+    /* the house shut the closet while the player was elsewhere */
+    if (room === "landing" && State.flag("closetAutoClosed")) {
+      State.setFlag("closetAutoClosed", false);
+      State.addAware(2);
+      Dialogue.say([
+        "The linen closet is shut. I left it open. The house closed it while I was gone, like a host straightening a room I should not have been in.",
       ]);
       return;
     }
@@ -318,73 +385,180 @@ const HouseTricks = (() => {
 
 /* ---------------- room hotspot actions ---------------- */
 /* ---------- shared horror helpers ---------- */
-let tapT0 = null, tapT1 = null, tapT2 = null, tapT3 = null, atticT1 = null, atticT2 = null;
+let tapT0 = null, tapT1 = null, tapT2 = null, tapT3 = null, tapT4 = null, tapT5 = null;
+let stoveT = null, diningT = null, atticT1 = null, atticT2 = null, closetT = null;
 
 const NUMWORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"];
 function numword(n) { return NUMWORDS[n] || String(n); }
 function capword(n) { const w = numword(n); return w.charAt(0).toUpperCase() + w.slice(1); }
 
+function clearTapTimers() {
+  clearTimeout(tapT0); clearTimeout(tapT1); clearTimeout(tapT2);
+  clearTimeout(tapT3); clearTimeout(tapT4); clearTimeout(tapT5);
+}
+function disarmTapTimers() { clearTapTimers(); }
+
+/* The flood, on the house's clock:
+   ~2.5s the sink backs up and drips over the edge
+   ~7s   the house turns the tap off; water hits the floor and spreads FAST
+   ~10s  the spread settles to a slow crawl
+   ~20s  the sink drains; the dripping stops, the floor keeps its water
+   ~56s  the water evaporates, leaving a light stain
+   ~66s  the stain is gone */
 function armTapTimers() {
-  clearTimeout(tapT0); clearTimeout(tapT1); clearTimeout(tapT2); clearTimeout(tapT3);
+  clearTapTimers();
+  const inKitchen = () => State.get().room === "kitchen";
   tapT0 = setTimeout(() => {
     if (!State.flag("tapOn")) return;
-    State.setFlag("tapThin", true);
-    if (State.get().room === "kitchen") {
+    State.setFlag("tapOverflow");
+    if (inKitchen()) {
       Rooms.render();
-      Dialogue.say(Dialogue.pick("tapthin", [
-        "The stream has gone thin. The pressure is falling away, like a hand is slowly pinching the pipe shut somewhere inside the wall.",
-        "The water is thinner now. It was a proper stream a minute ago. Pipes do not change their mind.",
+      Dialogue.say(Dialogue.pick("tapLeak", [
+        "The sink is backing up. The water rises, and begins to lip over the steel edge in a thin, patient sheet.",
+        "It is not draining. The basin brims, and the first drops are already on their way to the floor.",
       ]));
     }
-  }, 20000);
+  }, 2500);
   tapT1 = setTimeout(() => {
     if (!State.flag("tapOn")) return;
-    State.setFlag("tapOverflow");
-    State.setFlag("tapThin", false);
-    State.addAware(3);
-    if (State.get().room === "kitchen") {
-      Rooms.render();
-      Dialogue.say(Dialogue.pick("overflow", [
-        "The sink is full. The water keeps coming. It is not draining anymore.",
-        "The basin brims over the edge in a thin, patient sheet.",
-      ]));
-    }
-  }, 38000);
-  tapT2 = setTimeout(() => {
-    if (!State.flag("tapOn")) return;
-    State.setFlag("wetFloor");
-    State.addAware(4);
-    if (State.get().room === "kitchen") {
-      Rooms.render();
-      Dialogue.say([
-        "Water on the floor now, spreading in a slow dark tongue.",
-        "There is a reflection in it. The ceiling has no one on it.",
-      ]);
-    }
-  }, 68000);
-  tapT3 = setTimeout(() => {
-    if (!State.flag("tapOn")) return;
+    State.setFlag("tapHouseOff");
     State.setFlag("tapOn", false);
-    State.setFlag("tapThin", false);
-    State.setFlag("tapOverflow", false);
-    State.addAware(6);
-    const tc = (State.flag("trickCount") || 0) + 1;
-    State.setFlag("trickCount", tc);
-    if (State.get().room === "kitchen") {
+    State.setFlag("wetFloor");
+    State.setFlag("tapFloodFast");
+    State.addAware(5);
+    if (inKitchen()) {
       AudioM.tapSqueak();
       AudioM.dread();
       Rooms.render();
       Dialogue.say([
-        "The handle just moved. On its own. Gently, the way you turn a tap so it does not squeal, and the water died to nothing.",
-        "I was standing right here. The house heard the leak and the house turned it off.",
-        "It is tidying up around me. Like I am the mess.",
+        "The handle just turned itself. Gently, the way you turn a tap so it does not squeal. The stream died to nothing.",
+        "The house heard the leak and it shut the water off. But the sink is still full, and the water is still coming over.",
+        "It is spreading across the floor now. Fast, for water. Like it is in a hurry to be somewhere.",
       ]);
     } else {
-      State.setFlag("tapAutoOffPending", true);
+      State.setFlag("tapCatchup", true);
     }
-  }, 95000);
+  }, 7000);
+  tapT2 = setTimeout(() => {
+    if (!State.flag("wetFloor")) return;
+    State.setFlag("tapFloodFast", false);
+    if (inKitchen()) Rooms.render();
+  }, 10000);
+  tapT3 = setTimeout(() => {
+    if (!State.flag("wetFloor")) return;
+    State.setFlag("tapDrained");
+    State.setFlag("tapOverflow", false);
+    if (inKitchen()) {
+      Rooms.render();
+      Dialogue.say([
+        "The sink has emptied itself. The dripping stops, one last drop at a time, and then it stops.",
+        "But the floor keeps its water. The house is in no hurry with that part.",
+      ]);
+    }
+  }, 20000);
+  tapT4 = setTimeout(() => {
+    if (!State.flag("wetFloor")) return;
+    State.setFlag("wetFloor", false);
+    State.setFlag("tapMoist");
+    if (inKitchen()) {
+      Rooms.render();
+      Dialogue.say([
+        "The water is gone. Not drained, not wiped. Evaporated, all at once, leaving the boards light and clean where it lay.",
+        "A faint stain where the flood was, paler than the floor around it. The house is already forgetting.",
+      ]);
+    }
+  }, 56000);
+  tapT5 = setTimeout(() => {
+    if (!State.flag("tapMoist")) return;
+    State.setFlag("tapMoist", false);
+    if (inKitchen()) Rooms.render();
+  }, 66000);
 }
-function disarmTapTimers() { clearTimeout(tapT0); clearTimeout(tapT1); clearTimeout(tapT2); clearTimeout(tapT3); }
+
+/* if the player shuts the tap early but water is already on the floor, it still dries */
+function armEvapTimers() {
+  clearTimeout(tapT4); clearTimeout(tapT5);
+  tapT4 = setTimeout(() => {
+    if (!State.flag("wetFloor")) return;
+    State.setFlag("wetFloor", false);
+    State.setFlag("tapMoist");
+    if (State.get().room === "kitchen") {
+      Rooms.render();
+      Dialogue.say([
+        "The water on the floor has gone. Evaporated, leaving the boards light where it lay.",
+      ]);
+    }
+  }, 56000);
+  tapT5 = setTimeout(() => {
+    if (!State.flag("tapMoist")) return;
+    State.setFlag("tapMoist", false);
+    if (State.get().room === "kitchen") Rooms.render();
+  }, 66000);
+}
+
+/* the house does not like the stove left burning */
+function armStoveTimer() {
+  clearTimeout(stoveT);
+  stoveT = setTimeout(() => {
+    if (!State.flag("stoveOn")) return;
+    State.setFlag("stoveOn", false);
+    State.setFlag("stoveHouseOff");
+    State.addAware(2);
+    if (State.get().room === "kitchen") {
+      AudioM.close();
+      Rooms.render();
+      Dialogue.say([
+        "The burner just went out. The knob turned itself back to off, one soft click, and the little flames dropped away.",
+        "The house does not leave things burning. I should not take that personally.",
+      ]);
+    } else {
+      State.setFlag("stoveCatchup", true);
+    }
+  }, 40000);
+}
+function disarmStoveTimer() { clearTimeout(stoveT); }
+
+/* the dining room mess: the house is listening, and after a while it tidies */
+function armDiningTimer() {
+  clearTimeout(diningT);
+  diningT = setTimeout(() => {
+    if (State.flag("diningTidied")) return;
+    State.setFlag("diningTidied");
+    State.addAware(2);
+    if (State.get().room === "diningroom") {
+      AudioM.whisperTone();
+      Rooms.render();
+      Dialogue.say([
+        "The rubbish bags and the spoiled plate are gone. Between one blink and the next. No one carried them. They are simply no longer here.",
+        "The house heard me notice them. It has tidied away the parts it is ashamed of, and left the feast exactly as it was.",
+        "The flies do not know what to do with themselves now. I understand the feeling.",
+      ]);
+    } else {
+      State.setFlag("diningCatchup", true);
+    }
+  }, 18000);
+}
+
+/* the house is live: leave the linen closet open and it will quietly shut it */
+function armClosetTimer() {
+  clearTimeout(closetT);
+  closetT = setTimeout(() => {
+    if (!State.flag("closetOpen")) return;
+    State.setFlag("closetOpen", false);
+    State.setFlag("closetAutoClosed", true);
+    State.addAware(2);
+    if (State.get().room === "landing") {
+      State.setFlag("closetAutoClosed", false);
+      try { AudioM.creakDoor(); } catch (e) {}
+      Rooms.render();
+      Dialogue.say([
+        "The closet door just closed by itself. Gently. With a click I felt in my teeth.",
+        "I left it open. The house does not like its cupboards left ajar. Noted. Deeply noted.",
+      ]);
+    }
+  }, 45000);
+}
+function disarmClosetTimer() { clearTimeout(closetT); }
 
 function stopAtticTimers() { clearTimeout(atticT1); clearTimeout(atticT2); }
 function startAtticTimers() {
@@ -447,6 +621,7 @@ const RoomActions = {
         State.removeItem("houseKey");
         AudioM.creakDoor();
         State.setObjective("find_study");
+        State.setCheckpoint("Inside House 17. The house has begun its evening.");
         Rooms.goto("hallway", [
           "The door opens before I finish turning the key. As if it was pulled.",
           "Eleven years empty. Then why is there no dust in the air?",
@@ -481,6 +656,7 @@ const RoomActions = {
       }
       State.addItem("houseKey");
       AudioM.pickup();
+      State.setCheckpoint("The house key. Cold. The door has one use in mind.");
       Dialogue.say([
         "This pot sits in the dark, out of the lamp's reach. And underneath…",
         "A house key. Cold. Colder than the night is.",
@@ -523,7 +699,7 @@ const RoomActions = {
 
   /* ============ HALLWAY ============ */
   hallway: {
-    gokitchen() { Rooms.goto("kitchen", State.flag("visitedKitchen") ? null : ["The kitchen. Someone was interrupted here. Years ago, or minutes ago."]); State.setFlag("visitedKitchen"); if (State.flag("tapOn")) armTapTimers(); },
+    gokitchen() { Rooms.goto("kitchen", State.flag("visitedKitchen") ? null : ["The kitchen. Someone was interrupted here. Years ago, or minutes ago."]); State.setFlag("visitedKitchen"); },
     photo() {
       if (State.flag("act2")) {
         Puzzles.paperPopup("THE FAMILY PHOTOGRAPH", `
@@ -563,62 +739,8 @@ const RoomActions = {
       }
     },
     mirror() {
-      /* the mirror keeps a one way ledger: whole, cracked, open. Never back. */
-      if (State.flag("mirrorShattered")) {
-        State.addAware(1);
-        Dialogue.say(Dialogue.pick("mirror4", [
-          "The hollow behind the frame is empty now. Or it is very good at being looked at.",
-          "Two points of lamplight, child height, far too far back for the depth of that wall.",
-          "I am not sweeping up the glass. The house can file its own breakage.",
-          "No wall behind the glass. Eleven years I would have called that impossible. It is not even the strangest thing on this corridor.",
-        ]));
-        return;
-      }
-      if (State.flag("mirrorCracked")) {
-        State.setFlag("mirrorShattered");
-        AudioM.error();
-        AudioM.dread();
-        State.addAware(4);
-        Rooms.render();
-        if (typeof MirrorReturn !== "undefined") MirrorReturn.start();
-        Dialogue.say(State.flag("mirrorReturned") ? [
-          "It mended itself once. Now it opens itself again.",
-          "It broke! The whole glass let go at once. Not outward. Inward, like something inhaled it.",
-          "Behind it there is no wall. The same small dark hollow, and the same two points of lamplight at child height, looking back.",
-          "The house did not break the mirror. It opened it. Again.",
-        ] : [
-          "It broke! The whole glass let go at once. Not outward. Inward, like something inhaled it.",
-          "Behind it there is no wall. A small dark hollow, and two points of lamplight at child height, looking back.",
-          "The house did not break the mirror. It opened it.",
-        ]);
-        return;
-      }
-      if (State.flag("act2")) {
-        const n = State.bumpClick("mirror_act2");
-        if (n >= 3) {
-          State.setFlag("mirrorCracked");
-          AudioM.error();
-          State.addAware(2);
-          Rooms.render();
-          Dialogue.say([
-            "What?! A crack ran through the glass while I watched. Nothing touched it.",
-            "It starts exactly where my face was, and branches, like the glass is keeping notes on me.",
-          ]);
-          return;
-        }
-        Dialogue.say(Dialogue.pick("mirror2", [
-          "Writing on the glass, reversed: “LOOK AGAIN.” The notebook said the same thing.",
-          "“LOOK AGAIN.” Backwards, so only the mirror can read it properly. My reflection has not come back into the glass.",
-          "The mirror wants me to look again. At the photograph? At everything? The glass stays black where my face should be.",
-        ]));
-      } else {
-        Dialogue.say(Dialogue.pick("mirror1", [
-          "My reflection is black in this glass. Not shadowed. Black, like the mirror opens onto nothing.",
-          "Every mirror should show me standing here. This one keeps only the black, and I cannot decide if that is better.",
-          "An old mirror in an old hallway, and no reflection in it. The room behind me is not in there either. Just black.",
-          "The glass is clean. Cleaner than anything else here. Someone uses this mirror, and it still shows nobody.",
-        ]));
-      }
+      if (typeof Mirror !== "undefined" && Mirror.tap) { Mirror.tap(); return; }
+      Dialogue.say("The mirror is dark. It keeps whatever it reflects.");
     },
     udoor() {
       if (State.flag("act2")) {
@@ -675,7 +797,7 @@ const RoomActions = {
       }
     },
     hlamp() {
-      const on = State.flag("hallLampOn") !== false;
+      const on = State.flag("hallLampOn") === true; // default off
       if (on) {
         State.setFlag("hallLampOn", false);
         AudioM.close();
@@ -686,9 +808,11 @@ const RoomActions = {
       } else {
         State.setFlag("hallLampOn", true);
         AudioM.open();
+        MiniMissions.lampOn();
         Dialogue.say(Dialogue.pick("hlampOn", [
           "Click. Warm light again. Someone chose this bulb to be gentle.",
           "The lamp comes back without a flicker. Steadiest thing in this house, including me.",
+          "Two flies drift up to the shade the moment it warms. This hallway is so clean it makes them look like intruders.",
         ]));
       }
       Rooms.render();
@@ -769,13 +893,17 @@ const RoomActions = {
     stove() {
       if (!State.flag("stoveOn")) {
         State.setFlag("stoveOn");
+        State.setFlag("stoveHouseOff", false);
+        State.setFlag("stoveCatchup", false);
         AudioM.ignite();
+        armStoveTimer();
         Dialogue.say(Dialogue.pick("stoveO", [
           "I turn the knob. The burner catches with a soft pop, and a ring of small flames wraps the kettle.",
           "The gas still works. A crown of little flames, steady and blue at the root. The kettle remembers its job.",
         ]));
       } else {
         State.setFlag("stoveOn", false);
+        disarmStoveTimer();
         AudioM.close();
         Dialogue.say(Dialogue.pick("stoveC", [
           "Off. The flames shrink and vanish. The kettle ticks as it cools.",
@@ -787,7 +915,13 @@ const RoomActions = {
     tap() {
       if (!State.flag("tapOn")) {
         State.setFlag("tapOn");
-        State.setFlag("tapThin", false);
+        State.setFlag("tapHouseOff", false);
+        State.setFlag("tapOverflow", false);
+        State.setFlag("wetFloor", false);
+        State.setFlag("tapFloodFast", false);
+        State.setFlag("tapDrained", false);
+        State.setFlag("tapMoist", false);
+        State.setFlag("tapCatchup", false);
         AudioM.tapSqueak();
         armTapTimers();
         Dialogue.say(Dialogue.pick("tapO", [
@@ -795,18 +929,17 @@ const RoomActions = {
           "Water, cold and clean, drumming on the steel. The pipes do not even knock.",
         ]));
       } else {
-        const wasOver = State.flag("tapOverflow");
+        clearTapTimers();
         State.setFlag("tapOn", false);
         State.setFlag("tapOverflow", false);
-        State.setFlag("tapThin", false);
-        disarmTapTimers();
+        State.setFlag("tapFloodFast", false);
+        State.setFlag("tapDrained", true);
         AudioM.tapSqueak();
-        Dialogue.say(wasOver
-          ? ["Off. The flood sighs back down the drain, reluctantly.", State.flag("wetFloor") ? "The floor keeps its dark stain. The house is in no hurry to forget the water." : "The basin empties like nothing happened."]
-          : Dialogue.pick("tapC", [
-            "I shut it off. The last drops count themselves down the drain.",
-            "Off. The silence afterward is a little too complete.",
-          ]));
+        Dialogue.say(Dialogue.pick("tapC", [
+          "I shut it off. The last drops count themselves down the drain.",
+          "Off. The silence afterward is a little too complete.",
+        ]));
+        if (State.flag("wetFloor")) armEvapTimers();
       }
       Rooms.render();
     },
@@ -879,6 +1012,7 @@ const RoomActions = {
         code: C.code,
         onSolve() {
           State.setFlag("lockboxOpen");
+          State.setCheckpoint("The lockbox. The house knows I can count now.");
           Dialogue.say([
             `Milk, bread, apples, batteries. ${capword(C.milk)}, ${numword(C.bread)}, ${numword(C.apples)}, ${numword(C.batteries)}.`,
             "The list wasn't a list. It was the combination, hiding in plain sight for eleven years.",
@@ -931,6 +1065,8 @@ const RoomActions = {
         "The garden outside is overgrown. Except one path of flattened grass, from the back door to the fence.",
         "Clouds crossing the moon. For a second the reflection in the glass showed this kitchen with the lights off.",
         "Nothing out there. The window is more interested in reflecting this room than showing me the garden.",
+        "A few flies are gathered by the hanging lamp, orbiting the bulb like it owes them something.",
+        "This kitchen is the one room the house has not bothered to keep. Everything else is spotless. Here, the house just gave up, or got hungry.",
       ]));
     },
     chair1() {
@@ -962,6 +1098,14 @@ const RoomActions = {
   /* ============ DINING ROOM / ARCHIVE ============ */
   diningroom: {
     dback() { Rooms.goto("kitchen", null); },
+    dconservatory() {
+      const first = !State.flag("visitedConservatory");
+      State.setFlag("visitedConservatory");
+      Rooms.goto("conservatory", first ? [
+        "A glasshouse, half drowned in its own mist. The panes run with it, like the room is breathing.",
+        "The house keeps a jungle in here. Everything in it is alive, and none of it should be.",
+      ] : null);
+    },
     dwin() {
       State.addAware(1);
       const n = State.bumpClick("dwin");
@@ -979,7 +1123,33 @@ const RoomActions = {
         "The table is laid for five. Four plates. The fifth place has a mat, a fork, a cup, and no plate. Set for someone who was invited but not expected to eat.",
         "Nobody has touched this table in eleven years, and nobody has cleared it either. Some dinners refuse to end.",
         "Four plates, five settings. The arithmetic of this family never comes out even.",
+        "And the meal itself is a study in contradictions. A roast still steaming at one end, and at the other, a plate gone green and wrong. The house keeps some things and lets others rot, and I do not know which is worse.",
       ]));
+    },
+    feast() {
+      Dialogue.say(Dialogue.pick("feast", [
+        "A roast, still steaming. Greens that look picked this morning. Bread with the crust just split. Eleven years, and this food is ready to serve.",
+        "This dinner is impossible. The roast is warm. I can see the heat in the air above it. Nothing in this house should still be warm.",
+        "The house has kept this feast perfect, all this time, for guests who never arrived. I am starting to feel like the guest.",
+      ]));
+    },
+    spoilt() {
+      if (State.flag("diningTidied")) { Dialogue.say("Gone. The house took it while I was not looking. There is nothing there now but a clean plate."); return; }
+      Dialogue.say(Dialogue.pick("spoilt", [
+        "A plate of food gone bad. Green and gray, fuzzed over, collapsed into itself. Whatever this was, the house did not care to keep it.",
+        "The flies are thickest here. They know exactly which plate is theirs. The house has left this one to rot on purpose, I think. A little decay, for contrast.",
+        "Spoiled food, and flies keeping patient watch over it. In a house where a roast stays hot for eleven years, this plate was allowed to die. Why this one?",
+      ]));
+      State.addAware(1);
+    },
+    garbage() {
+      if (State.flag("diningTidied")) { Dialogue.say("Gone. The bags, the smell, the flies, all of it. The house tidies what it is ashamed of."); return; }
+      Dialogue.say(Dialogue.pick("garbage", [
+        "Rubbish bags, tied at the neck, left in the corner. The flies come and go like it is a shrine. Whatever is in there, they consider it important.",
+        "Two black bags. They bulge with something soft, and they are not as old as the rest of this room. Someone has been throwing things away. Recently.",
+        "The house keeps a feast fresh and a plate rotting and a corner full of rubbish, all in the same room. It is either a very good host or a very bad one.",
+      ]));
+      State.addAware(1);
     },
     dcake() {
       if (State.flag("act2")) {
@@ -1139,6 +1309,82 @@ const RoomActions = {
     },
   },
 
+  /* ============ CONSERVATORY ============ */
+  conservatory: {
+    cback() { Rooms.goto("diningroom"); },
+    gramophone() {
+      if (State.foundSecret("gramophone")) {
+        AudioM.discover();
+        toast("Discovery · A song the house refuses to let end");
+        Puzzles.paperPopup("THE GRAMOPHONE", `
+          <p>A gramophone on a small table, its horn turned politely toward the ferns, as if the plants were the audience.</p>
+          <p>The record on the turntable is still turning, very slowly. It has been turning for eleven years. The needle never reaches the last groove. Every time it gets close, the arm lifts, settles, and starts again.</p>
+          <p style="font-style:italic;text-align:center;margin-top:8px">“Home on the Range.” A lullaby, played at half speed, so the words lean and stretch.</p>
+          <p class="dim">The house keeps one song going the way it keeps one evening going. Neither is allowed to end.</p>`);
+        Dialogue.say([
+          "It is still playing. The same record, the same worn needle, and it will not let the song finish.",
+          "The house likes unfinished things. An evening, a song, a sentence. I am standing inside the proof of it.",
+        ]);
+        State.addAware(2);
+      } else {
+        Dialogue.say(Dialogue.pick("gramo", [
+          "The record still turns. The song loops near its end, over and over, refusing the last note.",
+          "I have heard this song before. Not here. On a summer street, eleven years of other people's summers ago.",
+        ]));
+      }
+    },
+    bench() {
+      Dialogue.say(Dialogue.pick("cbench", [
+        "Wrought iron, cold, and wet with the room's own breath. Someone sat here and watched the ferns grow.",
+        "The bench has been wiped clean. In a house of dust, the house dusts its glasshouse.",
+      ]));
+    },
+    planterL() {
+      Dialogue.say(Dialogue.pick("cplanterL", [
+        "Ferns, dense and green and alive. Eleven years of watering, from hands that are not here.",
+        "The soil is damp. Someone tends this room. The house, I assume. The house has green thumbs, or the memory of them.",
+      ]));
+    },
+    planterR() {
+      Dialogue.say(Dialogue.pick("cplanterR", [
+        "More ferns, grown into a wall of green against the glass. They lean toward the moon.",
+        "The leaves are clean. No dust, no dead fronds. Even the plants in this house behave.",
+      ]));
+    },
+    palm() {
+      Dialogue.say(Dialogue.pick("cpalm", [
+        "A palm, tall as the roof, leaning toward the one bright pane. Trees grow toward light, even when the light is borrowed.",
+        "The pot is too small for it. It has outgrown everything here except the house, which is the point, I think.",
+      ]));
+    },
+    hang() {
+      Dialogue.say(Dialogue.pick("chang", [
+        "Hanging baskets, trailing ivy that has never met a pair of scissors. It grows where it is told, which is everywhere.",
+        "The baskets sway a little. There is no draught. The room is breathing again.",
+      ]));
+    },
+    hang2() {
+      Dialogue.say(Dialogue.pick("chang2", [
+        "Ivy, hanging patient from the roof. It has grown down and around and halfway to remembering the floor.",
+        "The second basket matches the first. The house does symmetry when it is trying to be kind.",
+      ]));
+    },
+    wcan() {
+      Dialogue.say(Dialogue.pick("cwcan", [
+        "A watering can, still holding water. Set down mid chore. The handle is warm.",
+        "The water in it is cold and clear. The house waters its jungle with water that never runs out. Like everything else here.",
+      ]));
+    },
+    cwin() {
+      Dialogue.say(Dialogue.pick("ccwin", [
+        "Cold glass, running with condensation. My breath fogs it, and for a second something fogs it back from the other side.",
+        "Through the pane, the garden. Through the mist, a shape in the garden that is standing where the path should be. I stop looking.",
+        "The glass is honest about one thing: the mist outside matches the mist in here. There is no outside. There is only more house.",
+      ]));
+      State.addAware(1);
+    },
+  },
+
   /* ============ UPSTAIRS LANDING ============ */
   landing: {
     godown() { Rooms.goto("hallway"); },
@@ -1151,6 +1397,7 @@ const RoomActions = {
         State.removeItem("studyKey");
         if (State.get().objective === "study_locked") State.setObjective("find_study");
         AudioM.unlock();
+        State.setCheckpoint("The study is open. The errand is one room away.");
         Dialogue.say("The study key fits. The lock turns like it was oiled yesterday. All that way down and back up for one small brass turn.");
         Rooms.render();
       } else {
@@ -1230,16 +1477,22 @@ const RoomActions = {
       if (!State.flag("closetOpen")) {
         State.setFlag("closetOpen");
         AudioM.open();
+        armClosetTimer();
         Dialogue.say([
-          "Sheets and blankets, folded once and never touched again.",
+          "Sheets and blankets, folded once and never touched again. Cobwebs in the corners, and a small spider, very still, minding its own business.",
           "Something metal glints on the bottom shelf.",
         ]);
         Rooms.render();
       } else {
-        Dialogue.say(Dialogue.pick("closet2", [
-          "Linen, pressed flat by years. The folds are too perfect. Machine perfect.",
-          "The shelves are labeled in pencil. The bottom label says number seventeen. It is shelf number three.",
+        State.setFlag("closetOpen", false);
+        AudioM.close();
+        disarmClosetTimer();
+        Dialogue.say(Dialogue.pick("closetC", [
+          "I shut the closet. The spider did not object. It is the only thing in this house that has not moved.",
+          "Closed. I leave it shut. Some doors in this house are happier that way.",
+          "I close it properly this time. The house notices. The house always notices.",
         ]));
+        Rooms.render();
       }
     },
     torch() {
@@ -1249,7 +1502,8 @@ const RoomActions = {
       toast("Taken · A heavy steel torch");
       Dialogue.say([
         "A torch, heavy as a hammer. The battery should be dead after eleven years.",
-        "I click it once. It works. Of course it works. Everything in this house works.",
+        "I thumb the switch. It works. Of course it works. Everything in this house works.",
+        "It is off now, and it will stay off until I decide the dark has earned a light. That much, at least, is mine to choose.",
       ]);
       Rooms.render();
     },
@@ -1265,10 +1519,12 @@ const RoomActions = {
       const first = !State.flag("visitedAttic");
       State.setFlag("visitedAttic");
       Rooms.goto("attic", first ? [
-        "The torch cuts a circle out of the attic dark. Everything outside the circle is a rumor.",
+        "Up the ladder. The dark closes over me like water, and it does not part on its own.",
+        "The torch is heavy in my hand, and it is off. The house will not light it for me. I have to choose the light myself.",
         "Something up here is arranged. Not stored. Arranged.",
       ] : ["Up the ladder again. The dark has not moved."]);
       startAtticTimers();
+      try { mission("Pitch dark. Use the torch in your hand: press " + Controls.label(Controls.get("tool")) + "."); } catch (e) {}
     },
     lwin() {
       State.addAware(2);
@@ -1384,9 +1640,10 @@ const RoomActions = {
     cwin() {
       State.addAware(2);
       Dialogue.say(Dialogue.pick("cwin", [
-        "Rain on this window. Dry night on the kitchen window. Daylight on the corridor window.",
-        "The rain streaks move, but no drops ever land. It is a recording of rain.",
-        "Three windows, three different skies. The house cannot decide what tonight is.",
+        "Rain on this window. Real rain, falling and running down the glass. And a crack, low in the corner, where a thrown stone would have hit.",
+        "The crack is new. Or it was always there and I am only now looking long enough to see it.",
+        "It is actually raining on the other side of this glass. Drops land, slide, gather. This room keeps its own weather, and its weather is honest.",
+        "Three windows, three different skies. This is the only one honest enough to rain, and to crack.",
       ]));
     },
   },
@@ -1402,6 +1659,7 @@ const RoomActions = {
         State.setFlag("atticTruth");
         stopAtticTimers();
         State.addAware(10);
+        State.setCheckpoint("The fifth chair. The house's secret photograph.");
         AudioM.open();
         AudioM.discover();
         Puzzles.paperPopup("PHOTOGRAPH: THE KITCHEN TABLE", `
@@ -1456,7 +1714,7 @@ const RoomActions = {
       AudioM.pickup();
       Rooms.render();
       if (typeof Game !== "undefined") Game.refreshHUD();
-      toast("The satchel · use the bag icon, lower left");
+      toast("The satchel · press I to open it");
       Puzzles.paperPopup("A LOOSE PAGE", `
         <p class="dim">It was pinned under the satchel. The notebook's handwriting, but hurried:</p>
         <p style="font-style:italic;line-height:2">Entry 17. It knows when I count. It waits for the numbers.</p>
@@ -1543,6 +1801,20 @@ const RoomActions = {
         "The ribbon is worn through in exactly eleven places.",
         "The keys are clean except the N, the O, the V. I'm done touching the typewriter.",
       ]));
+    },
+    lens() {
+      State.addItem("lens");
+      AudioM.pickup();
+      State.logEvent("item", "took the surveyor's lens");
+      toast("Taken · A surveyor's lens");
+      Dialogue.say([
+        "A surveyor's lens, brass and cool, left at the edge of the desk like someone set it down mid thought.",
+        "It is not for distance. It is for reading what the house writes on its own walls.",
+        "The little labels. A small room. The study. I can switch them on when I want them now. Or leave the walls honest.",
+        "The house will not mind either way. It would rather I looked at it, not at its handwriting.",
+      ]);
+      Rooms.render();
+      if (typeof Game !== "undefined") Game.refreshHUD();
     },
     oldphoto() {
       if (State.foundSecret("oldphoto")) {

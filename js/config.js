@@ -17,6 +17,7 @@ const ROOM_CONFIG = {
   hallway:  { ripple: "#c9a35f", name: "The Hallway" },
   diningroom: { ripple: "#b8a888", name: "The Dining Room" },
   kitchen:  { ripple: "#b8c98f", name: "The Kitchen" },
+  conservatory: { ripple: "#a8c9b8", name: "The Conservatory" },
   study:    { ripple: "#c98f6a", name: "The Study" },
   basement: { ripple: "#7fa89a", name: "The Basement" },
   memory:   { ripple: "#d8c9a8", name: "The Fifth Room" },
@@ -41,6 +42,7 @@ const SECRETS = {
   teacup:   "A cup of tea that is still warm",
   oldphoto: "A photograph dated eleven years ago",
   cam05:    "The unplugged fifth camera",
+  gramophone: "A song the house refuses to let end",
 };
 
 /* Default settings */
@@ -48,6 +50,43 @@ const DEFAULT_SETTINGS = {
   master: 0.8, sfx: 0.9, ambient: 0.6,
   reducedMotion: false, textSize: 1, parallax: true,
   subtitles: true, tiredness: true,
+  fog: true, fogDensity: 0.7,
+  labelsOn: false,   // room label text, toggled by the surveyor's lens
+  keys: {},          // player key overrides (see Controls)
+};
+
+/* The full gamified keyboard, for the Controls page to render and validate. */
+const KEYBOARD_KEYS = (() => {
+  const letters = "abcdefghijklmnopqrstuvwxyz".split("").map(k => ({ key: k, glyph: k.toUpperCase() }));
+  const digits = "0123456789".split("").map(k => ({ key: k, glyph: k }));
+  const special = [
+    { key: "Enter", glyph: "Enter" }, { key: "Space", glyph: "Space" },
+    { key: "Escape", glyph: "Esc" }, { key: "Tab", glyph: "Tab" },
+    { key: "Backspace", glyph: "Backspace" }, { key: "Delete", glyph: "Del" },
+    { key: "Shift", glyph: "Shift" }, { key: "Control", glyph: "Ctrl" }, { key: "Alt", glyph: "Alt" },
+    { key: "ArrowUp", glyph: "↑" }, { key: "ArrowDown", glyph: "↓" },
+    { key: "ArrowLeft", glyph: "←" }, { key: "ArrowRight", glyph: "→" },
+    { key: "Home", glyph: "Home" }, { key: "End", glyph: "End" },
+    { key: "PageUp", glyph: "PgUp" }, { key: "PageDown", glyph: "PgDn" },
+    { key: "`", glyph: "`" }, { key: "-", glyph: "-" }, { key: "=", glyph: "=" },
+    { key: "[", glyph: "[" }, { key: "]", glyph: "]" }, { key: "\\", glyph: "\\" },
+    { key: ";", glyph: ";" }, { key: "'", glyph: "'" }, { key: ",", glyph: "," },
+    { key: ".", glyph: "." }, { key: "/", glyph: "/" },
+  ];
+  const fn = [...Array(12)].map((_, i) => ({ key: "F" + (i + 1), glyph: "F" + (i + 1) }));
+  return [...letters, ...digits, ...special, ...fn];
+})();
+
+/* Default key bindings. Every action lives here so the Controls page can list them. */
+const DEFAULT_KEYS = {
+  skip: "Enter",        // skip / advance dialogue
+  left: "ArrowLeft",    // left direction
+  right: "ArrowRight",  // right direction
+  hints: "h",
+  pause: "p",
+  labels: "l",          // toggle room labels (once the lens is found)
+  inventory: "i",       // open the full inventory
+  tool: "e",            // use the selected tool / equipped item
 };
 
 /* Objectives, in order */
@@ -121,7 +160,8 @@ const HOUSE_GRAPH = {
   porch:     ["hallway"],
   hallway:   ["porch", "kitchen", "landing", "basement"],
   kitchen:   ["hallway", "diningroom"],
-  diningroom: ["kitchen"],
+  diningroom: ["kitchen", "conservatory"],
+  conservatory: ["diningroom"],
   landing:   ["hallway", "study", "childroom", "attic"],
   study:     ["landing"],
   childroom: ["landing"],
@@ -134,12 +174,18 @@ const HOUSE_GRAPH = {
    hotspot action that performs that travel. An arrow only appears if
    the hotspot exists in the current render (locks, deletions, torch
    gating and every other rule stay in force automatically). */
+/* Edge arrows: fast navigation along real graph edges only. An arrow only
+   appears when its exit exists AND the direction is not already a door the
+   player clicks directly. The landing's left arrow is disabled because two
+   doors (child room, study) face the player; the porch door faces the
+   player so it is clicked, not arrowed. */
 const NAV_ARROWS = {
-  porch:      { right: "door" },
+  porch:      {},
   hallway:    { left: "gokitchen", right: "goup" },
   kitchen:    { left: "godining", right: "goback" },
-  diningroom: { right: "dback" },
-  landing:    { left: "gochild", right: "godown" },
+  diningroom: { left: "dconservatory", right: "dback" },
+  conservatory: { left: "cback" },
+  landing:    { right: "godown" },
   study:      { left: "sback" },
   childroom:  { right: "cback" },
   attic:      { right: "aback" },

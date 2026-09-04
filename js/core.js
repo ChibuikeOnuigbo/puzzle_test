@@ -34,6 +34,34 @@ const Settings = (() => {
   };
 })();
 
+/* ---------------- Controls: rebindable keys ----------------
+   KEYBOARD_KEYS is the gamified list of every key on the keyboard, so the
+   settings "Controls" page can render and validate any binding. */
+const Controls = (() => {
+  function all() {
+    return { ...DEFAULT_KEYS, ...(Settings.get("keys") || {}) };
+  }
+  function get(action) { return all()[action] || DEFAULT_KEYS[action]; }
+  function set(action, key) {
+    const keys = { ...(Settings.get("keys") || {}) };
+    keys[action] = key;
+    Settings.set("keys", keys);
+  }
+  function reset() { Settings.set("keys", {}); }
+  function glyph(key) {
+    if (typeof KEYBOARD_KEYS === "undefined") return key;
+    const k = KEYBOARD_KEYS.find(k => k.key === key);
+    return k ? k.glyph : key;
+  }
+  function label(key) {
+    const g = glyph(key);
+    if (g === "Space") return "Space";
+    if (g.length === 1) return g.toUpperCase();
+    return g;
+  }
+  return { all, get, set, reset, glyph, label };
+})();
+
 /* ---------------- Game state + save ---------------- */
 const State = (() => {
   const rnd = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
@@ -48,6 +76,8 @@ const State = (() => {
     playMs: 0,
     clickCounts: {},      // per-hotspot click counters for varied responses
     bag: [],              // the satchel: up to 5 stored item ids
+    selected: null,       // the tool currently in hand, used with the E key
+    collected: {},        // item id -> timestamp of when it was picked up
     // per-run randomized counting puzzle: the kitchen contains these amounts,
     // and the lockbox code is the counts in shopping list order
     counts: (() => {
@@ -55,6 +85,12 @@ const State = (() => {
       c.code = "" + c.milk + c.bread + c.apples + c.batteries;
       return c;
     })(),
+    // the house remembers what you said, and what you did
+    speechLog: [],      // everything the protagonist says out loud
+    monologueCount: 0,  // how much talking the player has done
+    chronicle: [],      // speech + events, a running transcript
+    checkpoint: null,   // { room, objective } — where the house lets you return
+    notes: [],          // mission notes collected at checkpoints
   });
   let st = fresh();
   let lastTick = Date.now();
@@ -91,8 +127,22 @@ const State = (() => {
     /* House awareness: the house learns from how the player behaves */
     addAware(n = 1) { st.flags.aware = (st.flags.aware || 0) + n; save(); },
     aware() { return st.flags.aware || 0; },
-    addItem(id) { if (!st.inventory.includes(id)) { st.inventory.push(id); save(); EVENTS.emit("inventory", id); } },
-    removeItem(id) { st.inventory = st.inventory.filter(i => i !== id); save(); EVENTS.emit("inventory", null); },
+    addItem(id) {
+      if (!st.inventory.includes(id)) {
+        st.inventory.push(id);
+        if (!st.collected) st.collected = {};
+        st.collected[id] = Date.now();
+        if (!st.selected) st.selected = id;   // one thing in hand, by default
+        save();
+        EVENTS.emit("inventory", id);
+      }
+    },
+    removeItem(id) {
+      st.inventory = st.inventory.filter(i => i !== id);
+      if (st.selected === id) st.selected = st.inventory.length ? st.inventory[st.inventory.length - 1] : null;
+      save();
+      EVENTS.emit("inventory", null);
+    },
     hasItem: id => st.inventory.includes(id),
     setObjective(o) { st.objective = o; save(); EVENTS.emit("objective", o); },
     setRoom(r) { st.room = r; save(); },
@@ -105,7 +155,50 @@ const State = (() => {
     bagList: () => st.bag || (st.bag = []),
     bagPut(id) { if (!st.bag) st.bag = []; if (st.bag.length >= 5 || st.bag.includes(id)) return false; st.bag.push(id); save(); return true; },
     bagTake(id) { if (!st.bag) return; st.bag = st.bag.filter(i => i !== id); save(); },
+    /* selected tool: one thing in hand, used with E or a double click */
+    select(id) { st.selected = id; save(); },
+    selected: () => st.selected,
+    collectedAt: id => (st.collected && st.collected[id]) || null,
     useHint() { st.hintsUsed++; save(); },
+    /* speech + events: the house keeps a transcript of everything you say and do */
+    logSpeech(text) {
+      if (!st.speechLog) st.speechLog = [];
+      st.speechLog.push({ t: Date.now(), text });
+      if (st.speechLog.length > 250) st.speechLog = st.speechLog.slice(-250);
+      st.monologueCount = (st.monologueCount || 0) + 1;
+      if (!st.chronicle) st.chronicle = [];
+      st.chronicle.push({ t: Date.now(), kind: "say", text });
+      if (st.chronicle.length > 500) st.chronicle = st.chronicle.slice(-500);
+      // save is intentionally throttled: only every 20 lines to avoid churn
+      if (st.monologueCount % 20 === 0) save();
+    },
+    logEvent(kind, text) {
+      if (!st.chronicle) st.chronicle = [];
+      st.chronicle.push({ t: Date.now(), kind, text });
+      if (st.chronicle.length > 500) st.chronicle = st.chronicle.slice(-500);
+      save();
+    },
+    /* checkpoints: the house lets you keep a foothold after hard tasks */
+    setCheckpoint(note) {
+      st.checkpoint = { room: st.room, objective: st.objective };
+      if (!st.notes) st.notes = [];
+      st.notes.push({ t: Date.now(), note, room: st.room });
+      save();
+      EVENTS.emit("checkpoint", note);
+      try { toast("Checkpoint · " + note); } catch (e) {}
+      if (typeof Game !== "undefined" && Game.refreshHUD) Game.refreshHUD();
+    },
+    respawnCheckpoint() {
+      if (!st.checkpoint) return false;
+      st.room = st.checkpoint.room;
+      st.objective = st.checkpoint.objective;
+      save();
+      return true;
+    },
+    notesList: () => st.notes || [],
+    speechList: () => st.speechLog || [],
+    chronicle: () => st.chronicle || [],
+    monologue: () => st.monologueCount || 0,
     save, load, hasSave, reset,
     playMinutes: () => { tick(); return Math.max(1, Math.round(st.playMs / 60000)); },
   };
@@ -218,15 +311,31 @@ const Cursor = (() => {
     // hover state via delegation
     document.addEventListener("pointerover", (e) => {
       const t = e.target.closest("button, .hotspot, a, input, .inv-item, [data-hoverable]");
+      const lbl = label();
       if (t) {
         el().classList.add("hover");
         const txt = t.dataset && t.dataset.label;
-        label().textContent = txt || "";
-        label().style.display = txt ? "block" : "none";
+        lbl.textContent = txt || "";
+        if (txt) {
+          // measure the label, then keep it inside the viewport: flip it to
+          // the left of the cursor near the right edge, and above near the bottom
+          lbl.style.left = "20px";
+          lbl.style.top = "12px";
+          lbl.style.display = "block";
+          const w = lbl.offsetWidth, h = lbl.offsetHeight;
+          const vw = window.innerWidth, vh = window.innerHeight;
+          if (x + 20 + w > vw - 8) {
+            const leftAligned = -(w + 20);
+            lbl.style.left = (x - w - 20 < 0) ? `${8 - x}px` : `${leftAligned}px`;
+          }
+          if (y + 12 + h > vh - 8) lbl.style.top = `${-(h + 20)}px`;
+        } else {
+          lbl.style.display = "none";
+        }
         if (t.classList.contains("hotspot") || t.tagName === "BUTTON") AudioM.hover();
       } else {
         el().classList.remove("hover");
-        label().style.display = "none";
+        lbl.style.display = "none";
       }
     }, true);
   }
@@ -252,15 +361,44 @@ const Cursor = (() => {
 const Dialogue = (() => {
   const box = () => document.getElementById("dialogue");
   const txt = () => document.getElementById("dialogue-text");
+  const keycap = () => document.getElementById("dialogue-key");
   let queue = [], typing = false, timer = null, full = "", idx = 0, hideTimer = null;
   let advancing = false; // consume-token: one advance per pointer event
 
+  /* when the protagonist monologues too much, he notices. Affectionately. */
+  const META_LINES = [
+    "I am narrating out loud again. The house probably enjoys the commentary. I should charge it rent.",
+    "Note to self: less dramatic commentary, more leaving. The house is not keeping me for my reviews.",
+    "I monologue when I am scared. The house knows this now. I have told it, in detail, out loud.",
+    "Some people bite their nails. I talk to an empty house about its wallpaper. We all cope.",
+    "I would stop talking to myself, but I am the only witness here, and the house does not take notes.",
+    "Three sentences ago I was telling this house my feelings. It did not interrupt. It never interrupts.",
+    "I keep a running commentary because the silence in here is worse. The silence is also listening.",
+  ];
+
+  function refreshKeycap() {
+    const k = keycap();
+    if (!k) return;
+    const key = (typeof Controls !== "undefined" ? Controls.get("skip") : "Enter");
+    k.textContent = (typeof Controls !== "undefined" ? Controls.label(key) : "Enter");
+    k.setAttribute("aria-label", "Skip with " + key);
+  }
+
   function say(lines) {
     if (!Array.isArray(lines)) lines = [lines];
+    lines = lines.filter(l => l && typeof l === "string" && l.trim());
     // REPLACE the queue — never accumulate stale narration from click spam
     queue = [...lines];
     clearTimeout(timer); clearTimeout(hideTimer);
     typing = false;
+    // the house writes down everything you say, and so do you
+    lines.forEach(t => { try { State.logSpeech(t); } catch (e) {} });
+    // a little fun: after enough monologuing, he catches himself doing it
+    const mc = (typeof State !== "undefined" && State.monologue) ? State.monologue() : 0;
+    if (mc > 0 && mc % 28 === 0) {
+      queue.push(META_LINES[Math.floor(Math.random() * META_LINES.length)]);
+    }
+    refreshKeycap();
     next();
   }
   function next() {
@@ -282,8 +420,23 @@ const Dialogue = (() => {
       hideTimer = setTimeout(() => next(), Math.max(1500, full.length * 30));
     }
   }
-  function skipOrAdvance() {
-    if (advancing) return;           // consume: one advance per event
+  /* advance right now: completes the typewriter and moves to the next line
+     (or hides the box when the queue runs dry). Enter uses this so skipping
+     is instant and repeatable; the pointer keeps its one-advance-per-event rule. */
+  function advanceNow() {
+    clearTimeout(timer); clearTimeout(hideTimer);
+    if (typing) { txt().textContent = full; typing = false; }
+    if (queue.length) next();
+    else hide();
+  }
+  function skipOrAdvance(fromKey) {
+    if (fromKey) {
+      const k = keycap();
+      if (k) { k.classList.remove("pressed"); void k.offsetWidth; k.classList.add("pressed"); }
+      advanceNow();
+      return;
+    }
+    if (advancing) return;           // consume: one advance per pointer event
     advancing = true;
     setTimeout(() => { advancing = false; }, 120);
     if (typing) { clearTimeout(timer); txt().textContent = full; typing = false; hideTimer = setTimeout(() => next(), Math.max(1400, full.length * 26)); }
@@ -292,7 +445,18 @@ const Dialogue = (() => {
   function hide() { box().classList.add("hidden"); }
   function clear() { queue = []; clearTimeout(timer); clearTimeout(hideTimer); typing = false; hide(); }
   function initEvents() {
-    box().addEventListener("pointerdown", (e) => { e.stopPropagation(); if (Popups.count() > 0) return; skipOrAdvance(); });
+    box().addEventListener("pointerdown", (e) => { e.stopPropagation(); if (Popups.count() > 0) return; skipOrAdvance(false); });
+    const k = keycap();
+    if (k) k.addEventListener("pointerdown", (e) => { e.stopPropagation(); if (Popups.count() > 0) return; skipOrAdvance(true); });
+    refreshKeycap();
+    window.addEventListener("keydown", (e) => {
+      const key = (typeof Controls !== "undefined" ? Controls.get("skip") : "Enter");
+      if (e.key !== key) return;
+      if (box().classList.contains("hidden")) return;
+      if (Popups.count() > 0) return;
+      e.preventDefault();
+      skipOrAdvance(true);
+    });
   }
   /* Varied response picker. The protagonist notices their own repetition:
      heavy spam earns self aware lines instead of endlessly cycling the pool. */
@@ -313,7 +477,7 @@ const Dialogue = (() => {
     }
     return pool[(n - 1) % pool.length];
   }
-  return { say, hide, clear, initEvents, pick };
+  return { say, hide, clear, initEvents, pick, refreshKeycap };
 })();
 
 /* ---------------- Mirror return: the house repairs the glass ----------------
@@ -328,10 +492,13 @@ const MirrorReturn = (() => {
     if (!State.flag("mirrorShattered") || State.flag("mirrorReturned")) { stop(); return false; }
     if (State.get().room === "hallway") return false; // the glass waits to be unobserved
     stop();
-    State.setFlag("mirrorShattered", false);
-    State.setFlag("mirrorCracked", true);
-    State.setFlag("mirrorReturned", true);
-    try { AudioM.whisperTone(); } catch (e) {}
+    if (typeof Mirror !== "undefined" && Mirror.heal) {
+      Mirror.heal();
+    } else {
+      State.setFlag("mirrorShattered", false);
+      State.setFlag("mirrorCracked", true);
+      State.setFlag("mirrorReturned", true);
+    }
     return true;
   }
   function start() {
@@ -361,6 +528,19 @@ function toast(msg) {
   t.className = "secret-toast"; t.textContent = msg;
   $("#stage").appendChild(t);
   setTimeout(() => t.remove(), 3100);
+}
+/* an unrecorded mini-mission: a transient nudge to help the player along.
+   Never written to objectives or notes, never saved. */
+function mission(text) {
+  const t = document.createElement("div");
+  t.className = "mission-toast";
+  const tag = document.createElement("span");
+  tag.className = "mission-tag"; tag.textContent = "a small task";
+  const msg = document.createElement("span");
+  msg.textContent = text;
+  t.appendChild(tag); t.appendChild(msg);
+  $("#stage").appendChild(t);
+  setTimeout(() => t.remove(), 4600);
 }
 function fadeTransition(fn, dur) {
   const f = $("#fader");
