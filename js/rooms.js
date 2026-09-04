@@ -222,6 +222,93 @@ const Rooms = (() => {
       <animateTransform attributeName="transform" type="translate" values="-60,0;620,${-12 * sx};1340,${6 * sx}" dur="${dur}s" repeatCount="indefinite"/>
     </g>`;
 
+  /* =====================================================================
+     GENERATED FOREST — pixel data extracted from the reference PNG by
+     scripts/gen/forest.js (FOREST_DATA). Each layer is redrawn as one path
+     per shade so the whole treeline stays light, and each tree is cut into
+     a trunk/lower group plus two crown groups that wave on their own pivots.
+  ===================================================================== */
+  const FOREST = (typeof FOREST_DATA !== "undefined") ? FOREST_DATA : null;
+  const F_PAL = (FOREST && FOREST.palette) || { 1: "#0a0e15", 2: "#07090c", 3: "#05070a" };
+  /* clip a run list to the column window [lo, hi) */
+  function fClip(runs, lo, hi) {
+    const out = [];
+    for (const r of runs) {
+      const s = Math.max(r[0], lo), e = Math.min(r[0] + r[1], hi);
+      if (e > s) out.push([s, e - s, r[2]]);
+    }
+    return out;
+  }
+  /* turn rows (gy + runs) into one <path> per shade; gyOf maps grid row to y */
+  function fRows(rows, gyOf, cell, ox) {
+    const acc = { 1: "", 2: "", 3: "" };
+    for (const row of rows) {
+      const y = gyOf(row.gy);
+      for (const r of row.runs) {
+        acc[r[2]] += `M${ox + r[0] * cell},${y}h${r[1] * cell}v${cell}h${-r[1] * cell}z`;
+      }
+    }
+    let out = "";
+    for (const c of [1, 2, 3]) if (acc[c]) out += `<path d="${acc[c]}" fill="${F_PAL[c]}"/>`;
+    return out;
+  }
+  /* one generated tree, optionally split into swaying crown groups */
+  function fTree(t, opt = {}) {
+    const cell = opt.cell || FOREST.cell;              // px per grid cell
+    const groundGy = opt.groundGy != null ? opt.groundGy : FOREST.near.groundGy;
+    const baseY = opt.baseY || 536;
+    const gyOf = gy => baseY + (gy - groundGy) * cell;
+    const ox = (opt.cx != null ? opt.cx : t.trunkCx * cell) - t.trunkCx * cell;
+    const crownFrac = opt.crownFrac != null ? opt.crownFrac : 0.45;
+    const crownBaseGy = t.top + (groundGy - t.top) * crownFrac;
+    const crownBaseY = gyOf(crownBaseGy);
+    const baseRows = [], leftRows = [], rightRows = [];
+    for (const row of t.rows) {
+      if (row.gy > crownBaseGy) baseRows.push(row);
+      else {
+        const l = fClip(row.runs, 0, t.trunkCx);
+        const r = fClip(row.runs, t.trunkCx, FOREST.gw);
+        if (l.length) leftRows.push({ gy: row.gy, runs: l });
+        if (r.length) rightRows.push({ gy: row.gy, runs: r });
+      }
+    }
+    const cx = t.trunkCx * cell;
+    const sway = (pivot, dur, amt, sign) => `\n          <animateTransform attributeName="transform" type="rotate" values="${-amt} ${pivot[0]} ${pivot[1]};${amt} ${pivot[0]} ${pivot[1]};${-amt} ${pivot[0]} ${pivot[1]}" dur="${dur}s" repeatCount="indefinite"/>`;
+    const rm = Settings.get("reducedMotion");
+    const dur = opt.dur || (8 + (t.x0 % 5) * 1.3);
+    const amt = opt.amt || (0.5 + (t.x0 % 3) * 0.22);
+    if (rm || opt.static) {
+      return `<g>${fRows(t.rows, gyOf, cell, ox)}</g>`;
+    }
+    return `<g>
+        <g>${fRows(baseRows, gyOf, cell, ox)}${sway([cx, baseY], dur, amt, 1)}</g>
+        <g>${fRows(leftRows, gyOf, cell, ox)}${sway([cx, crownBaseY], dur * 0.82, amt * 1.7, -1)}</g>
+        <g>${fRows(rightRows, gyOf, cell, ox)}${sway([cx, crownBaseY], dur * 0.9, amt * 1.5, 1)}</g>
+      </g>`;
+  }
+  function forestFar() {
+    if (!FOREST) return "";
+    const gyOf = gy => 424 + (gy - FOREST.far.groundGy) * FOREST.cell;
+    return `<g id="v_forest-far" filter="url(#fxblur2)" opacity="0.62">${fRows(FOREST.far.rows, gyOf, FOREST.cell, 0)}</g>`;
+  }
+  function forestFog() {
+    return `<g id="v_forest-fog" pointer-events="none">
+      <rect x="0" y="392" width="1280" height="120" fill="url(#forestfog)" opacity="0.5"/>
+      <ellipse cx="300" cy="446" rx="240" ry="16" fill="#7a8492" opacity="0.05" filter="url(#fxblur8)"/>
+      <ellipse cx="960" cy="438" rx="260" ry="18" fill="#7a8492" opacity="0.05" filter="url(#fxblur8)"/>
+    </g>`;
+  }
+  function forestNear() {
+    if (!FOREST) return "";
+    const groundGy = FOREST.near.groundGy;
+    const gyOf = gy => 536 + (gy - groundGy) * FOREST.cell;
+    const trees = FOREST.trees.map(t => fTree(t, { baseY: 536 })).join("");
+    return `<g id="v_forest-near">
+      <g id="v_forest-near-bg">${fRows(FOREST.near.rows, gyOf, FOREST.cell, 0)}</g>
+      <g id="v_forest-trees">${trees}</g>
+    </g>`;
+  }
+
 
   /* =====================================================================
      DINING ROOM — and, when the house has deleted a room, THE ARCHIVE
@@ -444,10 +531,15 @@ const Rooms = (() => {
     <defs>
       <filter id="blurf"><feGaussianBlur stdDeviation="3"/></filter>
       <linearGradient id="eaveshadow" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#060505" stop-opacity="0.85"/>
+        <stop offset="0" stop-color="#060505" stop-opacity="0.5"/>
         <stop offset="1" stop-color="#060505" stop-opacity="0"/>
       </linearGradient>
       <clipPath id="roofclip"><polygon points="150,124 640,30 1130,124"/></clipPath>
+      <linearGradient id="forestfog" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#8a97a6" stop-opacity="0"/>
+        <stop offset="0.5" stop-color="#8a97a6" stop-opacity="0.16"/>
+        <stop offset="1" stop-color="#8a97a6" stop-opacity="0"/>
+      </linearGradient>
     </defs>
     <g id="layer-back">
       <rect width="1280" height="720" fill="url(#nightg)"/>
@@ -477,26 +569,15 @@ const Rooms = (() => {
       </g>`}
       <circle cx="1120" cy="90" r="34" fill="#d8dce0" opacity="0.85"/>
       <circle cx="1108" cy="82" r="30" fill="#1d2733"/>
-      <!-- distant treeline: a thin, blurred stand of pines and oaks on the ridge -->
-      <g id="v_treeline" filter="url(#blurf)" opacity="0.5">
-        ${[...Array(20)].map((_, i) => {
-          const rows = [TREE_CONIFER, TREE_OAK, TREE_DEAD][i % 3];
-          const px = 3, h = rows.length * px, x = i * 66 - 8, base = 428 + (i % 3) * 5;
-          return pxArt(rows, px, x, base - h, i % 2 === 1);
-        }).join("")}
-      </g>
-      <!-- mid distance trees: crisp pixel oaks and deadwood flanking the house -->
-      <g id="v_trees">
-        ${pixTree(TREE_DEAD, 7, 2, 560, { pivotCol: 11, swayDur: 12 })}
-        ${pixTree(TREE_OAK, 7, 48, 560, { pivotCol: 11, branches: true, swayDur: 9 })}
-        ${pixTree(TREE_OAK, 7, 112, 562, { pivotCol: 11, flip: true, branches: true, swayDur: 10 })}
-        ${bird(90, 364)}
-        ${bird(118, 384)}
-        ${pixTree(TREE_OAK, 7, 1126, 560, { pivotCol: 11, branches: true, swayDur: 9.5 })}
-        ${pixTree(TREE_DEAD, 7, 1196, 560, { pivotCol: 11, swayDur: 12.5 })}
-        ${pixTree(TREE_CONIFER, 7, 1232, 560, { pivotCol: 7.5, swayDur: 14 })}
-        ${bird(1172, 366)}
-        ${bird(1198, 384)}
+      <!-- generated forest: far treeline, drifting fog, then the near trees whose branches wave -->
+      <g id="v_forest">
+        ${forestFar()}
+        ${forestFog()}
+        ${forestNear()}
+        ${bird(96, 330)}
+        ${bird(132, 356)}
+        ${bird(1152, 336)}
+        ${bird(1190, 360)}
       </g>
       <rect x="0" y="540" width="1280" height="180" fill="#12161c"/>
       <rect x="0" y="536" width="1280" height="6" fill="#0c0f13"/>
@@ -522,7 +603,33 @@ const Rooms = (() => {
           <rect x="150" y="30" width="980" height="94" fill="#221c16"/>
           <polygon points="640,30 1130,124 640,124" fill="#26201a"/>
           <polygon points="150,124 640,30 640,124" fill="#191410" opacity="0.6"/>
-          ${[42, 56, 70, 84, 98, 112].map(y => `<line x1="150" y1="${y}" x2="1130" y2="${y}" stroke="#171310" stroke-width="1.4" opacity="0.5"/>`).join("")}
+          <!-- shingle courses: each side follows its own slope and stops at the
+               ridge and the eave, so no line ever crosses off the roof -->
+          ${(() => {
+            const ridge = 640, top = 30, eave = 124, run = 490;
+            const xL = y => ridge - run * (y - top) / (eave - top);
+            const xR = y => ridge + run * (y - top) / (eave - top);
+            let s = "";
+            for (let y = 36; y <= 122; y += 7) {
+              s += `<line x1="${xL(y).toFixed(1)}" y1="${y}" x2="${ridge}" y2="${y}" stroke="#0e0c0a" stroke-width="1.3" opacity="0.45"/>`;
+              s += `<line x1="${ridge}" y1="${y}" x2="${xR(y).toFixed(1)}" y2="${y}" stroke="#2c251e" stroke-width="1.3" opacity="0.55"/>`;
+            }
+            return s;
+          })()}
+          <!-- soft shingle texture: blurred courses so the roof reads as weathered -->
+          <g filter="url(#blurf)" opacity="0.5">
+            ${(() => {
+              const ridge = 640, top = 30, eave = 124, run = 490;
+              const xL = y => ridge - run * (y - top) / (eave - top);
+              const xR = y => ridge + run * (y - top) / (eave - top);
+              let s = "";
+              for (let y = 40; y <= 118; y += 14) {
+                s += `<line x1="${xL(y).toFixed(1)}" y1="${y}" x2="${ridge}" y2="${y}" stroke="#080604" stroke-width="3" opacity="0.4"/>`;
+                s += `<line x1="${ridge}" y1="${y}" x2="${xR(y).toFixed(1)}" y2="${y}" stroke="#0c0a08" stroke-width="3" opacity="0.5"/>`;
+              }
+              return s;
+            })()}
+          </g>
           <line x1="644" y1="34" x2="1126" y2="122" stroke="#8aa2bc" stroke-width="3" opacity="0.18" filter="url(#blurf)"/>
           <line x1="640" y1="30" x2="1130" y2="124" stroke="#6b86a3" stroke-width="1.4" opacity="0.4"/>
           <line x1="150" y1="124" x2="640" y2="30" stroke="#0e0c0a" stroke-width="2" opacity="0.6"/>
@@ -694,7 +801,7 @@ const Rooms = (() => {
   ===================================================================== */
   function svgHallway() {
     const act2 = State.flag("act2");
-    const hallLampOn = State.flag("hallLampOn") !== false; // default on
+    const hallLampOn = State.flag("hallLampOn") === true; // default off
     const reducedMotion = Settings.get("reducedMotion");
     return `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
@@ -707,6 +814,10 @@ const Rooms = (() => {
       <linearGradient id="mirrorglass" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#1b2731"/><stop offset="0.45" stop-color="#243541"/>
         <stop offset="0.75" stop-color="#33495a"/><stop offset="1" stop-color="#1a2730"/>
+      </linearGradient>
+      <linearGradient id="mirrorglass-lit" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#42596a"/><stop offset="0.45" stop-color="#5c7687"/>
+        <stop offset="0.75" stop-color="#6d8798"/><stop offset="1" stop-color="#3c5262"/>
       </linearGradient>
       <linearGradient id="mirrorreflect" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="#e8a04c" stop-opacity="0"/>
@@ -755,10 +866,51 @@ const Rooms = (() => {
       </g>
     </g>
     <g id="layer-mid">
-      <!-- the kitchen exit lives in the side arrow; the left wall is just wall -->
-      <!-- front door (behind player, far left edge): the only door left in this room,
-           because it is the way you came in, not a step the arrows can carry -->
-      <g id="v_fdoor"><rect x="0" y="150" width="34" height="360" fill="#2c211a" stroke="#1a140f" stroke-width="4"/></g>
+      <!-- kitchen doorway (left): open, showing the kitchen through the opening -->
+      <g id="v_kdoor">
+        <rect x="60" y="170" width="180" height="330" fill="#171310"/>
+        <rect x="60" y="170" width="180" height="330" fill="none" stroke="#3f342a" stroke-width="10"/>
+        <!-- the kitchen, masked by the doorway so only what the eye could see shows -->
+        <g clip-path="url(#kdoorclip)">
+          <!-- far wall with the window over the sink, receding to the left -->
+          <rect x="66" y="176" width="168" height="150" fill="#26251f"/>
+          <rect x="82" y="200" width="34" height="26" fill="#1d1c16" stroke="#14130e" stroke-width="3"/>
+          <rect x="122" y="200" width="34" height="26" fill="#1d1c16" stroke="#14130e" stroke-width="3"/>
+          <rect x="82" y="234" width="96" height="66" fill="#10151d" stroke="#1a140f" stroke-width="5"/>
+          <line x1="130" y1="234" x2="130" y2="300" stroke="#1a140f" stroke-width="4"/>
+          <line x1="82" y1="266" x2="178" y2="266" stroke="#1a140f" stroke-width="4"/>
+          <circle cx="160" cy="250" r="6" fill="#cfd8e0" opacity="0.5"/>
+          ${State.flag("falseKitchen") ? `<rect x="82" y="234" width="96" height="66" fill="#2a1f2e" opacity="0.5"/>` : ""}
+          <!-- the kitchen lamp, far off to the left: a slanted shaft, never an oval -->
+          <polygon points="96,256 150,242 212,472 58,472" fill="url(#lampglow)" opacity="0.26">
+            ${reducedMotion ? "" : `<animate attributeName="opacity" values="0.26;0.18;0.24;0.26" dur="7s" repeatCount="indefinite"/>`}
+          </polygon>
+          <!-- receding floor -->
+          <polygon points="66,494 234,494 234,330 66,368" fill="url(#floorg)"/>
+          <path d="M104,368 L102,494 M150,348 L151,494 M198,332 L200,494" stroke="#100c09" stroke-width="2" opacity="0.5"/>
+          <!-- counter run along the far wall: top surface, then cabinet fronts -->
+          <polygon points="66,366 200,328 200,338 66,378" fill="#4a3826"/>
+          <polygon points="66,378 200,338 200,394 66,434" fill="#33261a"/>
+          <line x1="70" y1="394" x2="196" y2="360" stroke="#241a11" stroke-width="3"/>
+          <rect x="92" y="356" width="58" height="6" rx="3" fill="#7a817c"/>
+          <!-- stove at the far left end of the run -->
+          <rect x="66" y="398" width="30" height="74" fill="#4a4e52" stroke="#22262a" stroke-width="3"/>
+          <rect x="72" y="434" width="18" height="24" rx="2" fill="#15181b"/>
+          <!-- fridge beside the door, close to us on the right, in shadow -->
+          <rect x="198" y="252" width="40" height="242" fill="#565b56"/>
+          <line x1="198" y1="252" x2="198" y2="494" stroke="#3d413d" stroke-width="4"/>
+          <line x1="216" y1="258" x2="216" y2="490" stroke="#6a706b" stroke-width="3" opacity="0.7"/>
+          <!-- the little darkness: deeper toward the far wall and the far corner -->
+          <rect x="66" y="176" width="168" height="318" fill="url(#peekdark)"/>
+          <rect x="66" y="176" width="168" height="318" fill="url(#peekdeep)"/>
+          <!-- hallway lamplight spilling over the threshold -->
+          <polygon points="66,494 234,494 234,472 66,486" fill="#e8a04c" opacity="0.08"/>
+        </g>
+        <!-- inner reveal of the opening -->
+        <polygon points="66,176 234,176 234,494 66,494" fill="none" stroke="#1c1510" stroke-width="6" opacity="0.85"/>
+        <line x1="70" y1="179" x2="230" y2="179" stroke="#4a3826" stroke-width="4" opacity="0.5"/>
+      </g>
+      <!-- the way out is the left side arrow; no door drawn for it -->
       <!-- grandfather clock: pendulum visibly swings -->
       <g id="v_gclock">
         <rect x="300" y="200" width="86" height="310" rx="6" fill="url(#woodg)" stroke="#221a12" stroke-width="4"/>
@@ -796,8 +948,9 @@ const Rooms = (() => {
       ${State.flag("mirrorMoved") ? `<rect x="660" y="160" width="120" height="196" fill="none" stroke="#5d4f3e" stroke-width="2" stroke-dasharray="5 6" opacity="0.25"/>` : ""}
       <!-- mirror -->
       <g id="v_mirror" ${State.flag("mirrorMoved") === 1 ? 'transform="translate(46,-10)"' : State.flag("mirrorMoved") === 2 ? 'transform="translate(-74,-18) rotate(-3 720 256)"' : ""}>
-        <!-- soft wall shadow behind the frame -->
-        <ellipse cx="720" cy="352" rx="74" ry="13" fill="#0d0a08" opacity="0.22"/>
+        <!-- soft wall shadow behind the frame: small and tight, hugging the bottom
+             rim so the mirror sits on the wall instead of hanging off it -->
+        <ellipse cx="720" cy="346" rx="30" ry="5" fill="#0d0a08" opacity="0.45"/>
         <!-- frame: blurred outer shadow, dark body, warm ring, lit inner rim -->
         <ellipse cx="720" cy="256" rx="66" ry="90" fill="none" stroke="#120c09" stroke-width="20" filter="url(#blurf)" opacity="0.5"/>
         <ellipse cx="720" cy="256" rx="64" ry="88" fill="none" stroke="#241a12" stroke-width="16"/>
@@ -837,9 +990,9 @@ const Rooms = (() => {
         <polygon points="706,528 716,518 726,530" fill="#1f2d3a"/>
         <polygon points="736,534 744,526 752,538" fill="#24323f"/>
         <ellipse cx="728" cy="530" rx="52" ry="6" fill="#0d0a08" opacity="0.3"/>` : `
-        <!-- the glass: black and deep, one cold streak, a dark rim -->
+        <!-- the glass: black and deep when dark, clear when the lamp is on -->
         <g clip-path="url(#mirrorclip)">
-          <ellipse cx="720" cy="256" rx="58" ry="82" fill="url(#mirrorglass)"/>
+          <ellipse cx="720" cy="256" rx="58" ry="82" fill="${hallLampOn ? "url(#mirrorglass-lit)" : "url(#mirrorglass)"}"/>
           <rect x="662" y="174" width="116" height="164" fill="url(#mirrorreflect)"/>
           <path d="M662,326 L702,204 L730,214 L690,338 Z" fill="url(#mirrorstreak)"/>
           <path d="M700,200 L720,206 L708,330 Z" fill="url(#mirrorstreak)" opacity="0.6"/>
@@ -863,7 +1016,10 @@ const Rooms = (() => {
             <path d="M751,273 L778,287"/>
             <path d="M708,305 L732,320"/>
           </g>` : ""}
-          <ellipse cx="720" cy="256" rx="58" ry="82" fill="url(#mirrorvig)"/>
+          ${hallLampOn
+            ? `<ellipse cx="720" cy="256" rx="58" ry="82" fill="url(#mirrorreflect)" opacity="0.55"/>
+               <ellipse cx="706" cy="238" rx="20" ry="34" fill="#dceaf4" opacity="0.10"/>`
+            : `<ellipse cx="720" cy="256" rx="58" ry="82" fill="url(#mirrorvig)"/>`}
         </g>`}
       </g>
       <!-- side table + lamp -->
@@ -928,14 +1084,14 @@ const Rooms = (() => {
       ${hallLampOn ? "" : `<rect x="0" y="0" width="1280" height="720" fill="#0b0d12" opacity="0.22"/>`}
     </g>
     <g id="hotspots">
-      ${hs("gokitchen", 52, 160, 196, 350, "Go to the kitchen", "")}
+      ${hs("gokitchen", 52, 160, 196, 350, "Go to the kitchen", "v_kdoor")}
       ${hs("photo", 458, 188, 174, 134, "Family photograph", "v_photo")}
       ${hs("gclock", 288, 188, 110, 336, "Grandfather clock", "v_gclock")}
       ${hs("mirror", 650, 166, 140, 182, "An old mirror", "v_mirror")}
       ${hs("udoor", 824, 574, 250, 100, act2 ? "A hatch in the floor" : "An outline in the floorboards", "v_udoor")}
       ${hs("goup", 938, 230, 342, 338, "Up the stairs", "v_stairs")}
       ${hs("rack", 384, 322, 84, 190, "A coat that stayed", "v_rack")}
-      ${hs("leave", 0, 140, 44, 380, "The way out", "v_fdoor")}
+      ${hs("leave", 0, 140, 44, 380, "The way out", "")}
       ${hs("hlamp", 648, 356, 144, 90, "A small lamp", "v_stable")}
     </g>
     </svg>`;

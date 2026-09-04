@@ -318,6 +318,18 @@ body.reduced .ripple{display:none}
 }
 @keyframes toastIn{0%{opacity:0;transform:translate(-50%,-8px)}12%{opacity:1;transform:translate(-50%,0)}80%{opacity:1}100%{opacity:0}}
 
+/* unrecorded mini-missions: transient tasks that never reach the notes */
+.mission-toast{
+  position:absolute;top:118px;left:50%;transform:translateX(-50%);
+  background:rgba(20,16,13,.94);border:1px solid var(--amber-dim);color:var(--paper);
+  padding:9px 20px;border-radius:3px;font-size:14.5px;letter-spacing:.4px;z-index:var(--z-toast);
+  display:flex;align-items:baseline;gap:10px;white-space:nowrap;
+  animation:toastIn 4.4s ease forwards;pointer-events:none;
+}
+.mission-tag{
+  color:var(--amber);font-size:10.5px;letter-spacing:2.5px;text-transform:uppercase;opacity:.9;font-family:var(--font-ui);
+}
+
 /* touch devices: show OS cursor, bigger buttons */
 body.touch, body.touch *{cursor:auto !important}
 body.touch #cursor{display:none}

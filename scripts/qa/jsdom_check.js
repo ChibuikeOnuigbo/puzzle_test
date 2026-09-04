@@ -9,7 +9,7 @@ const boot = `<script>
 window.matchMedia = window.matchMedia || (q => ({ matches:false, media:q, addEventListener(){}, removeEventListener(){}, addListener(){}, removeListener(){} }));
 window.HTMLCanvasElement.prototype.getContext = window.HTMLCanvasElement.prototype.getContext || (() => null);
 </script>`;
-const files = ["js/config.js","js/audio.js","js/core.js","js/rooms.js","js/puzzles.js","js/fx.js","js/mirror.js","js/main.js"];
+const files = ["js/config.js","js/audio.js","js/core.js","js/forest-data.js","js/rooms.js","js/puzzles.js","js/fx.js","js/mirror.js","js/main.js"];
 for (const f of files) {
   const code = fs.readFileSync(path.join(root,f), "utf8").replace(/<\/script>/gi, "<\\/script>");
   html = html.replace(`<script src="${f}"></script>`, `<script>${code}</script>`);
@@ -23,8 +23,8 @@ const w = dom.window, wait = ms => new Promise(r => setTimeout(r, ms)), ev = c =
   check("boot: menu visible", !w.document.getElementById("menu").classList.contains("hidden"));
   ev("Game.newGame()"); await wait(250);
   check("newGame on porch", ev("State.get().room") === "porch");
-  const porch = ev(`(() => { const s = document.querySelector('#scene-holder svg'); return { fx: !!s.querySelector('#fx-root'), lights: s.querySelectorAll('#fx-lights .fx-light').length, trees: !!s.querySelector('#v_trees') }; })()`);
-  check("porch FX + trees", porch.fx && porch.lights === 1 && porch.trees);
+  const porch = ev(`(() => { const s = document.querySelector('#scene-holder svg'); return { fx: !!s.querySelector('#fx-root'), lights: s.querySelectorAll('#fx-lights .fx-light').length, forest: !!s.querySelector('#v_forest'), trees: s.querySelectorAll('#v_forest-trees > g').length }; })()`);
+  check("porch FX + generated forest", porch.fx && porch.lights === 1 && porch.forest && porch.trees === 14);
   ev("State.setRoom('landing'); Rooms.render()"); await wait(60);
   check("landing left off / right on", ev("document.getElementById('nav-left').hidden === true && document.getElementById('nav-right').hidden === false"));
   ev("State.setRoom('hallway'); State.setFlag('act2',true); Rooms.render()");

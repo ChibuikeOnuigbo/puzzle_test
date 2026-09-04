@@ -148,6 +148,36 @@ const Puzzles = (() => {
 })();
 
 /* =====================================================================
+   MINI-MISSIONS: unrecorded, unimportant nudges that only exist to help.
+   They are never written to objectives or notes and never saved; the
+   in-memory "shown" set means each fires at most once per session.
+===================================================================== */
+const MiniMissions = (() => {
+  const shown = {};
+  function hint(text) {
+    if (typeof mission === "function") mission(text);
+  }
+  function onRoom(room) {
+    if (room !== "hallway") return;
+    const lampOn = State.flag("hallLampOn") === true;
+    if (!lampOn && !shown.lamp) {
+      shown.lamp = true;
+      hint("Turn on the hallway light. It is too dark to trust, and this house keeps its doors in the dark.");
+    } else if (lampOn && !shown.clock) {
+      shown.clock = true;
+      hint("Check the grandfather clock. It has been keeping a time, and I should know what time that is.");
+    }
+  }
+  function lampOn() {
+    if (!shown.clock) {
+      shown.clock = true;
+      hint("Check the grandfather clock. It has been keeping a time, and I should know what time that is.");
+    }
+  }
+  return { onRoom, lampOn };
+})();
+
+/* =====================================================================
    HOUSE TRICKS: the house acts on rooms as the player enters them.
    Small tamperings escalate in count (one, three, four... seventeen),
    a false copy of the kitchen can appear, and one room can be deleted
@@ -192,7 +222,7 @@ const HouseTricks = (() => {
       trickLine("The linen closet is open. I closed that door. I remember the click.", tc);
       return true;
     }
-    if (room === "hallway" && State.flag("hallLampOn") !== false) {
+    if (room === "hallway" && State.flag("hallLampOn") === true) {
       State.setFlag("hallLampOn", false); AudioM.flicker(); Rooms.render();
       State.setFlag("trickCount", tc); State.addAware(2);
       trickLine("The lamp went out the second I stepped in. Not a flicker. A choice.", tc);
@@ -238,6 +268,8 @@ const HouseTricks = (() => {
   }
 
   function onEnter(room) {
+    /* unrecorded nudges first: they never compete with the house's own lines */
+    MiniMissions.onRoom(room);
     /* the satchel is the house's pocket: paper stored in it gets eaten */
     if (State.flag("pageInBag")) {
       const n = (State.flag("bagRooms") || 0) + 1;
@@ -765,7 +797,7 @@ const RoomActions = {
       }
     },
     hlamp() {
-      const on = State.flag("hallLampOn") !== false;
+      const on = State.flag("hallLampOn") === true; // default off
       if (on) {
         State.setFlag("hallLampOn", false);
         AudioM.close();
@@ -776,6 +808,7 @@ const RoomActions = {
       } else {
         State.setFlag("hallLampOn", true);
         AudioM.open();
+        MiniMissions.lampOn();
         Dialogue.say(Dialogue.pick("hlampOn", [
           "Click. Warm light again. Someone chose this bulb to be gentle.",
           "The lamp comes back without a flicker. Steadiest thing in this house, including me.",

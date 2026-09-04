@@ -290,15 +290,31 @@ const Cursor = (() => {
     // hover state via delegation
     document.addEventListener("pointerover", (e) => {
       const t = e.target.closest("button, .hotspot, a, input, .inv-item, [data-hoverable]");
+      const lbl = label();
       if (t) {
         el().classList.add("hover");
         const txt = t.dataset && t.dataset.label;
-        label().textContent = txt || "";
-        label().style.display = txt ? "block" : "none";
+        lbl.textContent = txt || "";
+        if (txt) {
+          // measure the label, then keep it inside the viewport: flip it to
+          // the left of the cursor near the right edge, and above near the bottom
+          lbl.style.left = "20px";
+          lbl.style.top = "12px";
+          lbl.style.display = "block";
+          const w = lbl.offsetWidth, h = lbl.offsetHeight;
+          const vw = window.innerWidth, vh = window.innerHeight;
+          if (x + 20 + w > vw - 8) {
+            const leftAligned = -(w + 20);
+            lbl.style.left = (x - w - 20 < 0) ? `${8 - x}px` : `${leftAligned}px`;
+          }
+          if (y + 12 + h > vh - 8) lbl.style.top = `${-(h + 20)}px`;
+        } else {
+          lbl.style.display = "none";
+        }
         if (t.classList.contains("hotspot") || t.tagName === "BUTTON") AudioM.hover();
       } else {
         el().classList.remove("hover");
-        label().style.display = "none";
+        lbl.style.display = "none";
       }
     }, true);
   }
@@ -491,6 +507,19 @@ function toast(msg) {
   t.className = "secret-toast"; t.textContent = msg;
   $("#stage").appendChild(t);
   setTimeout(() => t.remove(), 3100);
+}
+/* an unrecorded mini-mission: a transient nudge to help the player along.
+   Never written to objectives or notes, never saved. */
+function mission(text) {
+  const t = document.createElement("div");
+  t.className = "mission-toast";
+  const tag = document.createElement("span");
+  tag.className = "mission-tag"; tag.textContent = "a small task";
+  const msg = document.createElement("span");
+  msg.textContent = text;
+  t.appendChild(tag); t.appendChild(msg);
+  $("#stage").appendChild(t);
+  setTimeout(() => t.remove(), 4600);
 }
 function fadeTransition(fn, dur) {
   const f = $("#fader");

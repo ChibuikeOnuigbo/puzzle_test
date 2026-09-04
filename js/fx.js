@@ -32,7 +32,7 @@ const FX = (() => {
       { src: [720, 384], floorY: 560, spread: [560, 900], color: "#e8a04c",
         cone: [[706, 382], [736, 382], [820, 566], [600, 566]],
         pool: [[600, 566], [820, 566], [800, 592], [622, 592]], op: 0.14, poolOp: 0.2, motes: 14,
-        when: () => State.flag("hallLampOn") !== false },
+        when: () => State.flag("hallLampOn") === true },
     ],
     kitchen: [
       { src: [640, 96], floorY: 500, spread: [360, 940], color: "#e8a04c",

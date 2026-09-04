@@ -14,7 +14,7 @@ window.HTMLCanvasElement.prototype.getContext = window.HTMLCanvasElement.prototy
   window.setTimeout = function(fn, d){ return o(fn, (d||0)/20); };
 })();
 </script>`;
-const files = ["js/config.js","js/audio.js","js/core.js","js/rooms.js","js/puzzles.js","js/fx.js","js/mirror.js","js/main.js"];
+const files = ["js/config.js","js/audio.js","js/core.js","js/forest-data.js","js/rooms.js","js/puzzles.js","js/fx.js","js/mirror.js","js/main.js"];
 for (const f of files) {
   const code = fs.readFileSync(path.join(root,f), "utf8").replace(/<\/script>/gi, "<\\/script>");
   html = html.replace(`<script src="${f}"></script>`, `<script>${code}</script>`);
@@ -33,6 +33,15 @@ const w = dom.window, wait = ms => new Promise(r=>setTimeout(r,ms)), ev = c => w
   check("big key present", q("#dialogue-key"));
   ev("Settings.set('reducedMotion', true)");
   ev("Game.newGame()"); await wait(120);
+  // --- generated forest on the porch ---
+  check("porch: forest bg + far fog + near layer", q("#v_forest-far") && q("#v_forest-fog") && q("#v_forest-near"));
+  check("porch: 14 generated trees", ev("document.querySelectorAll('#v_forest-trees > g').length") === 14);
+  check("porch: reduced motion yields static trees", ev("document.querySelectorAll('#v_forest-trees animateTransform').length") === 0);
+  ev("Settings.set('reducedMotion', false); Rooms.render()");
+  check("porch: tree crown groups are pivotable", ev("document.querySelectorAll('#v_forest-trees animateTransform').length") >= 28);
+  ev("Settings.set('reducedMotion', true); Rooms.render()");
+  check("porch: roof shingles inside clip", ev("document.querySelectorAll('#v_roof [clip-path] line').length >= 20"));
+  check("porch: eave shadow softened", ev("document.querySelector('#eaveshadow stop').getAttribute('stop-opacity') === '0.5'"));
   ev("Dialogue.say(['one','two','three'])");
   check("first line shows", ev("document.getElementById('dialogue-text').textContent") === "one");
   ev("window.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Enter',bubbles:true}))");
@@ -42,14 +51,31 @@ const w = dom.window, wait = ms => new Promise(r=>setTimeout(r,ms)), ev = c => w
   ev("window.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Enter',bubbles:true}))");
   check("Enter closes on last line", ev("document.getElementById('dialogue').classList.contains('hidden')"));
 
+  // --- unrecorded mini-missions: transient, never saved ---
+  check("mission helper defined", ev("typeof mission === 'function'"));
+  ev("MiniMissions.onRoom('hallway')"); await wait(20);
+  check("hallway mini-mission: turn on the light", ev("document.querySelectorAll('.mission-toast').length === 1"));
+  ev("document.querySelectorAll('.mission-toast').forEach(t => t.remove())");
+  ev("MiniMissions.lampOn()"); await wait(20);
+  check("hallway mini-mission: check the clock", ev("document.querySelectorAll('.mission-toast').length === 1"));
+  ev("document.querySelectorAll('.mission-toast').forEach(t => t.remove())");
+  ev("MiniMissions.onRoom('hallway')"); await wait(20);
+  check("mini-missions fire once per session", ev("document.querySelectorAll('.mission-toast').length === 0"));
+
   // --- edge doors removed, hotspots + arrows intact ---
   ev("State.setRoom('kitchen'); Rooms.render()"); await wait(60);
   check("kitchen: no edge door visuals", ev("document.querySelectorAll('#v_ddoor,#v_back').length") === 0);
   check("kitchen: nav hotspots remain", q(".hotspot[data-hs=godining]") && q(".hotspot[data-hs=goback]"));
   check("kitchen: both arrows visible", ev("document.getElementById('nav-left').hidden===false && document.getElementById('nav-right').hidden===false"));
   ev("State.setRoom('hallway'); Rooms.render()"); await wait(60);
-  check("hallway: kitchen doorway gone, front door kept", ev("document.querySelectorAll('#v_kdoor').length===0 && !!document.querySelector('#v_fdoor')"));
-  check("hallway: gokitchen hotspot remains", q(".hotspot[data-hs=gokitchen]"));
+  check("hallway: kitchen doorway re-added, front door removed", ev("!!document.querySelector('#v_kdoor') && document.querySelectorAll('#v_fdoor').length===0"));
+  check("hallway: kitchen doorway shows objects through the opening", ev("document.querySelectorAll('#v_kdoor [clip-path]').length >= 1 && document.querySelectorAll('#v_kdoor rect').length >= 8"));
+  check("hallway: gokitchen hotspot targets the doorway", q(".hotspot[data-hs=gokitchen][data-target=v_kdoor]"));
+  check("hallway: way-out hotspot still present (nav keeps exit)", q(".hotspot[data-hs=leave]"));
+  check("hallway lamp defaults off", ev("State.flag('hallLampOn') !== true"));
+  check("hallway: mirror shadow small and strong", ev(`(() => { const s = document.querySelector('#v_mirror ellipse'); return s && parseFloat(s.getAttribute('rx')) <= 40 && parseFloat(s.getAttribute('opacity')) >= 0.4; })()`));
+  check("hallway: lit mirror is clearer (lit glass gradient)", ev(`(() => { State.setFlag('hallLampOn', true); Rooms.render(); return document.querySelector('#v_mirror').innerHTML.includes('mirrorglass-lit'); })()`));
+  ev("State.setFlag('hallLampOn', false); Rooms.render()");
   ev("State.setRoom('diningroom'); Rooms.render()"); await wait(60);
   check("dining: no edge door visual", ev("document.querySelectorAll('#v_dback').length") === 0);
   check("dining: feast + spoilt + garbage rendered", q("#v_feast") && q("#v_spoilt") && q("#v_garbage"));
