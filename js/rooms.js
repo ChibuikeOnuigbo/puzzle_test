@@ -184,6 +184,44 @@ const Rooms = (() => {
   const leaf = (x, y, r, rot, c) => `
     <ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 0.6}" fill="${c || "#2a231a"}" opacity="0.75" transform="rotate(${rot} ${x} ${y})"/>`;
 
+  /* branchwork for the oak: several limbs and twigs reaching from the trunk
+     into the canopy, so the crown reads as connected wood, not a blob */
+  const oakBranches = (x, y, px) => {
+    const tx = x + 11 * px, ty = y + 13 * px;
+    const w = Math.max(1.2, px * 0.4);
+    const q = (dx, dy, ex, ey) => `M${tx},${ty} q${dx},${dy} ${ex},${ey}`;
+    return `<g stroke="#05070a" stroke-width="${w}" fill="none" stroke-linecap="round" opacity="0.9">
+      <path d="${q(-4 * px, -5 * px, -8 * px, -11 * px)}"/>
+      <path d="${q(-px, -7 * px, px, -14 * px)}"/>
+      <path d="${q(4 * px, -5 * px, 7 * px, -11 * px)}"/>
+      <path d="${q(-2 * px, -4 * px, -4 * px, -8 * px)}"/>
+      <path d="${q(2 * px, -4 * px, 4 * px, -8 * px)}"/>
+      <path d="M${tx - 4 * px},${ty - 8 * px} q-${2 * px},-${3 * px} -${4 * px},-${5 * px}"/>
+      <path d="M${tx + 4 * px},${ty - 8 * px} q${2 * px},-${3 * px} ${4 * px},-${5 * px}"/>
+    </g>`;
+  };
+
+  /* render a tree from a bitmap: pixel art plus optional branchwork, all
+     swayed by the wind around the trunk's foot (skipped under reduced motion) */
+  const pixTree = (bitmap, px, x, base, opt = {}) => {
+    const rows = bitmap.length;
+    const y = base - rows * px;
+    const pivotCol = opt.pivotCol != null ? opt.pivotCol : bitmap[0].length / 2;
+    const cx = x + pivotCol * px;
+    let inner = pxArt(bitmap, px, x, y, opt.flip);
+    if (opt.branches) inner += oakBranches(x, y, px);
+    if (Settings.get("reducedMotion") || !opt.swayDur) return inner;
+    const amt = opt.swayAmt != null ? opt.swayAmt : 0.9;
+    return `<g>${inner}<animateTransform attributeName="transform" type="rotate" values="-${amt} ${cx} ${base};${amt} ${cx} ${base};-${amt} ${cx} ${base}" dur="${opt.swayDur}s" repeatCount="indefinite"/></g>`;
+  };
+
+  /* a leaf torn off the trees and carried sideways by the wind */
+  const blowLeaf = (y, dur, sx, c) => `
+    <g>
+      <ellipse cx="-30" cy="${y}" rx="${6 * sx}" ry="${3.5 * sx}" fill="${c || "#3a352c"}" opacity="0.75" transform="rotate(20 -30 ${y})"/>
+      <animateTransform attributeName="transform" type="translate" values="-60,0;620,${-12 * sx};1340,${6 * sx}" dur="${dur}s" repeatCount="indefinite"/>
+    </g>`;
+
 
   /* =====================================================================
      DINING ROOM — and, when the house has deleted a room, THE ARCHIVE
@@ -403,7 +441,14 @@ const Rooms = (() => {
     const reducedMotion = Settings.get("reducedMotion");
     return `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
-    <defs><filter id="blurf"><feGaussianBlur stdDeviation="3"/></filter></defs>
+    <defs>
+      <filter id="blurf"><feGaussianBlur stdDeviation="3"/></filter>
+      <linearGradient id="eaveshadow" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#060505" stop-opacity="0.85"/>
+        <stop offset="1" stop-color="#060505" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="roofclip"><polygon points="150,124 640,30 1130,124"/></clipPath>
+    </defs>
     <g id="layer-back">
       <rect width="1280" height="720" fill="url(#nightg)"/>
       ${[...Array(26)].map((_, i) => `<circle cx="${(i * 137 + 40) % 1280}" cy="${(i * 61) % 200 + 12}" r="${i % 3 === 0 ? 1.6 : 1}" fill="#cfd8e0" opacity="${0.25 + (i % 5) * 0.1}"/>`).join("")}
@@ -442,14 +487,14 @@ const Rooms = (() => {
       </g>
       <!-- mid distance trees: crisp pixel oaks and deadwood flanking the house -->
       <g id="v_trees">
-        ${pxArt(TREE_DEAD, 7, 2, 560 - TREE_DEAD.length * 7)}
-        ${pxArt(TREE_OAK, 7, 48, 560 - TREE_OAK.length * 7)}
-        ${pxArt(TREE_OAK, 7, 112, 562 - TREE_OAK.length * 7, true)}
+        ${pixTree(TREE_DEAD, 7, 2, 560, { pivotCol: 11, swayDur: 12 })}
+        ${pixTree(TREE_OAK, 7, 48, 560, { pivotCol: 11, branches: true, swayDur: 9 })}
+        ${pixTree(TREE_OAK, 7, 112, 562, { pivotCol: 11, flip: true, branches: true, swayDur: 10 })}
         ${bird(90, 364)}
         ${bird(118, 384)}
-        ${pxArt(TREE_OAK, 7, 1126, 560 - TREE_OAK.length * 7)}
-        ${pxArt(TREE_DEAD, 7, 1196, 560 - TREE_DEAD.length * 7)}
-        ${pxArt(TREE_CONIFER, 7, 1232, 560 - TREE_CONIFER.length * 7)}
+        ${pixTree(TREE_OAK, 7, 1126, 560, { pivotCol: 11, branches: true, swayDur: 9.5 })}
+        ${pixTree(TREE_DEAD, 7, 1196, 560, { pivotCol: 11, swayDur: 12.5 })}
+        ${pixTree(TREE_CONIFER, 7, 1232, 560, { pivotCol: 7.5, swayDur: 14 })}
         ${bird(1172, 366)}
         ${bird(1198, 384)}
       </g>
@@ -471,8 +516,29 @@ const Rooms = (() => {
       <!-- house facade -->
       <rect x="180" y="120" width="920" height="430" fill="url(#wallg)"/>
       ${[...Array(15)].map((_, i) => `<line x1="180" y1="${148 + i * 28}" x2="1100" y2="${148 + i * 28}" stroke="#241d16" stroke-width="2" opacity="0.5"/>`).join("")}
-      <polygon points="150,124 640,30 1130,124" fill="#221c16"/>
-      <polygon points="150,124 640,30 1130,124" fill="none" stroke="#171310" stroke-width="5"/>
+      <!-- roof: gabled, shingled, the right slope catching the moon -->
+      <g id="v_roof">
+        <g clip-path="url(#roofclip)">
+          <rect x="150" y="30" width="980" height="94" fill="#221c16"/>
+          <polygon points="640,30 1130,124 640,124" fill="#26201a"/>
+          <polygon points="150,124 640,30 640,124" fill="#191410" opacity="0.6"/>
+          ${[42, 56, 70, 84, 98, 112].map(y => `<line x1="150" y1="${y}" x2="1130" y2="${y}" stroke="#171310" stroke-width="1.4" opacity="0.5"/>`).join("")}
+          <line x1="644" y1="34" x2="1126" y2="122" stroke="#8aa2bc" stroke-width="3" opacity="0.18" filter="url(#blurf)"/>
+          <line x1="640" y1="30" x2="1130" y2="124" stroke="#6b86a3" stroke-width="1.4" opacity="0.4"/>
+          <line x1="150" y1="124" x2="640" y2="30" stroke="#0e0c0a" stroke-width="2" opacity="0.6"/>
+        </g>
+        <polygon points="150,124 640,30 1130,124" fill="none" stroke="#171310" stroke-width="5"/>
+        <polygon points="150,124 640,30 1130,124" fill="none" stroke="#241d16" stroke-width="2" opacity="0.8"/>
+        <!-- the shadow the eaves cast across the wall below -->
+        <rect x="150" y="124" width="980" height="12" fill="url(#eaveshadow)"/>
+        <!-- chimney, its moonward face picked out -->
+        <g id="v_chimney">
+          <rect x="336" y="42" width="32" height="46" fill="#191512"/>
+          <rect x="336" y="38" width="32" height="8" fill="#241d16"/>
+          <rect x="364" y="44" width="3" height="44" fill="#3a3128" opacity="0.5"/>
+          <rect x="338" y="44" width="3" height="44" fill="#0e0c0a" opacity="0.6"/>
+        </g>
+      </g>
       <!-- dark windows -->
       <g id="v_win1"><rect x="270" y="210" width="120" height="150" fill="#0d1015" stroke="#171310" stroke-width="7"/><line x1="330" y1="210" x2="330" y2="360" stroke="#171310" stroke-width="5"/><line x1="270" y1="285" x2="390" y2="285" stroke="#171310" stroke-width="5"/></g>
       <g id="v_win2"><rect x="900" y="210" width="120" height="150" fill="#0d1015" stroke="#171310" stroke-width="7"/><line x1="960" y1="210" x2="960" y2="360" stroke="#171310" stroke-width="5"/><line x1="900" y1="285" x2="1020" y2="285" stroke="#171310" stroke-width="5"/>
@@ -584,10 +650,30 @@ const Rooms = (() => {
       <!-- foreground framing: two huge dark trees at the very edges, near the lens -->
       <g id="v_near" opacity="0.96">
         <ellipse cx="50" cy="712" rx="120" ry="16" fill="#04060a" opacity="0.6"/>
-        ${pxArt(TREE_OAK, 8, -46, 712 - TREE_OAK.length * 8)}
+        ${pixTree(TREE_OAK, 8, -46, 712, { pivotCol: 11, branches: true, swayDur: 8, swayAmt: 0.7 })}
         <ellipse cx="1236" cy="720" rx="120" ry="16" fill="#04060a" opacity="0.6"/>
-        ${pxArt(TREE_DEAD, 8, 1206, 720 - TREE_DEAD.length * 8, true)}
+        ${pixTree(TREE_DEAD, 8, 1206, 720, { pivotCol: 11, flip: true, swayDur: 11, swayAmt: 0.7 })}
       </g>
+      ${reducedMotion ? "" : `
+      <!-- wind: streaks so faint they are more felt than seen -->
+      <g id="v_wind" pointer-events="none" opacity="0.06">
+        <line x1="0" y1="150" x2="320" y2="150" stroke="#c9d8e6" stroke-width="2" stroke-dasharray="70 130 46 150">
+          <animateTransform attributeName="transform" type="translate" values="-340,0;1420,0" dur="16s" repeatCount="indefinite"/>
+        </line>
+        <line x1="0" y1="260" x2="400" y2="260" stroke="#9fb0c2" stroke-width="1.6" stroke-dasharray="46 110 80 96">
+          <animateTransform attributeName="transform" type="translate" values="-420,0;1360,0" dur="22s" repeatCount="indefinite"/>
+        </line>
+        <line x1="0" y1="410" x2="280" y2="410" stroke="#c9d8e6" stroke-width="1.4" stroke-dasharray="56 96 36 120">
+          <animateTransform attributeName="transform" type="translate" values="-300,0;1400,0" dur="19s" repeatCount="indefinite"/>
+        </line>
+      </g>
+      <!-- leaves torn off the trees, carried sideways by the wind -->
+      <g id="v_blow" pointer-events="none">
+        ${blowLeaf(210, 13, 1, "#3a352c")}
+        ${blowLeaf(300, 18, 0.8, "#455060")}
+        ${blowLeaf(360, 15, 1.1, "#3a352c")}
+        ${blowLeaf(250, 21, 0.7, "#4a5240")}
+      </g>`}
     </g>
     <g id="hotspots">
       ${hs("note", 580, 288, 76, 82, "A note, pinned to the door", "v_note")}
