@@ -929,6 +929,28 @@ const Fog = (() => {
     return out;
   }
 
+  /* GLOBAL FOG OPACITY SCALE
+     The fog is tuned to whisper, not to shout. Every actor's opacity is
+     multiplied by this factor, set per room kind in apply():
+
+       • outside  — the porch keeps a faint ground mist (the one part of the
+                    fog that is meant to stay visible, but very low).
+       • room     — conservatory, attic, memory: a bare tint of air.
+       • floor    — the basement: barely-there cold haze.
+       • ceiling  — hall, kitchen, dining, study, landing, child room: the
+                    lightest touch of all.
+
+     Lower any value to thin that kind of room; raise it to thicken. This is
+     the single dial for how much fog the player actually sees. */
+  function roomOpacityFactor(kind) {
+    switch (kind) {
+      case "outside": return 0.4;   // porch: faint rolling mist remains
+      case "room":    return 0.22;  // conservatory, attic, memory
+      case "floor":   return 0.18;  // basement floor fog
+      default:        return 0.18;  // ceiling rooms: the lightest touch
+    }
+  }
+
   /* ==========================================================================
      3. ENGINE STATE
   ========================================================================== */
@@ -968,6 +990,7 @@ const Fog = (() => {
   let curls = [];                 // corner fog pools
   let breaths = [];               // expanding exhalation puffs
   let weather = 1;                // slow in-out fog cycle (1 = base)
+  let opacFactor = 1;             // global opacity scale for the current room
 
   /* spatial clarity: a coarse grid that remembers where the mouse swept.
      The fog parts locally and heals back slowly, so a fast sweep leaves a
@@ -1125,7 +1148,7 @@ const Fog = (() => {
     for (let i = 0; i < count; i++) {
       const [x, y] = pointInRegion(bank.region, rng);
       const r = lerp(bank.rMin, bank.rMax, rng());
-      const baseO = lerp(bank.oMin, bank.oMax, rng());
+      const baseO = lerp(bank.oMin, bank.oMax, rng()) * opacFactor;
       const streak = bank.shape === "streak";
       const aspect = streak ? lerp(2.6, 4.4, rng()) : lerp(0.7, 1.15, rng());
       const rot = streak ? lerp(-18, 12, rng()) : 0;
@@ -1182,7 +1205,7 @@ const Fog = (() => {
           y0, y1,
           h: lerp(st.h[0], st.h[1], srng()),
           dur: lerp(st.dur * 0.7, st.dur * 1.3, srng()),
-          o: lerp(st.o * 0.7, st.o * 1.3, srng()),
+          o: lerp(st.o * 0.7, st.o * 1.3, srng()) * opacFactor,
           t: srng() * st.dur * 1.4,   // desynchronised starts
           phase: srng() * TAU,
           rise: lerp(0.12, 0.3, srng()),
@@ -1203,7 +1226,7 @@ const Fog = (() => {
         cy: lerp(80, STAGE_H - 60, rng()),
         rx: r, ry: r * 0.6,
         fill: profile.tint || "#8a97a6",
-        opacity: lerp(0.02, 0.05, rng()),
+        opacity: lerp(0.02, 0.05, rng()) * opacFactor,
         filter: "url(#fogblur52)",
       }, group);
       blobs.push({
@@ -1239,17 +1262,18 @@ const Fog = (() => {
     profile.shafts.forEach((s) => {
       const gid = nid("shg");
       const grad = mk("linearGradient", { id: gid, x1: "0", y1: "0", x2: "0", y2: "1" }, defs);
-      mk("stop", { offset: "0", "stop-color": s.hue, "stop-opacity": (s.o * 1.1).toFixed(3) }, grad);
-      mk("stop", { offset: "0.55", "stop-color": s.hue, "stop-opacity": (s.o * 0.5).toFixed(3) }, grad);
+      const so = s.o * opacFactor;
+      mk("stop", { offset: "0", "stop-color": s.hue, "stop-opacity": (so * 1.1).toFixed(3) }, grad);
+      mk("stop", { offset: "0.55", "stop-color": s.hue, "stop-opacity": (so * 0.5).toFixed(3) }, grad);
       mk("stop", { offset: "1", "stop-color": s.hue, "stop-opacity": "0" }, grad);
       const poly = mk("polygon", {
         class: "fog-shaft",
         points: shaftPoints(s, 0),
         fill: "url(#" + gid + ")",
-        opacity: s.o,
+        opacity: so.toFixed(3),
         filter: "url(#fogblur36)",
       }, group);
-      shafts.push({ el: poly, s, ph: rng() * TAU });
+      shafts.push({ el: poly, s: { ...s, o: so }, ph: rng() * TAU });
     });
   }
 
@@ -1262,10 +1286,10 @@ const Fog = (() => {
         class: "fog-draught",
         cx: d.x, cy: d.y, rx: d.w * 0.5, ry: 14,
         fill: "#cfd6dc",
-        opacity: d.o,
+        opacity: (d.o * opacFactor).toFixed(3),
         filter: "url(#fogblur24)",
       }, group);
-      draughts.push({ el, d, ph: rng() * TAU });
+      draughts.push({ el, d: { ...d, o: d.o * opacFactor }, ph: rng() * TAU });
     });
   }
 
@@ -1280,7 +1304,7 @@ const Fog = (() => {
         opacity: 0,
         filter: "url(#fogblur8)",
       }, group);
-      drips.push({ el, d, t: Math.random() * d.dur });
+      drips.push({ el, d: { ...d, o: d.o * opacFactor }, t: Math.random() * d.dur });
     });
   }
 
@@ -1289,21 +1313,22 @@ const Fog = (() => {
     if (!profile.vortices || !profile.vortices.length) return;
     const rng = mulberry32(701);
     profile.vortices.forEach((v) => {
+      const vo = v.o * opacFactor;
       const core = mk("ellipse", {
         class: "fog-vortex",
         cx: v.cx, cy: v.cy, rx: v.r * 0.35, ry: v.r * 0.22,
-        fill: "#d4dce2", opacity: v.o, filter: "url(#fogblur24)",
+        fill: "#d4dce2", opacity: vo.toFixed(3), filter: "url(#fogblur24)",
       }, group);
       const sat = [];
       for (let k = 0; k < 3; k++) {
         const se = mk("ellipse", {
           class: "fog-vortex-sat",
           cx: v.cx, cy: v.cy, rx: v.r * 0.16, ry: v.r * 0.1,
-          fill: "#dfe6ea", opacity: v.o * 0.6, filter: "url(#fogblur16)",
+          fill: "#dfe6ea", opacity: (vo * 0.6).toFixed(3), filter: "url(#fogblur16)",
         }, group);
         sat.push({ el: se, a0: rng() * TAU, rr: lerp(v.r * 0.55, v.r, rng()), sp: lerp(0.8, 1.6, rng()) * (rng() < 0.5 ? 1 : -1) });
       }
-      vortices.push({ core, sat, v, ang: rng() * TAU });
+      vortices.push({ core, sat, v: { ...v, o: vo }, ang: rng() * TAU });
     });
   }
 
@@ -1316,17 +1341,18 @@ const Fog = (() => {
     for (let i = 0; i < n; i++) {
       const r = lerp(220, 420, rng());
       const y = rng() < 0.5 ? lerp(60, 220, rng()) : lerp(560, 700, rng());
+      const wO = lerp(0.02, 0.05, rng()) * opacFactor;
       const el = mk("ellipse", {
         class: "fog-wisp",
         cx: rng() * STAGE_W, cy: y, rx: r, ry: r * 0.32,
         fill: profile.tint || "#aab4bd",
-        opacity: lerp(0.02, 0.05, rng()),
+        opacity: wO.toFixed(3),
         filter: "url(#fogblur52)",
       }, g);
       wisps.push({
         el,
         x: parseFloat(el.getAttribute("cx")), y,
-        r, o: parseFloat(el.getAttribute("opacity")),
+        r, o: wO,
         sp: lerp(0.15, 0.5, rng()) * (rng() < 0.5 ? 1 : -1),
         ph: rng() * TAU,
       });
@@ -1345,12 +1371,12 @@ const Fog = (() => {
       const el = mk("ellipse", {
         class: "fog-band",
         cx: rng() * STAGE_W, cy: b.y, rx: lerp(120, 190, rng()), ry: b.h * 0.5,
-        fill: b.hue, opacity: b.o, filter: "url(#fogblur36)",
+        fill: b.hue, opacity: (b.o * opacFactor).toFixed(3), filter: "url(#fogblur36)",
       }, group);
       bands.push({
         el,
         x: parseFloat(el.getAttribute("cx")),
-        b,
+        b: { ...b, o: b.o * opacFactor },
         dir: rng() < 0.5 ? 1 : -1,
         ph: rng() * TAU,
       });
@@ -1365,7 +1391,7 @@ const Fog = (() => {
       const film = mk("rect", {
         class: "fog-pane",
         x: p.x, y: p.y, width: p.w, height: p.h,
-        fill: "#c9d6de", opacity: p.o, filter: "url(#fogblur24)",
+        fill: "#c9d6de", opacity: (p.o * opacFactor).toFixed(3), filter: "url(#fogblur24)",
       }, group);
       const streaks = [];
       for (let k = 0; k < 3; k++) {
@@ -1378,7 +1404,7 @@ const Fog = (() => {
         }, group);
         streaks.push({ el: ln, x: sx, len, phase: rng() * p.h, sp: 0.2 + rng() * 0.5 });
       }
-      panes.push({ el: film, p, streaks, ph: rng() * TAU });
+      panes.push({ el: film, p: { ...p, o: p.o * opacFactor }, streaks, ph: rng() * TAU });
     });
   }
 
@@ -1405,9 +1431,9 @@ const Fog = (() => {
         fill: "none", stroke: r.hue, "stroke-width": r.h,
         "stroke-linecap": "round",
         d: ribbonPath(r, 0, rng() * TAU),
-        opacity: r.o, filter: "url(#fogblur24)",
+        opacity: (r.o * opacFactor).toFixed(3), filter: "url(#fogblur24)",
       }, group);
-      ribbons.push({ el, r, ph: rng() * TAU });
+      ribbons.push({ el, r: { ...r, o: r.o * opacFactor }, ph: rng() * TAU });
     });
   }
 
@@ -1426,7 +1452,7 @@ const Fog = (() => {
         el,
         x: parseFloat(el.getAttribute("cx")),
         y: parseFloat(el.getAttribute("cy")),
-        r, o: profile.motes.o, ph: rng() * TAU,
+        r, o: profile.motes.o * opacFactor, ph: rng() * TAU,
         spx: lerp(-0.2, 0.2, rng()), spy: lerp(-0.12, 0.05, rng()),
       });
     }
@@ -1437,21 +1463,22 @@ const Fog = (() => {
     if (!profile.corners || !profile.corners.length) return;
     const rng = mulberry32(8839);
     profile.corners.forEach((c) => {
+      const co = c.o * opacFactor;
       const core = mk("ellipse", {
         class: "fog-curl",
         cx: c.x, cy: c.y, rx: c.r, ry: c.r * 0.6,
-        fill: c.hue, opacity: c.o, filter: "url(#fogblur36)",
+        fill: c.hue, opacity: co.toFixed(3), filter: "url(#fogblur36)",
       }, group);
       const subs = [];
       for (let k = 0; k < 2; k++) {
         const se = mk("ellipse", {
           class: "fog-curl-sub",
           cx: c.x, cy: c.y, rx: c.r * 0.5, ry: c.r * 0.3,
-          fill: c.hue, opacity: c.o * 0.5, filter: "url(#fogblur24)",
+          fill: c.hue, opacity: (co * 0.5).toFixed(3), filter: "url(#fogblur24)",
         }, group);
         subs.push({ el: se, a0: rng() * TAU, rr: c.r * 0.6, sp: 0.3 + rng() * 0.4 });
       }
-      curls.push({ core, subs, c, ang: rng() * TAU, ph: rng() * TAU });
+      curls.push({ core, subs, c: { ...c, o: co }, ang: rng() * TAU, ph: rng() * TAU });
     });
   }
 
@@ -1465,7 +1492,7 @@ const Fog = (() => {
         cx: b.x, cy: b.y, rx: b.r0, ry: b.r0 * 0.5,
         fill: b.hue, opacity: 0, filter: "url(#fogblur24)",
       }, group);
-      breaths.push({ el, b, t: rng() * b.dur });
+      breaths.push({ el, b: { ...b, o: b.o * opacFactor }, t: rng() * b.dur });
     });
   }
 
@@ -1508,11 +1535,12 @@ const Fog = (() => {
     initClarity();
 
     const profile = mergeProfile(P[newRoom] || P.hallway, P2[newRoom], P3[newRoom]);
+    opacFactor = roomOpacityFactor(profile.kind);
     if (enabled && profile) {
       if (profile.tint) {
         const scrim = mk("rect", {
           x: 0, y: 0, width: STAGE_W, height: STAGE_H,
-          fill: profile.tint, opacity: 0.03,
+          fill: profile.tint, opacity: (0.03 * opacFactor).toFixed(3),
         }, root);
         root.insertBefore(scrim, root.firstChild);
       }
@@ -1745,7 +1773,7 @@ const Fog = (() => {
           const glow = g[3];
           if (d < glow) {
             const k = smooth(1 - d / glow);
-            o += 0.05 * k;                           // lamplight makes fog visible
+            o += 0.05 * opacFactor * k;              // lamplight makes fog visible
           }
         }
       }
@@ -1860,7 +1888,7 @@ const Fog = (() => {
           const y = p.p.y + ((st.phase + elapsed * st.sp) % p.p.h);
           st.el.setAttribute("y1", y.toFixed(1));
           st.el.setAttribute("y2", (y + st.len).toFixed(1));
-          st.el.setAttribute("opacity", (0.5 * Math.sin(((elapsed * st.sp) / p.p.h) * TAU * 0.5 + st.phase) ** 2).toFixed(3));
+          st.el.setAttribute("opacity", (0.5 * opacFactor * Math.sin(((elapsed * st.sp) / p.p.h) * TAU * 0.5 + st.phase) ** 2).toFixed(3));
         }
       }
     }
