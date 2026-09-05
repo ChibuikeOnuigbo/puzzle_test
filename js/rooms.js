@@ -1409,22 +1409,62 @@ const Rooms = (() => {
             <animate attributeName="rx" values="9;14;9" dur="0.7s" repeatCount="indefinite"/>
           </ellipse>` : ""}
         ${tapOverflow && !tapDrained ? `
-          <rect x="598" y="446" width="94" height="5" rx="2" fill="#a8c8da" opacity="0.5"/>
+          <rect x="598" y="446" width="94" height="5" rx="2" fill="#a8c8da" opacity="0.5">
+            <animate attributeName="opacity" values="0.5;0.38;0.5" dur="2.4s" repeatCount="indefinite"/>
+          </rect>
           <path d="M602,450 q3,60 -1,120 M690,450 q5,62 8,122" stroke="#a8c8da" stroke-width="5" fill="none" opacity="0.4">
-            <animate attributeName="opacity" values="0.4;0.25;0.4" dur="0.6s" repeatCount="indefinite"/>
-          </path>
+            <animate attributeName="opacity" values="0.4;0.25;0.4" dur="1.4s" repeatCount="indefinite"/>
+          </path>` : ""}
+        ${tapOverflow && !tapDrained && !tapHouseOff ? `
+          <!-- early overflow: slow drips, each one easing in as it falls -->
           <g fill="#bfdcee">
             <circle cx="606" cy="480" r="3">
-              <animate attributeName="cy" values="470;645" dur="0.5s" repeatCount="indefinite"/>
-              <animate attributeName="opacity" values="0.9;0.1" dur="0.5s" repeatCount="indefinite"/>
+              <animate attributeName="cy" values="470;645" keyTimes="0;1" calcMode="spline" keySplines="0.42 0 1 1" dur="1.6s" begin="0s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.9;0.9;0.1" keyTimes="0;0.7;1" dur="1.6s" begin="0s" repeatCount="indefinite"/>
             </circle>
             <circle cx="668" cy="500" r="2.6">
-              <animate attributeName="cy" values="470;650" dur="0.64s" repeatCount="indefinite"/>
-              <animate attributeName="opacity" values="0.9;0.1" dur="0.64s" repeatCount="indefinite"/>
+              <animate attributeName="cy" values="470;650" keyTimes="0;1" calcMode="spline" keySplines="0.42 0 1 1" dur="1.85s" begin="0.55s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.9;0.9;0.1" keyTimes="0;0.7;1" dur="1.85s" begin="0.55s" repeatCount="indefinite"/>
             </circle>
             <circle cx="632" cy="492" r="2.4">
-              <animate attributeName="cy" values="470;642" dur="0.57s" repeatCount="indefinite"/>
-              <animate attributeName="opacity" values="0.9;0.1" dur="0.57s" repeatCount="indefinite"/>
+              <animate attributeName="cy" values="470;642" keyTimes="0;1" calcMode="spline" keySplines="0.42 0 1 1" dur="1.7s" begin="1.1s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.9;0.9;0.1" keyTimes="0;0.7;1" dur="1.7s" begin="1.1s" repeatCount="indefinite"/>
+            </circle>
+          </g>` : ""}
+        ${tapOverflow && !tapDrained && tapHouseOff ? `
+          <!-- after the house cuts the tap: the same drips, now coming faster -->
+          <g fill="#bfdcee">
+            <circle cx="606" cy="480" r="3">
+              <animate attributeName="cy" values="470;645" keyTimes="0;1" calcMode="spline" keySplines="0.42 0 1 1" dur="0.95s" begin="0s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.9;0.9;0.1" keyTimes="0;0.7;1" dur="0.95s" begin="0s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="668" cy="500" r="2.6">
+              <animate attributeName="cy" values="470;650" keyTimes="0;1" calcMode="spline" keySplines="0.42 0 1 1" dur="1.1s" begin="0.3s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.9;0.9;0.1" keyTimes="0;0.7;1" dur="1.1s" begin="0.3s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="632" cy="492" r="2.4">
+              <animate attributeName="cy" values="470;642" keyTimes="0;1" calcMode="spline" keySplines="0.42 0 1 1" dur="1.0s" begin="0.6s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.9;0.9;0.1" keyTimes="0;0.7;1" dur="1.0s" begin="0.6s" repeatCount="indefinite"/>
+            </circle>
+          </g>` : ""}
+        ${tapOverflow && tapDrained ? `
+          <!-- draining: the basin holds its water a beat, then the level sinks -->
+          <rect x="598" y="446" width="94" height="5" rx="2" fill="#a8c8da" opacity="0.5">
+            <animate attributeName="y" values="446;446;450" keyTimes="0;0.35;1" dur="2.5s" fill="freeze"/>
+            <animate attributeName="height" values="5;5;1.2" keyTimes="0;0.35;1" dur="2.5s" fill="freeze"/>
+            <animate attributeName="opacity" values="0.5;0.5;0" keyTimes="0;0.35;1" dur="2.5s" fill="freeze"/>
+          </rect>
+          <path d="M602,450 q3,60 -1,120 M690,450 q5,62 8,122" stroke="#a8c8da" stroke-width="5" fill="none" opacity="0.4">
+            <animate attributeName="opacity" values="0.4;0.4;0" keyTimes="0;0.35;1" dur="2.5s" fill="freeze"/>
+          </path>
+          <g fill="#bfdcee">
+            <circle cx="606" cy="480" r="2.8">
+              <animate attributeName="cy" values="470;645" keyTimes="0;1" calcMode="spline" keySplines="0.42 0 1 1" dur="1.3s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.7;0" dur="1.3s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="668" cy="500" r="2.4">
+              <animate attributeName="cy" values="470;650" keyTimes="0;1" calcMode="spline" keySplines="0.42 0 1 1" dur="1.5s" begin="0.6s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.7;0" dur="1.5s" begin="0.6s" repeatCount="indefinite"/>
             </circle>
           </g>` : ""}
       </g>
@@ -1434,21 +1474,28 @@ const Rooms = (() => {
         ${tapFloodFast ? `
           <g stroke="#cfe6f2" fill="none" opacity="0.55">
             <ellipse cx="700" cy="650" rx="30" ry="8">
-              <animate attributeName="rx" values="20;120" dur="0.7s" repeatCount="indefinite"/>
-              <animate attributeName="ry" values="6;26" dur="0.7s" repeatCount="indefinite"/>
-              <animate attributeName="opacity" values="0.6;0" dur="0.7s" repeatCount="indefinite"/>
+              <animate attributeName="rx" values="20;120" dur="1.1s" repeatCount="indefinite"/>
+              <animate attributeName="ry" values="6;26" dur="1.1s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.6;0" dur="1.1s" repeatCount="indefinite"/>
             </ellipse>
             <ellipse cx="760" cy="654" rx="20" ry="6">
-              <animate attributeName="rx" values="16;90" dur="0.9s" repeatCount="indefinite"/>
-              <animate attributeName="ry" values="5;20" dur="0.9s" repeatCount="indefinite"/>
-              <animate attributeName="opacity" values="0.5;0" dur="0.9s" repeatCount="indefinite"/>
+              <animate attributeName="rx" values="16;90" dur="1.4s" repeatCount="indefinite"/>
+              <animate attributeName="ry" values="5;20" dur="1.4s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.5;0" dur="1.4s" repeatCount="indefinite"/>
             </ellipse>
           </g>` : `
+          <g stroke="#cfe6f2" fill="none" opacity="0.35">
+            <ellipse cx="720" cy="652" rx="30" ry="8">
+              <animate attributeName="rx" values="24;110" dur="6s" repeatCount="indefinite"/>
+              <animate attributeName="ry" values="7;24" dur="6s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.4;0" dur="6s" repeatCount="indefinite"/>
+            </ellipse>
+          </g>
           <path d="M620,650 q30,-8 66,-6 q30,2 56,0" stroke="#d8ecf6" stroke-width="2.4" fill="none" opacity="0.4">
-            <animateTransform attributeName="transform" type="translate" values="0,0;10,0;0,0" dur="9s" repeatCount="indefinite"/>
+            <animateTransform attributeName="transform" type="translate" values="0,0;10,0;0,0" dur="12s" repeatCount="indefinite"/>
           </path>
           <path d="M740,656 q24,-6 50,-4" stroke="#d8ecf6" stroke-width="2" fill="none" opacity="0.3">
-            <animateTransform attributeName="transform" type="translate" values="0,0;-8,0;0,0" dur="11s" repeatCount="indefinite"/>
+            <animateTransform attributeName="transform" type="translate" values="0,0;-8,0;0,0" dur="14s" repeatCount="indefinite"/>
           </path>`}
       </g>` : ""}
       ${tapMoist ? `
@@ -2245,7 +2292,7 @@ const Rooms = (() => {
       water: room === "kitchen" && !!State.flag("tapOn") && !State.flag("tapHouseOff"),
       fire: room === "kitchen" && !!State.flag("stoveOn"),
     });
-    if (AudioM.dripLoop) AudioM.dripLoop(room === "kitchen" && !!State.flag("tapOverflow") && !State.flag("tapDrained"));
+    if (AudioM.dripLoop) AudioM.dripLoop(room === "kitchen" && !!State.flag("tapOverflow"));
   }
 
   /* edge arrows: shown only when that direction is a real, currently
