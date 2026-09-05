@@ -13,33 +13,157 @@ const Game = (() => {
     paper: { name: "Blank sheet", svg: `<svg viewBox="0 0 40 40"><rect x="10" y="7" width="20" height="26" fill="#ded4bb"/><rect x="10" y="7" width="20" height="26" fill="none" stroke="#8f8778" stroke-width="1.4"/></svg>` },
     page17: { name: "The rewritten page", svg: `<svg viewBox="0 0 40 40"><rect x="10" y="7" width="20" height="26" fill="#ded4bb"/><path d="M13,13 h14 M13,18 h14 M13,23 h9" stroke="#5d4a35" stroke-width="1.6"/><text x="24" y="30" font-size="9" fill="#8a3a2c" font-family="Georgia">17</text></svg>` },
     notePage: { name: "The loose page", svg: `<svg viewBox="0 0 40 40"><rect x="11" y="8" width="18" height="24" fill="#d8c9a8" transform="rotate(6 20 20)"/><path d="M14,14 h11 M14,18 h11 M14,22 h7" stroke="#6b5544" stroke-width="1.4" transform="rotate(6 20 20)"/></svg>` },
+    lens: { name: "Surveyor's lens", svg: `<svg viewBox="0 0 40 40"><ellipse cx="20" cy="20" rx="12" ry="12" fill="none" stroke="#c9a35f" stroke-width="3.2"/><ellipse cx="20" cy="20" rx="8" ry="8" fill="#6a86a8" opacity="0.65"/><path d="M18,13 q2,-5 5,0" stroke="#c9d8e6" stroke-width="2" fill="none"/><rect x="28" y="28" width="4" height="9" rx="1.6" fill="#c9a35f" transform="rotate(45 30 32)"/></svg>` },
+    shard: { name: "A sliver of black glass", svg: `<svg viewBox="0 0 40 40"><polygon points="20,4 32,16 24,34 12,22" fill="#1a2730" stroke="#c9d8e6" stroke-width="1.2"/><polygon points="20,4 24,12 16,14" fill="#3a5266" opacity="0.8"/></svg>` },
   };
 
-  /* ---------- the satchel: five pockets, one appetite ---------- */
-  function openBag() {
+  /* where each item was collected, and what it is for. Shown in full under
+     every tool in the inventory, exactly as the house would like you to
+     forget. */
+  const ITEM_META = {
+    houseKey: { found: "Under the third flowerpot, out of the porch light's reach.", does: "Opens the front door. After that it is spent, and the house keeps it." },
+    studyKey: { found: "Inside the steel lockbox in the kitchen.", does: "Unlocks the study upstairs. Small, brass, warm." },
+    ironKey: { found: "In the hollow back cover of the red notebook.", does: "Opens the hatch lying flat in the hallway floor." },
+    torch: { found: "On the bottom shelf of the linen closet.", does: "A light you switch on yourself. The house will not do it for you. Use it in the attic dark." },
+    pen: { found: "In the sideboard drawer, after the page was eaten.", does: "Rewrites what the house swallowed, once you hold paper too." },
+    paper: { found: "At the bottom of a child's drawing stack, or filed in the archive.", does: "A blank sheet. The most dangerous thing in this house, according to the house." },
+    page17: { found: "Rewritten from memory, in your own hand.", does: "Entry 17. It stays in your coat, never in the satchel." },
+    notePage: { found: "Pinned under the satchel in the study.", does: "The loose page. Keep it out of the satchel if you want to keep it." },
+    lens: { found: "At the edge of the desk in the study.", does: "Reads the room labels the house writes on its own walls. Use it to switch them on and off." },
+    shard: { found: "A sliver of black glass from the broken mirror.", does: "A gift, and a warning. It has no use. It is a thing you keep, not a thing you use." },
+  };
+
+  /* ---------------- the selected tool + the E key ----------------
+     One thing is in hand at a time. Double clicking an icon (or pressing E)
+     uses the tool in hand. Keys are never "used": they spend themselves the
+     moment a lock wants them. */
+  const toolUse = (id) => {
+    switch (id) {
+      case "torch": {
+        const on = !!State.flag("torchOn");
+        State.setFlag("torchOn", !on);
+        AudioM.click();
+        if (State.get().room === "attic") Rooms.render();
+        Dialogue.say(on
+          ? Dialogue.pick("torchOff", ["I click the torch off. The dark closes the distance at once, polite about it.", "Off. The dark up here does not wait to be invited back."])
+          : Dialogue.pick("torchOn", ["I click the torch on. The dark steps back a little, but only a little. It does not go far.", "On. The beam is steady. The batteries are not the ones from the drawer."]));
+        refreshHUD();
+        return true;
+      }
+      case "lens": {
+        const on = Settings.get("labelsOn");
+        if (typeof FX !== "undefined") FX.labelsOn(!on);
+        AudioM.click();
+        Dialogue.say(on
+          ? Dialogue.pick("lensOff", ["The little labels sink back into the walls. The house pretends it never wrote them.", "I lower the lens. The walls go back to being walls."])
+          : Dialogue.pick("lensOn", ["I raise the lens. The house has been labeling its rooms the whole time.", "Through the brass, the tiny names come up out of the plaster like a watermark."]));
+        refreshHUD();
+        return true;
+      }
+      default: {
+        const d = ITEM_DEFS[id];
+        const name = d ? d.name : "it";
+        Dialogue.say(Dialogue.pick("use_" + id, [
+          `I turn ${name.toLowerCase()} over in my hand. It is not a tool with a switch. It is a key with a lock somewhere in this house.`,
+          `${name} has no use on its own. It wants the thing it was made to fit.`,
+          `Not here. ${name} is patient. I have to be too.`,
+        ]));
+        return false;
+      }
+    }
+  };
+
+  function selectTool(id) {
+    State.select(id);
+    refreshHUD();
+  }
+
+  function useSelected() {
+    const id = State.selected();
+    if (!id) {
+      Dialogue.say("My hands are empty. Or the house would rather I think so.");
+      return;
+    }
+    toolUse(id);
+  }
+
+  /* ---------------- confusion: the hint button knows when you are lost ----------------
+     Wasted time, aimless clicking and long minutes with nothing solved raise
+     the needle. Progress (an objective, a checkpoint, an item, a discovery)
+     settles it. When the needle is high, the ? button glows: a quiet way of
+     saying "you are not stuck. You are between ideas." */
+  const Confusion = (() => {
+    let pts = 0, lastProgress = Date.now(), nudged = false;
+    const cap = 100;
+    function add(n) { const was = pts; pts = Math.min(cap, pts + n); if (was < 45 && pts >= 45 && !nudged) { nudged = true; try { toast("The hint button is warm. It wants to help."); } catch (e) {} } }
+    function onProgress() { lastProgress = Date.now(); pts = Math.max(0, pts - 34); }
+    function onWastedClick() { add(2); }
+    function tick() {
+      pts = Math.max(0, pts - 1);
+      const idle = Date.now() - lastProgress;
+      if (idle > 150000) add(2);   // more than two and a half minutes with nothing solved
+      if (idle > 300000) add(3);   // five minutes: the house is the only one talking
+    }
+    function settle() { pts = 0; lastProgress = Date.now(); nudged = false; }
+    function level() { return pts; }
+    function isStuck() { return pts >= 45; }
+    return { tick, onProgress, onWastedClick, settle, level, isStuck };
+  })();
+
+  /* ---------- the full inventory: satchel left, tools right ---------- */
+  function minsAgo(ts) {
+    const m = Math.max(1, Math.round((Date.now() - ts) / 60000));
+    return m === 1 ? "a minute ago" : m + " minutes ago";
+  }
+
+  function openInventory() {
     const el = document.createElement("div");
-    let handle = null;
     const paint = () => {
       const bag = State.bagList();
-      const carriable = State.get().inventory.filter(i => ITEM_DEFS[i] && i !== "page17");
+      const carried = State.get().inventory.filter(i => ITEM_DEFS[i]);
+      const sel = State.selected();
       el.innerHTML = `
-        <p class="dim" style="text-align:center">A child's school satchel. Five pockets, five buckles.${State.flag("pageEaten") ? "<br><em style='color:#a5503c'>One pocket holds an ink stain shaped like a paragraph.</em>" : ""}</p>
-        <div class="bag-slots">
-          ${[...Array(5)].map((_, i) => {
-            const id = bag[i];
-            return id
-              ? `<div class="bag-slot full">${ITEM_DEFS[id].svg}<span>${ITEM_DEFS[id].name}</span><button class="bag-btn" data-take="${id}">TAKE OUT</button></div>`
-              : `<div class="bag-slot"><span class="dim">empty pocket</span></div>`;
-          }).join("")}
-        </div>
-        <div class="bag-carried">
-          ${carriable.length
-            ? carriable.map(id => `<button class="bag-btn" data-put="${id}">PUT IN · ${ITEM_DEFS[id].name}</button>`).join("")
-            : `<span class="small-note dim">Nothing in hand to store.</span>`}
-          ${State.hasItem("page17") ? `<p class="small-note" style="color:#d8c9a8">The rewritten page stays in my coat. Not in anything the house has held.</p>` : ""}
-        </div>
-        ${State.flag("pageEaten") && !State.flag("pageRewritten") && State.hasItem("pen") && State.hasItem("paper")
-          ? `<button class="bag-btn bag-rewrite" id="rewriteBtn">REWRITE THE PAGE FROM MEMORY</button>` : ""}`;
+        <div class="inv-grid">
+          <div class="inv-pane">
+            <h3>THE SATCHEL</h3>
+            <div class="inv-satchel">
+              ${[...Array(5)].map((_, i) => {
+                const id = bag[i];
+                return id
+                  ? `<div class="inv-bag-row">${ITEM_DEFS[id].svg}<span class="ib-name">${ITEM_DEFS[id].name}<span class="dim"><br>pocket ${i + 1} · stored</span></span><button class="bag-btn" data-take="${id}">TAKE OUT</button></div>`
+                  : `<div class="inv-bag-row empty"><span class="ib-name dim">pocket ${i + 1} · empty</span></div>`;
+              }).join("")}
+              ${State.flag("pageEaten") ? `<p class="small-note" style="color:#a5503c">One pocket holds an ink stain shaped like a paragraph.</p>` : ""}
+              ${carried.filter(i => i !== "page17").length
+                ? `<p class="small-note" style="margin:2px 0 6px">Stow away:</p>` + carried.filter(i => i !== "page17").map(id => `<button class="bag-btn" data-put="${id}">STOW · ${ITEM_DEFS[id].name}</button>`).join("")
+                : ""}
+              ${State.hasItem("page17") ? `<p class="small-note" style="color:#d8c9a8">The rewritten page stays in my coat. Not in anything the house has held.</p>` : ""}
+              ${State.flag("pageEaten") && !State.flag("pageRewritten") && State.hasItem("pen") && State.hasItem("paper")
+                ? `<button class="bag-btn bag-rewrite" id="rewriteBtn">REWRITE THE PAGE FROM MEMORY</button>` : ""}
+            </div>
+          </div>
+          <div class="inv-pane">
+            <h3>IN HAND</h3>
+            ${carried.length
+              ? carried.map(id => {
+                  const d = ITEM_DEFS[id];
+                  const meta = ITEM_META[id] || {};
+                  const took = State.collectedAt(id);
+                  return `
+                  <div class="inv-tool${sel === id ? " selected" : ""}" data-sel="${id}">
+                    ${d.svg}
+                    <div class="it-body">
+                      <div class="it-name">${d.name}</div>
+                      <div class="it-found">${took ? "Taken " + minsAgo(took) + " · " : ""}${meta.found || ""}</div>
+                      <div class="it-does">${meta.does || ""}</div>
+                    </div>
+                    <button class="it-use" data-use="${id}">USE</button>
+                  </div>`;
+                }).join("")
+              : `<p class="inv-empty">Nothing in hand. The house will provide, whether I ask it to or not.</p>`}
+            <p class="inv-foot-note">Click a tool to hold it. Press <b>${Controls.label(Controls.get("tool"))}</b> to use it, or double click its icon. <b>${Controls.label(Controls.get("inventory"))}</b> opens and closes the satchel.</p>
+          </div>
+        </div>`;
       el.querySelectorAll("[data-take]").forEach(b => b.addEventListener("click", () => {
         State.bagTake(b.dataset.take); State.addItem(b.dataset.take); AudioM.pickup(); paint();
       }));
@@ -47,6 +171,16 @@ const Game = (() => {
         const id = b.dataset.put;
         if (!State.bagPut(id)) { AudioM.error(); toast("The satchel is full"); return; }
         State.removeItem(id); AudioM.close(); paint();
+      }));
+      const markSel = (id) => {
+        el.querySelectorAll(".inv-tool").forEach(r => r.classList.toggle("selected", r.dataset.sel === id));
+      };
+      el.querySelectorAll("[data-sel]").forEach(row => {
+        row.addEventListener("click", (e) => { if (e.target.closest(".it-use")) return; selectTool(row.dataset.sel); markSel(row.dataset.sel); });
+        row.addEventListener("dblclick", (e) => { e.preventDefault(); selectTool(row.dataset.sel); toolUse(row.dataset.sel); markSel(row.dataset.sel); });
+      });
+      el.querySelectorAll("[data-use]").forEach(b => b.addEventListener("click", () => {
+        const id = b.dataset.use; selectTool(id); toolUse(id); markSel(id);
       }));
       const rw = el.querySelector("#rewriteBtn");
       if (rw) rw.addEventListener("click", () => {
@@ -56,7 +190,7 @@ const Game = (() => {
         if (State.get().objective === "page_gone") State.setObjective(State.flag("prevObj") || "after_notebook");
         State.addAware(3);
         AudioM.discover();
-        Popups.close(handle);
+        Popups.closeAll();
         Puzzles.paperPopup("THE PAGE, REWRITTEN", `
           <p style="font-style:italic;line-height:2">Entry 17. It knows when I count. It waits for the numbers.</p>
           <p style="font-style:italic;line-height:2">The door under the house answers to what he taped. Two quick, one slow.</p>
@@ -70,52 +204,60 @@ const Game = (() => {
       });
     };
     paint();
-    handle = Popups.open({ title: "THE SATCHEL", bodyEl: el });
+    inventoryHandle = Popups.open({ title: "THE SATCHEL", bodyEl: el, onClose() { inventoryHandle = null; } });
   }
 
   /* ---------- HUD ---------- */
   function refreshHUD() {
     const st = State.get();
     document.getElementById("objective-text").innerHTML = OBJECTIVES[st.objective] || "";
-    const inv = document.getElementById("inventory");
-    const hasBag = !!State.flag("hasBag");
-    if (st.inventory.length === 0 && !hasBag) { inv.classList.add("hidden"); return; }
-    inv.classList.remove("hidden");
-    inv.innerHTML = "";
-    if (hasBag) {
-      const el = document.createElement("div");
-      el.className = "inv-item inv-bag";
-      el.id = "bag-btn";
-      el.dataset.label = "The satchel";
-      el.innerHTML = `<svg viewBox="0 0 40 40"><rect x="7" y="14" width="26" height="18" rx="4" fill="#5d4a35" stroke="#33261a" stroke-width="2"/><path d="M7,19 q13,6 26,0" stroke="#33261a" stroke-width="2" fill="none"/><rect x="13" y="20" width="4" height="6" rx="1.5" fill="#8a7148"/><rect x="23" y="20" width="4" height="6" rx="1.5" fill="#8a7148"/><path d="M10,15 q10,-8 20,0" stroke="#33261a" stroke-width="2.4" fill="none"/></svg>`;
-      el.addEventListener("click", openBag);
-      inv.appendChild(el);
-    }
-    st.inventory.forEach(id => {
-      const d = ITEM_DEFS[id]; if (!d) return;
-      const el = document.createElement("div");
-      el.className = "inv-item";
-      el.dataset.label = d.name;
-      el.innerHTML = d.svg;
-      el.addEventListener("click", () => Dialogue.say(itemLine(id)));
-      inv.appendChild(el);
-    });
-  }
-  function itemLine(id) {
-    const lines = {
-      houseKey: ["A cold house key. It wants to go home.", "The key to House 17. It weighs more than it should."],
-      studyKey: ["The study key. Warm brass.", "Small, brass, warm. The study is upstairs."],
-      ironKey: ["An iron key with three teeth. The notebook was hollow, and this is what it was hollowed for.", "Iron, old, heavy. Something under the stairs has a new keyhole."],
-      torch: ["A heavy torch. The batteries in it are not the ones from the drawer. I checked.", "The torch from the linen closet. It works everywhere except where the house prefers dark."],
-      pen: ["A fountain pen from the sideboard. Still full. Ink keeps in a house where nothing is allowed to run out.", "The good pen. Someone bought it for letters that were never sent."],
-      paper: ["A blank sheet from the bottom of the drawing stack. It smells faintly of crayon.", "Blank paper. The most dangerous thing in this house, according to this house."],
-      page17: ["Entry 17, rewritten in my own hand. It stays in my coat.", "My copy of the page. The house ate the original. It does not get this one."],
-    };
-    return Dialogue.pick("item_" + id, lines[id] || ["An object with opinions."]);
-  }
+    const notesBtn = document.getElementById("btn-notes");
+    if (notesBtn) notesBtn.hidden = State.notesList().length === 0;
+    const hintBtn = document.getElementById("btn-hint");
+    if (hintBtn) hintBtn.classList.toggle("glow", Confusion.isStuck());
 
+    const bottom = document.getElementById("hud-bottom");
+    const bar = document.getElementById("pocket-bar");
+    const hand = document.getElementById("hand-slot");
+    const barKey = document.getElementById("bar-key");
+    if (!bottom) return;
+    const hasBag = !!State.flag("hasBag");
+    const sel = State.selected();
+    const carried = st.inventory;
+
+    /* the satchel's five pockets, bottom centre */
+    const bag = State.bagList();
+    bar.innerHTML = [...Array(5)].map((_, i) => {
+      const id = bag[i];
+      return id
+        ? `<div class="pocket full" data-label="${ITEM_DEFS[id].name} · pocket ${i + 1}" title="${ITEM_DEFS[id].name}">${ITEM_DEFS[id].svg}</div>`
+        : `<div class="pocket" data-label="pocket ${i + 1} · empty" title="empty pocket"><span class="pocket-num">${i + 1}</span><span class="pocket-empty"></span></div>`;
+    }).join("");
+    bar.querySelectorAll(".pocket").forEach(p => p.addEventListener("click", openInventory));
+
+    /* the item in hand: click uses it, I opens the satchel to choose */
+    if (sel && ITEM_DEFS[sel] && carried.includes(sel)) {
+      hand.classList.remove("hidden");
+      hand.innerHTML = ITEM_DEFS[sel].svg;
+      hand.dataset.label = "In hand: " + ITEM_DEFS[sel].name;
+      hand.title = "Use " + ITEM_DEFS[sel].name + " (" + Controls.label(Controls.get("tool")) + ")";
+      hand.onclick = () => { useSelected(); };
+      hand.ondblclick = null;
+    } else {
+      hand.classList.add("hidden");
+      hand.innerHTML = "";
+      hand.onclick = null;
+    }
+
+    const showBar = hasBag || carried.length > 0;
+    bottom.classList.toggle("hidden", !showBar);
+    bar.classList.toggle("hidden", !hasBag);
+    barKey.classList.toggle("hidden", !hasBag);
+  }
   /* ---------- hint system ---------- */
   function openHints() {
+    Confusion.settle();   // asking for help is progress of a kind
+    refreshHUD();
     const obj = State.get().objective;
     const tiers = HINTS[obj] || ["Look closer at the room you're in.", "Something here can be counted, read, or compared.", "Try everything that looks touched."];
     const el = document.createElement("div");
@@ -136,6 +278,18 @@ const Game = (() => {
       AudioM.click();
     }));
     Popups.open({ title: "A QUIET WORD", bodyEl: el });
+  }
+
+  /* ---------- mission notes: checkpoints the house let you keep ---------- */
+  function openNotes() {
+    const notes = State.notesList();
+    const el = document.createElement("div");
+    el.innerHTML = `
+      ${notes.length
+        ? notes.slice(-12).map(n => `<div class="note-row"><span class="note-t">${n.note}</span><span class="note-room">${ROOM_CONFIG[n.room] ? ROOM_CONFIG[n.room].name : n.room}</span></div>`).join("")
+        : `<p class="dim">No notes yet. The house has not given you anything worth writing down.</p>`}
+      <p class="small-note">You have spoken ${State.monologue()} lines out loud. The house has written down every one of them.</p>`;
+    Popups.open({ title: "MISSION NOTES", bodyEl: el });
   }
 
   /* ---------- pause menu ---------- */
@@ -173,9 +327,18 @@ const Game = (() => {
   }
 
   /* ---------- settings (paged) ---------- */
+  const CONTROL_ACTIONS = [
+    { id: "skip", name: "Skip dialogue" },
+    { id: "left", name: "Left direction" },
+    { id: "right", name: "Right direction" },
+    { id: "hints", name: "Hints" },
+    { id: "pause", name: "Pause menu" },
+    { id: "labels", name: "Room labels" },
+  ];
+
   function openSettings() {
     let page = 0;
-    const pages = ["SOUND", "MOTION & TEXT", "GAME"];
+    const pages = ["SOUND", "MOTION & TEXT", "GAME", "CONTROLS"];
     const el = document.createElement("div");
 
     const slider = (key, label) => `
@@ -206,8 +369,19 @@ const Game = (() => {
         <div class="spage">
           ${tog("subtitles", "Describe sounds in text", "important audio clues always appear as text")}
           ${tog("tiredness", "Tiredness", "late in the game, staying awake becomes something you do")}
+          ${tog("fog", "Fog", "the house keeps its own weather in every room")}
+          ${slider("fogDensity", "Fog density")}
           <div class="set-row"><label>Erase save data<span class="sub">removes progress and discoveries</span></label>
             <button class="btn small danger" id="wipe">Erase</button></div>
+        </div>
+        <div class="spage">
+          ${CONTROL_ACTIONS.map(a => `
+            <div class="set-row key-row" data-action="${a.id}">
+              <label>${a.name}</label>
+              <button class="btn small keybind" data-action="${a.id}"><span class="keycap">${Controls.label(Controls.get(a.id))}</span></button>
+            </div>`).join("")}
+          <div class="set-row"><label>Restore default keys</label><button class="btn small" id="resetkeys">Reset</button></div>
+          <p class="small-note">Click a key to rebind it. Press the new key, or Escape to cancel. Every key on the keyboard is on the table.</p>
         </div>
       </div>
       <div class="spager">
@@ -227,11 +401,19 @@ const Game = (() => {
     el.querySelector("#snext").addEventListener("click", () => { page = Math.min(pages.length - 1, page + 1); paint(); });
     el.querySelectorAll("input[data-set]").forEach(inp => inp.addEventListener("input", () => {
       Settings.set(inp.dataset.set, parseFloat(inp.value));
+      if (inp.dataset.set === "fogDensity") {
+        if (typeof Fog !== "undefined") Fog.setDensity(Settings.get("fogDensity"));
+        if (playing) Rooms.render();
+      }
     }));
     el.querySelectorAll(".toggle").forEach(t => t.addEventListener("click", () => {
       const k = t.dataset.tog;
       Settings.set(k, !Settings.get(k));
       t.classList.toggle("on", Settings.get(k));
+      if (k === "fog") {
+        if (typeof Fog !== "undefined") Fog.setEnabled(Settings.get("fog"));
+        if (playing) Rooms.render();
+      }
     }));
     el.querySelectorAll("button[data-tx]").forEach(b => b.addEventListener("click", () => {
       Settings.set("textSize", parseFloat(b.dataset.tx));
@@ -247,6 +429,29 @@ const Game = (() => {
       });
     });
 
+    /* controls page: rebind any action to any key */
+    const repaintKeys = () => {
+      el.querySelectorAll(".keybind").forEach(b => {
+        b.querySelector(".keycap").textContent = Controls.label(Controls.get(b.dataset.action));
+      });
+      if (typeof Dialogue !== "undefined") Dialogue.refreshKeycap();
+    };
+    const bindKey = (btn) => {
+      btn.classList.add("capturing");
+      btn.querySelector(".keycap").textContent = "press…";
+      const handler = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        window.removeEventListener("keydown", handler, true);
+        btn.classList.remove("capturing");
+        if (e.key === "Escape") { repaintKeys(); return; }
+        Controls.set(btn.dataset.action, e.key);
+        repaintKeys();
+      };
+      window.addEventListener("keydown", handler, true);
+    };
+    el.querySelectorAll(".keybind").forEach(b => b.addEventListener("click", () => bindKey(b)));
+    el.querySelector("#resetkeys").addEventListener("click", () => { Controls.reset(); repaintKeys(); });
+
     const handle = Popups.open({ title: "SETTINGS · SOUND", bodyEl: el });
   }
 
@@ -259,7 +464,8 @@ const Game = (() => {
         <p><b style="color:var(--amber)">Click.</b> Inspect, open, count, read. The house explains itself to people who pay attention.</p>
         <p><b style="color:var(--amber)">Connect.</b> Every code, symbol and rhythm you need is somewhere in the house, usually pretending to be ordinary.</p>
         <p><b style="color:var(--amber)">Stuck?</b> The <b>?</b> button offers three tiers of hints, from a nudge to nearly-the-answer.</p>
-        <p class="small-note">Progress saves automatically. Esc closes windows. There are five optional discoveries for the observant.</p>`,
+        <p class="small-note">Press Enter to skip dialogue. The arrow keys move you through doors, up stairs, and down hallways. <b>I</b> opens your satchel, and <b>E</b> uses whatever tool is in your hand. Every key can be rebound in the menu.</p>
+        <p class="small-note">Progress saves automatically. Esc closes windows. There are five optional discoveries for the observant, and one lens for the ones who read the walls.</p>`,
     });
   }
   function openCredits() {
@@ -290,6 +496,7 @@ const Game = (() => {
       onClose() {
         State.setFlag("act2");
         State.setObjective("after_notebook");
+        State.setCheckpoint("The notebook is open. The house noticed.");
         AudioM.flicker();
         Rooms.render();
         Dialogue.say([
@@ -372,6 +579,7 @@ const Game = (() => {
 
   /* ---------- the living house: scheduled sounds + tiredness ---------- */
   let playing = false;
+  let inventoryHandle = null;
   let fatigue = 0, fatStage = 0, lastRiser = 0, lastRoomSeen = null, blackoutBusy = false;
 
   function paintFatigue(stage) {
@@ -405,6 +613,7 @@ const Game = (() => {
 
   function houseTick() {
     if (!playing || blackoutBusy) return;
+    Confusion.tick();
     const st = State.get();
     const aware = State.aware() + (State.flag("act2") ? 15 : 0);
 
@@ -489,8 +698,33 @@ const Game = (() => {
   }
 
   /* ---------- boot ---------- */
+  function bootLoader() {
+    const loader = document.getElementById("loader");
+    if (!loader) return;
+    const bar = document.getElementById("loader-bar");
+    const line = document.getElementById("loader-line");
+    const LINES = ["the house is waking up", "dusting the hallway", "checking the locks", "setting your place at the table", "counting to seventeen"];
+    let i = 0;
+    const lineIv = setInterval(() => { i = (i + 1) % LINES.length; if (line) line.textContent = LINES[i]; }, 720);
+    let p = 0;
+    const barIv = setInterval(() => { p = Math.min(100, p + 13); if (bar) bar.style.width = p + "%"; if (p >= 100) clearInterval(barIv); }, 190);
+    let finished = false;
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      clearInterval(lineIv); clearInterval(barIv);
+      if (bar) bar.style.width = "100%";
+      loader.classList.add("done");
+      setTimeout(() => loader.remove(), 700);
+    };
+    if (document.readyState === "complete") setTimeout(done, 1500);
+    else window.addEventListener("load", () => setTimeout(done, 500));
+    setTimeout(done, 3600); // never let the loader outstay its welcome
+  }
+
   function boot() {
     Settings.load();
+    bootLoader();
     Stage.init();
     Cursor.init();
     Dialogue.initEvents();
@@ -515,15 +749,41 @@ const Game = (() => {
     document.getElementById("btn-credits").addEventListener("click", openCredits);
     document.getElementById("btn-hint").addEventListener("click", openHints);
     document.getElementById("btn-menu").addEventListener("click", openPause);
+    document.getElementById("btn-notes").addEventListener("click", openNotes);
     document.getElementById("btn-continue").disabled = !State.hasSave();
 
-    EVENTS.on("objective", refreshHUD);
+    EVENTS.on("objective", () => { Confusion.onProgress(); refreshHUD(); });
     EVENTS.on("inventory", refreshHUD);
-    EVENTS.on("secret", () => {});
+    EVENTS.on("secret", () => { Confusion.onProgress(); });
+    EVENTS.on("checkpoint", () => Confusion.onProgress());
+
+    if (typeof FX !== "undefined" && FX.trackPointer) FX.trackPointer();
+    if (typeof Fog !== "undefined" && Fog.trackPointer) Fog.trackPointer();
 
     window.addEventListener("keydown", (e) => {
-      if (e.key === "h" || e.key === "H") { if (!document.getElementById("hud").classList.contains("hidden")) openHints(); }
-      if (e.key === "p" || e.key === "P") { if (!document.getElementById("hud").classList.contains("hidden") && Popups.count() === 0) openPause(); }
+      if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+      const hudHidden = document.getElementById("hud").classList.contains("hidden");
+      if (e.key === Controls.get("hints")) { if (!hudHidden) openHints(); }
+      if (e.key === Controls.get("pause")) { if (!hudHidden && Popups.count() === 0) openPause(); }
+      if (e.key === Controls.get("labels")) { if (!hudHidden && State.hasItem("lens")) { if (typeof FX !== "undefined") FX.labelsOn(!Settings.get("labelsOn")); refreshHUD(); } }
+      if (e.key === Controls.get("inventory")) {
+        if (!hudHidden) {
+          e.preventDefault();
+          if (inventoryHandle && Popups.count() > 0) { Popups.close(inventoryHandle); inventoryHandle = null; }
+          else if (Popups.count() === 0) openInventory();
+        }
+      } else if (e.key === Controls.get("tool")) {
+        if (!hudHidden && Popups.count() === 0) { e.preventDefault(); useSelected(); }
+      }
+      if (!hudHidden && Popups.count() === 0) {
+        if (e.key === Controls.get("left")) {
+          const b = document.getElementById("nav-left");
+          if (b && !b.hidden) { e.preventDefault(); b.click(); }
+        } else if (e.key === Controls.get("right")) {
+          const b = document.getElementById("nav-right");
+          if (b && !b.hidden) { e.preventDefault(); b.click(); }
+        }
+      }
     });
 
     // graceful error fallback — never a blank screen
@@ -535,7 +795,7 @@ const Game = (() => {
     });
   }
 
-  return { boot, newGame, continueGame, toMenu, notebookOpened, finalDoorOpened, ending, refreshHUD, openSettings, openHints };
+  return { boot, newGame, continueGame, toMenu, notebookOpened, finalDoorOpened, ending, refreshHUD, openSettings, openHints, openInventory, useSelected, noteClick: () => Confusion.onWastedClick() };
 })();
 
 document.addEventListener("DOMContentLoaded", Game.boot);

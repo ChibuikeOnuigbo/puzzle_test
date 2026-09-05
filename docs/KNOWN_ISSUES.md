@@ -21,6 +21,32 @@ Honest list, ranked by impact. None are blockers; all have workarounds.
 7. **No mid-dialogue save granularity** — a refresh during a fade transition restores the
    destination room but drops any unspoken narration lines. State is never lost.
 
+## Update: atmosphere and systems pass (Sep 2026)
+Added and verified this pass:
+- Boot loading screen (the house "wakes up" before the menu appears).
+- FX layer (js/fx.js): every room's light is now a blurred, breathing cone + slanted floor pool + drifting dust motes. No oval light shapes. Hallway/study lamps and basement power respect their toggles. Real falling rain in the child room (the window gained an honest crack). Smart flies gather to light, blood, and the mirror; they avoid the cursor and only appear in some rooms, sometimes. Cobwebs and small spiders in the linen closet, attic, and basement.
+- Linen closet opens and closes on click; if left open, the living house quietly shuts it after a while.
+- Dialogue: Enter (rebindable) skips/advances, with a gamified keycap. Larger font and box. All speech and events are logged (State.speechLog, State.chronicle, State.monologue), and the protagonist now and then catches himself monologuing.
+- Controls settings page: every action (skip, left, right, hints, pause, room labels) can be rebound to any key; the full keyboard is enumerated in KEYBOARD_KEYS.
+- Room labels ("a small room", "the study", etc.) are hidden by default and toggleable via a surveyor's lens hidden on the study desk (also the L key once found).
+- Checkpoints after major tasks, with a mission-notes viewer in the HUD.
+- Mirror arc (js/mirror.js): whole → cracked → shattered → healed (needs 5 hits) → ... with a 150 entry reaction dictionary; after repeated breaks the mirror moves, the wall bleeds STOP, and past the ninth break a hand reaches out of the glass. No torch: you die and return to your last checkpoint. With the torch: the hidden room, footsteps, a short escape, and a gift with house lore.
+- Navigation: the landing's phantom "down" stairway and the basement's stair planks are gone (the basement hatch now falls light from above). Left/right arrows only appear for valid side exits; the landing's left arrow is disabled because two doors face the player there.
+
+Deferred (tracked, not started): 3D section, 2D platformer memory, time of day system, room multi states, camera anomaly system, additional rooms, extended doc set.
+
+## Update: fog, conservatory, flies, torch and inventory pass (Sep 2026)
+Added and verified this pass:
+- A new room: the conservatory (a glasshouse full of mist), reached from the dining room. Its gramophone is a hidden discovery.
+- A >2000 line fog engine (js/fog.js): seeded value-noise drift, gusts, timed swell events, mouse-velocity clearing with a spatial clarity field that heals, and seventeen subsystems (banks, streamers, shafts, draughts, drips, vortices, wisps, bands, panes, ribbons, motes, curls, breaths, weather). Outside clears hard, interiors keep only a ceiling mist, the basement keeps floor fog, the conservatory keeps the most. Every room's fog is hand-choreographed.
+- Flies are now persistent per room (built once, kept across light toggles and re-renders). The dining room carries over 300 small flies attracted to the garbage and spoilt food; they still avoid the cursor.
+- The attic torch is manual: full dark until the player uses it. Tools are used by selecting one and pressing E (or double-clicking its icon); I opens the full satchel inventory.
+- Inventory rebuilt: five pockets bottom centre plus an in-hand slot, a full modal with the satchel on the left and every tool's collected-time and purpose written out, and no icon clutter in the top-right corner.
+- The hint button glows when the player is confused (wasted time and aimless clicking raise a confusion score; progress settles it).
+- Larger top-left buttons (pause, hints, notes).
+
+Deferred (tracked, not started): 3D section, 2D platformer memory, time of day system, room multi states, camera anomaly system, additional rooms, extended doc set.
+
 ## Update: interaction pass (Sep 2026)
 Fixed in this pass:
 - Dialogue no longer buffers spam clicks. say() replaces the queue; one advance per pointer event. Regression test: scripts/qa/break.js section 10.
