@@ -300,10 +300,7 @@ const HouseTricks = (() => {
     if (room === "kitchen" && State.flag("tapCatchup")) {
       State.setFlag("tapCatchup", false);
       State.addAware(3);
-      Dialogue.say([
-        "The tap is off. I left it running. The handle has been turned, gently, and the sink has given up its water.",
-        "The house did not want the water running. I keep thinking about how softly it must have turned the handle.",
-      ]);
+      Dialogue.say("The tap is off. I left it running — the house turned it, gently, while I was gone.");
       return;
     }
     /* the house put the stove out while the player was elsewhere */
@@ -385,7 +382,7 @@ const HouseTricks = (() => {
 
 /* ---------------- room hotspot actions ---------------- */
 /* ---------- shared horror helpers ---------- */
-let tapT0 = null, tapT1 = null, tapT2 = null, tapT3 = null, tapT4 = null, tapT5 = null;
+let tapT0 = null, tapT1 = null, tapT2 = null, tapT2b = null, tapT3 = null, tapT3b = null, tapT4 = null, tapT5 = null;
 let stoveT = null, diningT = null, atticT1 = null, atticT2 = null, closetT = null;
 
 const NUMWORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"];
@@ -393,18 +390,22 @@ function numword(n) { return NUMWORDS[n] || String(n); }
 function capword(n) { const w = numword(n); return w.charAt(0).toUpperCase() + w.slice(1); }
 
 function clearTapTimers() {
-  clearTimeout(tapT0); clearTimeout(tapT1); clearTimeout(tapT2);
-  clearTimeout(tapT3); clearTimeout(tapT4); clearTimeout(tapT5);
+  clearTimeout(tapT0); clearTimeout(tapT1); clearTimeout(tapT2); clearTimeout(tapT2b);
+  clearTimeout(tapT3); clearTimeout(tapT3b); clearTimeout(tapT4); clearTimeout(tapT5);
 }
 function disarmTapTimers() { clearTapTimers(); }
 
-/* The flood, on the house's clock:
-   ~2.5s the sink backs up and drips over the edge
-   ~7s   the house turns the tap off; water hits the floor and spreads FAST
-   ~10s  the spread settles to a slow crawl
-   ~20s  the sink drains; the dripping stops, the floor keeps its water
-   ~56s  the water evaporates, leaving a light stain
-   ~66s  the stain is gone */
+/* The flood, on the house's clock. Dialogue budget for the whole scene:
+   max 3 lines across the flowing + house-off beats, plus one small line
+   when the sink drains. Everything after that is visual only.
+   ~8s    the sink backs up and drips over the edge (slow drips) — 1 short line
+   ~18s   the house turns the tap off; water reaches the floor, spreads SLOW — 2 lines
+   ~23s   the spread turns FAST (slow, then fast)
+   ~29s   the spread settles to a slow crawl
+   ~34s   the sink starts to drain; the water level holds, then sinks — 1 small line
+   ~37.5s the dripping stops, the floor keeps its water (silent)
+   ~75s   the water evaporates, leaving a light stain (silent)
+   ~85s   the stain is gone */
 function armTapTimers() {
   clearTapTimers();
   const inKitchen = () => State.get().room === "kitchen";
@@ -414,65 +415,69 @@ function armTapTimers() {
     if (inKitchen()) {
       Rooms.render();
       Dialogue.say(Dialogue.pick("tapLeak", [
-        "The sink is backing up. The water rises, and begins to lip over the steel edge in a thin, patient sheet.",
-        "It is not draining. The basin brims, and the first drops are already on their way to the floor.",
+        "It's not draining. It's coming over the edge.",
+        "The sink's full — and it's spilling over.",
       ]));
     }
-  }, 2500);
+  }, 8000);
   tapT1 = setTimeout(() => {
     if (!State.flag("tapOn")) return;
     State.setFlag("tapHouseOff");
     State.setFlag("tapOn", false);
     State.setFlag("wetFloor");
-    State.setFlag("tapFloodFast");
+    State.setFlag("tapFloodFast", false); // slow first; the fast surge comes next
     State.addAware(5);
     if (inKitchen()) {
       AudioM.tapSqueak();
       AudioM.dread();
       Rooms.render();
       Dialogue.say([
-        "The handle just turned itself. Gently, the way you turn a tap so it does not squeal. The stream died to nothing.",
-        "The house heard the leak and it shut the water off. But the sink is still full, and the water is still coming over.",
-        "It is spreading across the floor now. Fast, for water. Like it is in a hurry to be somewhere.",
+        "The handle just turned itself. The house shut the water off.",
+        "But the sink's still full — and it's spreading across the floor.",
       ]);
     } else {
       State.setFlag("tapCatchup", true);
     }
-  }, 7000);
+  }, 18000);
   tapT2 = setTimeout(() => {
     if (!State.flag("wetFloor")) return;
-    State.setFlag("tapFloodFast", false);
+    State.setFlag("tapFloodFast", true); // slow, then fast
     if (inKitchen()) Rooms.render();
-  }, 10000);
+  }, 23000);
+  tapT2b = setTimeout(() => {
+    if (!State.flag("wetFloor")) return;
+    State.setFlag("tapFloodFast", false); // the surge settles to a slow crawl
+    if (inKitchen()) Rooms.render();
+  }, 29000);
   tapT3 = setTimeout(() => {
     if (!State.flag("wetFloor")) return;
+    // keep tapOverflow true: the sink visibly holds, then sinks, before the
+    // drips stop at tapT3b. tapDrained + tapOverflow together means "draining".
     State.setFlag("tapDrained");
-    State.setFlag("tapOverflow", false);
     if (inKitchen()) {
       Rooms.render();
-      Dialogue.say([
-        "The sink has emptied itself. The dripping stops, one last drop at a time, and then it stops.",
-        "But the floor keeps its water. The house is in no hurry with that part.",
-      ]);
+      Dialogue.say(Dialogue.pick("tapDrained", [
+        "Sink's emptying. The floor keeps its water.",
+        "There it goes — down the drain. The floor isn't going anywhere.",
+      ]));
     }
-  }, 20000);
+  }, 34000);
+  tapT3b = setTimeout(() => {
+    if (!State.flag("tapDrained")) return;
+    State.setFlag("tapOverflow", false); // drips stop; the floor keeps its water
+    if (inKitchen()) Rooms.render();
+  }, 37500);
   tapT4 = setTimeout(() => {
     if (!State.flag("wetFloor")) return;
     State.setFlag("wetFloor", false);
     State.setFlag("tapMoist");
-    if (inKitchen()) {
-      Rooms.render();
-      Dialogue.say([
-        "The water is gone. Not drained, not wiped. Evaporated, all at once, leaving the boards light and clean where it lay.",
-        "A faint stain where the flood was, paler than the floor around it. The house is already forgetting.",
-      ]);
-    }
-  }, 56000);
+    if (inKitchen()) Rooms.render(); // silent: the pale boards are the line
+  }, 75000);
   tapT5 = setTimeout(() => {
     if (!State.flag("tapMoist")) return;
     State.setFlag("tapMoist", false);
     if (inKitchen()) Rooms.render();
-  }, 66000);
+  }, 85000);
 }
 
 /* if the player shuts the tap early but water is already on the floor, it still dries */
@@ -484,16 +489,14 @@ function armEvapTimers() {
     State.setFlag("tapMoist");
     if (State.get().room === "kitchen") {
       Rooms.render();
-      Dialogue.say([
-        "The water on the floor has gone. Evaporated, leaving the boards light where it lay.",
-      ]);
+      Dialogue.say("The floor's dry. Just pale boards where the water lay.");
     }
-  }, 56000);
+  }, 60000);
   tapT5 = setTimeout(() => {
     if (!State.flag("tapMoist")) return;
     State.setFlag("tapMoist", false);
     if (State.get().room === "kitchen") Rooms.render();
-  }, 66000);
+  }, 70000);
 }
 
 /* the house does not like the stove left burning */

@@ -83,31 +83,60 @@ const w = dom.window, wait = ms => new Promise(r=>setTimeout(r,ms)), ev = c => w
   ev("State.setRoom('study'); Rooms.render()"); await wait(60);
   check("study: no edge door visual, hotspot remains", ev("document.querySelectorAll('#v_sback').length===0 && !!document.querySelector('.hotspot[data-hs=sback]')"));
 
-  // --- kitchen tap flood timeline (scaled) ---
+  // --- kitchen tap flood timeline (scaled 20x): slow drips, slow-then-fast
+  // spread, draining sink with a hold-then-sink delay, silent evaporation ---
   ev("State.setRoom('kitchen'); State.setFlag('tapOn',false); Rooms.render()");
   ev("RoomActions.kitchen.tap()"); await wait(40);
   check("tap on: full stream", ev("document.querySelector('#v_tap').innerHTML.includes('dasharray')"));
-  await wait(140); // ~2.5s scaled -> tapOverflow
-  check("2.5s: sink overflows", ev("State.flag('tapOverflow')===true"));
-  check("overflow: falling drops rendered", ev("document.querySelectorAll('#v_tap animate[attributeName=cy]').length>=3"));
-  await wait(240); // ~7s -> house off
-  check("7s: house turned tap off", ev("State.flag('tapHouseOff')===true && State.flag('tapOn')===false"));
-  check("7s: floor water fast", ev("State.flag('wetFloor')===true && State.flag('tapFloodFast')===true"));
+  await wait(420); // ~8s scaled -> tapOverflow (slow drips)
+  check("8s: sink overflows", ev("State.flag('tapOverflow')===true"));
+  check("overflow: slow falling drops rendered", ev("document.querySelectorAll('#v_tap animate[attributeName=cy]').length>=3"));
+  check("overflow: drips ease in as they fall", ev("document.querySelector('#v_tap').innerHTML.includes('keySplines')"));
+  await wait(520); // ~18s -> house off, spread starts SLOW
+  check("18s: house turned tap off", ev("State.flag('tapHouseOff')===true && State.flag('tapOn')===false"));
+  check("18s: floor water slow first", ev("State.flag('wetFloor')===true && State.flag('tapFloodFast')===false"));
   ev("Rooms.render()");
-  check("7s: no tap stream after off", ev("document.querySelector('#v_tap').innerHTML.includes('dasharray')") === false);
-  check("7s: fast ripples on floor", ev("document.querySelectorAll('#v_puddle ellipse').length>=2"));
-  await wait(160); // ~10s -> slow
-  check("10s: spread settles", ev("State.flag('tapFloodFast')===false"));
-  await wait(520); // ~20s -> drained
-  check("20s: sink drained", ev("State.flag('tapDrained')===true && State.flag('tapOverflow')===false"));
+  check("18s: no tap stream after off", ev("document.querySelector('#v_tap').innerHTML.includes('dasharray')") === false);
+  check("18s: slow ripple on floor", ev("document.querySelectorAll('#v_puddle ellipse').length===1"));
+  await wait(300); // ~23s -> spread turns FAST
+  check("23s: spread turns fast", ev("State.flag('tapFloodFast')===true"));
   ev("Rooms.render()");
-  check("20s: drips gone, water stays", ev("document.querySelectorAll('#v_tap animate[attributeName=cy]').length===0 && State.flag('wetFloor')===true"));
-  await wait(1820); // ~56s -> evaporate
-  check("56s: evaporated, moisture left", ev("State.flag('wetFloor')===false && State.flag('tapMoist')===true"));
+  check("23s: fast ripples on floor", ev("document.querySelectorAll('#v_puddle ellipse').length>=2"));
+  await wait(350); // ~29s -> settle
+  check("29s: spread settles", ev("State.flag('tapFloodFast')===false"));
+  // ~34s -> sink starts draining (holds, then sinks). The draining window is
+  // narrow, and render overhead makes fixed waits flaky, so poll for it.
+  let drainingSaw = false;
+  for (let i = 0; i < 30 && !drainingSaw; i++) {
+    await wait(20);
+    drainingSaw = ev("State.flag('tapDrained')===true && State.flag('tapOverflow')===true");
+  }
+  check("34s: sink draining, drips still falling", drainingSaw);
+  ev("Rooms.render()");
+  check("34s: final drips rendered while draining", ev("document.querySelectorAll('#v_tap animate[attributeName=cy]').length>=2"));
+  check("34s: basin holds then sinks", ev("document.querySelector('#v_tap').innerHTML.includes('0;0.35;1')"));
+  let drainDone = false; // ~37.5s -> drips stop, floor keeps water
+  for (let i = 0; i < 30 && !drainDone; i++) {
+    await wait(20);
+    drainDone = ev("State.flag('tapOverflow')===false");
+  }
+  check("37.5s: drips stopped", drainDone);
+  ev("Rooms.render()");
+  check("37.5s: drips gone, water stays", ev("document.querySelectorAll('#v_tap animate[attributeName=cy]').length===0 && State.flag('wetFloor')===true"));
+  let evapSaw = false; // ~75s -> evaporate
+  for (let i = 0; i < 150 && !evapSaw; i++) {
+    await wait(20);
+    evapSaw = ev("State.flag('wetFloor')===false && State.flag('tapMoist')===true");
+  }
+  check("75s: evaporated, moisture left", evapSaw);
   ev("Rooms.render()");
   check("moisture patch rendered", q("#v_moist"));
-  await wait(520); // ~66s -> moisture gone
-  check("66s: moisture gone", ev("State.flag('tapMoist')===false"));
+  let goneSaw = false; // ~85s -> moisture gone
+  for (let i = 0; i < 50 && !goneSaw; i++) {
+    await wait(20);
+    goneSaw = ev("State.flag('tapMoist')===false");
+  }
+  check("85s: moisture gone", goneSaw);
   ev("Rooms.render()");
   check("no moisture after", ev("document.querySelectorAll('#v_moist').length===0"));
 
