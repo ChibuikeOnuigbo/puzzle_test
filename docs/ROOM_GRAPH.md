@@ -17,14 +17,25 @@ PORCH ── front door ── HALLWAY ── side door ── KITCHEN ── do
                        staircase
                           |
                        LANDING (upstairs corridor)
-                       /   |    \        \
-              child door  study door   ceiling hatch
-                    /      |             \
-             CHILD ROOM   STUDY          ATTIC
+                  /   /   |    \        \
+   corridor bend |  child door  study door   ceiling hatch
+             |   |    /      |             \
+       BACK LANDING | CHILD ROOM   STUDY          ATTIC
+          /      \        \
+  glass door   bathroom door
+        /             \
+ CONSERVATORY   THE SMALL BATHROOM
 ```
 
 - Ground floor: porch, hallway, kitchen, dining room (through the kitchen).
-- Upstairs: landing corridor, child room, study, attic (via ceiling hatch).
+- Upstairs: landing corridor, back landing, child room, study, attic (via ceiling hatch).
+- The BACK LANDING is reached from the landing's left edge (the corridor
+  bends). It holds the conservatory's glass door (the conservatory moved
+  upstairs with it) and a plain door into THE SMALL BATHROOM. The dining
+  room used to hang off this corridor by two impossible stone steps; the
+  house removed that door and put a bathroom there instead, which is
+  worse. The bathroom's high window looks out on a moonlit sea, twenty
+  miles from any coast: the fifth wrong sky.
 - Below: basement (via flat floor hatch in the hallway), memory room beyond the sealed door.
 - The study door is UPSTAIRS, on the landing, between the picture frames
   and the linen closet. The key for it is found downstairs (kitchen lockbox),
@@ -55,7 +66,9 @@ PORCH ── front door ── HALLWAY ── side door ── KITCHEN ── do
 | childroom | 1 | landing | child door | bed, blocks, drawings, music box, books, rain window | none required | block letters, drawings, music box | the room that "never existed" | music box plays itself; the whole ROOM can be deleted and knocked back | state preserved across deletion |
 | attic | 1.5 | landing | ceiling hatch | trunk, fifth chair, tally marks, boxes, small window | torch required; timed exploration (torch dies ~80s, retry allowed) | tallies, fifth chair truth | the hidden fifth place at the table | darkness itself | tallies grow |
 | basement | -1 | hallway, memory | floor hatch, sealed steel door | monitors, tape machine, sealed door | knock pattern short short long | monitor observations | surveillance heart of the house | screens show the player | — |
-| diningroom | 0 | kitchen | kitchen doorway | five settings four plates, cake (17 candles in act 2), small cushioned chair, turned portrait, doorframe height marks, sideboard drawer, dawn window | none required | letter after attic truth; portrait flip | the family kept a fifth place; mother's unsent letter | small chair moves; BECOMES THE ARCHIVE when the child room is deleted (its contents get filed here: music box on the shelf, chalk outline where the table stood) | archive appears/reverts with deletion state |
+| gallery | 1 | landing, conservatory, bathroom | corridor bend (left arrow), glass door, bathroom door | framed photograph of the house from the path, window over the porch roof, a chair facing the wall | none required | the photograph, the window, the chair | the room that proves the outside is a lie | mist seeps under the glass door, cold light under the bathroom door | the chair is warm |
+| diningroom | 0 | kitchen | kitchen doorway, boarded fireplace (was the steps-up door) | five settings four plates, cake (17 candles in act 2), small cushioned chair, turned portrait, doorframe height marks, sideboard drawer, dawn window | none required | letter after attic truth; portrait flip | the family kept a fifth place; mother's unsent letter | small chair moves; BECOMES THE ARCHIVE when the child room is deleted (its contents get filed here: music box on the shelf, chalk outline where the table stood) | archive appears/reverts with deletion state |
+| bathroom | 1 | gallery | bathroom door off the back landing | clawfoot bath full of still warm water, high window onto a moonlit sea, washstand with full jug, mirror cabinet ajar, damp grey towel, wrung bath mat | none required | the bath, the sea window, the towel | the fifth wrong sky; the room the house keeps ready for someone | steam hangs over the warm water | the water is warm before you touch it |
 | memory | -1 | basement | sealed door | master reel, figure, small bed, camera | final choice: ERASE or REMEMBER | figure, drawings | the erased evening; both endings | is itself the anomaly | — |
 
 ## Cross room puzzle chains
@@ -86,9 +99,12 @@ PORCH ── front door ── HALLWAY ── side door ── KITCHEN ── do
 renders only when its hotspot exists in the current scene, so locked,
 deleted, or gated exits take their arrow with them automatically:
 porch right→hallway; hallway left→kitchen, right→stairs; kitchen
-left→dining, right→hall; dining right→kitchen; landing left→child room
-(gone while deleted), right→downstairs; study left→landing; child room
-right→corridor; attic right→climb down; basement left→stairs up.
+left→dining, right→hall; dining right→kitchen (its left wall is now a
+boarded fireplace, not an exit); landing left→back landing,
+right→downstairs; gallery right→corridor (its two doors are clicked, not
+arrowed); study left→landing; child room right→corridor; attic
+right→climb down; conservatory left→back landing; bathroom left→back
+landing; basement left→stairs up.
 
 ## Replacement chain (V5)
 

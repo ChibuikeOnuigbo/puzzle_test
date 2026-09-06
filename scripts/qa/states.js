@@ -14,7 +14,7 @@ const { chromium } = require("playwright-core");
     State.setFlag("closetOpen"); State.addAware(30);
     State.setFlag("roomDeleted_child"); State.setFlag("tapThin");
     const out = [];
-    for (const room of ["porch","hallway","kitchen","study","basement","memory","landing","childroom","attic","diningroom"]) {
+    for (const room of ["porch","hallway","kitchen","study","basement","memory","landing","childroom","attic","diningroom","gallery","conservatory","bathroom"]) {
       State.setRoom(room); Rooms.render();
       out.push(room + ":" + document.querySelectorAll(".hotspot").length);
     }

@@ -29,7 +29,13 @@ const Rooms = (() => {
       <stop offset="0" stop-color="#4a4d50"/><stop offset="1" stop-color="#2e3134"/>
     </linearGradient>
     <!-- soft blur bank for the FX light system: no hard vector edges on light -->
+    <filter id="fxblur1"><feGaussianBlur stdDeviation="1"/></filter>
     <filter id="fxblur2"><feGaussianBlur stdDeviation="2"/></filter>
+    <radialGradient id="moonglow">
+      <stop offset="0" stop-color="#cfd5da" stop-opacity="0.16"/>
+      <stop offset="0.55" stop-color="#cfd5da" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#cfd5da" stop-opacity="0"/>
+    </radialGradient>
     <filter id="fxblur4"><feGaussianBlur stdDeviation="4"/></filter>
     <filter id="fxblur8"><feGaussianBlur stdDeviation="8"/></filter>
     <filter id="fxblur10"><feGaussianBlur stdDeviation="10"/></filter>
@@ -52,6 +58,29 @@ const Rooms = (() => {
       <circle cx="${x}" cy="${y - s * 0.78}" r="${s * 0.16}" fill="${col}"/>
       <path d="M${x - s * 0.2},${y} L${x - s * 0.16},${y - s * 0.6} Q${x},${y - s * 0.72} ${x + s * 0.16},${y - s * 0.6} L${x + s * 0.2},${y} Z" fill="${col}"/>
     </g>`;
+
+  /* ---- the child room's window view: WINDOW_VIEW (generated from the
+     painted PNG by scripts/gen/windowview.js) repainted as vector cells.
+     Runs of one palette index become a single rect, so the whole night
+     garden is a thousand flat quads in the house's own language. ---- */
+  function windowView(x, y, w, h) {
+    if (typeof WINDOW_VIEW === "undefined") return "";
+    const gw = WINDOW_VIEW.gw, gh = WINDOW_VIEW.gh, palette = WINDOW_VIEW.palette, rows = WINDOW_VIEW.rows;
+    const cw = w / gw, ch = h / gh;
+    let out = "";
+    for (let gy = 0; gy < gh; gy++) {
+      const line = rows[gy];
+      let gx = 0;
+      while (gx < gw) {
+        const c = line[gx];
+        let run = 1;
+        while (gx + run < gw && line[gx + run] === c) run++;
+        out += `<rect x="${(x + gx * cw).toFixed(1)}" y="${(y + gy * ch).toFixed(1)}" width="${(run * cw + 0.5).toFixed(1)}" height="${(ch + 0.5).toFixed(1)}" fill="${palette[parseInt(c, 36)]}"/>`;
+        gx += run;
+      }
+    }
+    return out;
+  }
 
   /* ---- pixel-art trees: hand bitmapped, monochrome with dark pixels ----
      No visual assets are loaded; the trees are drawn cell by cell from these
@@ -164,14 +193,6 @@ const Rooms = (() => {
     ".......tt......",
     ".......tt......",
   ];
-  /* a small perched bird: head, body, tail, and a soft dark shadow beneath */
-  const bird = (x, y, s = 1) => `
-    <ellipse cx="${x + 5 * s}" cy="${y + 5 * s}" rx="${7 * s}" ry="${2 * s}" fill="#04060a" opacity="0.5"/>
-    <rect x="${x + 3 * s}" y="${y}" width="${6 * s}" height="${3 * s}" fill="#0a0e15"/>
-    <rect x="${x}" y="${y + 1 * s}" width="${3 * s}" height="${2 * s}" fill="#0a0e15"/>
-    <rect x="${x + 9 * s}" y="${y + 1 * s}" width="${4 * s}" height="${1 * s}" fill="#0a0e15"/>
-    <rect x="${x + 2 * s}" y="${y + 1 * s}" width="${1 * s}" height="${1 * s}" fill="#121a26"/>`;
-
   /* a tuft of night grass: three thin blades */
   const tuft = (x, y, c) => `
     <g stroke="${c || "#162019"}" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.9">
@@ -286,10 +307,325 @@ const Rooms = (() => {
         <g>${fRows(rightRows, gyOf, cell, ox)}${sway([cx, crownBaseY], dur * 0.9, amt * 1.5, 1)}</g>
       </g>`;
   }
+  /* =====================================================================
+     GROUND MIST WITH A MIND — a coarse matrix over the yard (40x6 cells)
+     marks which cells are the pathway; those cells keep only a third of the
+     mist, so the path stays walkable-looking while the beds drown. The FX
+     light root renders above this layer, so the lamp's pool on the path sits
+     over the mist, not under it.
+  ===================================================================== */
+  const mhash = (a, b) => {
+    let h = (a * 374761393 + b * 668265263) ^ 0x5bf03635;
+    h = (h ^ (h >> 13)) * 1274126177;
+    return ((h ^ (h >> 16)) >>> 0) / 4294967296;
+  };
+  function yardMist() {
+    const Y0 = 540, H = 180, COLS = 40, ROWS = 6;
+    const cw = 1280 / COLS, ch = H / ROWS;
+    const poly = [[600, 574], [680, 574], [830, 720], [452, 720]];
+    const inPoly = (px, py) => {
+      let ins = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const [xi, yi] = poly[i], [xj, yj] = poly[j];
+        if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) ins = !ins;
+      }
+      return ins;
+    };
+    const stones = [[640, 600, 52, 23], [626, 636, 58, 24], [658, 674, 64, 25], [636, 710, 70, 26]];
+    let out = "";
+    for (let ry = 0; ry < ROWS; ry++) {
+      for (let cx = 0; cx < COLS; cx++) {
+        const px = cx * cw + cw / 2, py = Y0 + ry * ch + ch / 2;
+        const onPath = inPoly(px, py) || stones.some(([sx, sy, srx, sry]) => ((px - sx) / srx) ** 2 + ((py - sy) / sry) ** 2 < 1);
+        const base = 0.05 + mhash(cx * 7 + 3, ry * 131 + 11) * 0.07;
+        const op = onPath ? base * 0.3 : base;
+        if (op < 0.02) continue;
+        out += `<rect x="${(cx * cw).toFixed(1)}" y="${(Y0 + ry * ch).toFixed(1)}" width="${(cw + 0.6).toFixed(1)}" height="${(ch + 0.6).toFixed(1)}" fill="#76839a" opacity="${op.toFixed(3)}"/>`;
+      }
+    }
+    return `<g id="v_yardmist" pointer-events="none" filter="url(#blurf)" shape-rendering="crispEdges">${out}</g>`;
+  }
+
+  /* =====================================================================
+     THE MOON — five phases decoded once by scripts/gen/moon.js from the AI
+     phase sheet (uploads/moon-phases.png) into js/moon-data.js. Every moon in
+     the house is a JS clone of the same data; a 34s cycle turns the phase,
+     sweeping every clone at once. Pixel cells in three flat tones + a soft
+     blur on the big discs: no hard vector edge, no opacity fade, ever.
+  ===================================================================== */
+  /* the albedo grid: the AI full moon, once, as a cell matrix */
+  let MOON_ALB = null;
+  function moonAlb() {
+    if (MOON_ALB || typeof MOON_DATA === "undefined") return MOON_ALB;
+    const g = MOON_DATA.g;
+    const m = new Int8Array(g * g).fill(-1);
+    for (const row of MOON_DATA.phases[0].rows) {
+      for (const r of row.runs) for (let i = 0; i < r[1]; i++) m[row.gy * g + r[0] + i] = r[2];
+    }
+    MOON_ALB = m;
+    return m;
+  }
+  /* ---- v3: flat, semi-real 2D moon. Three posterised tones instead of
+     the photographic albedo ramp, craters as JS circles in unit-disc
+     space (floor one tone down, rim ring one tone up), and NO opacity
+     anywhere: the night side is a solid fill, the glow is a constant,
+     and every change is geometry - cells jumping between tone paths as
+     the terminator ellipse sweeps. Pixel method, vector calm. */
+  const MOON_BANDS = ["#e9e4d2", "#cdc7b0", "#a9a48e"];   // highland, mid, mare
+  const MOON_NIGHT = "#10161e";                          // solid earthshade disc
+  const MOON_CRATERS = [
+    { u: -0.32, v: -0.18, r: 0.20 }, { u: 0.18, v: -0.34, r: 0.13 },
+    { u: 0.34, v: 0.10, r: 0.16 }, { u: -0.05, v: 0.30, r: 0.24 },
+    { u: -0.52, v: 0.22, r: 0.11 }, { u: 0.55, v: -0.18, r: 0.09 },
+    { u: 0.02, v: -0.04, r: 0.10 },
+  ];
+  function moonBand(idx, u, v) {
+    let b = idx <= 1 ? 2 : idx <= 3 ? 1 : 0;              // albedo 0..4 -> mare..highland
+    for (const c of MOON_CRATERS) {
+      const dx = u - c.u, dy = v - c.v;
+      const q = Math.sqrt(dx * dx + dy * dy) / c.r;
+      if (q < 0.82) return Math.min(2, b + 1);            // crater floor, a tone down
+      if (q < 1.0) return Math.max(0, b - 1);             // rim ring, a tone up
+    }
+    return b;
+  }
+  /* paint the disc for a phase angle alpha (0 full .. pi new) and lit side */
+  function moonPaint(size, alpha, side) {
+    const m = moonAlb();
+    if (!m) return "";
+    const g = MOON_DATA.g, cell = size / g;
+    const c = Math.cos(alpha);
+    const acc = ["", "", ""];
+    let dark = "";
+    for (let gy = 0; gy < g; gy++) {
+      const v = ((gy + 0.5) / g) * 2 - 1;
+      const term = -c * Math.sqrt(Math.max(0, 1 - v * v));
+      for (let gx = 0; gx < g; gx++) {
+        const idx = m[gy * g + gx];
+        if (idx < 0) continue;
+        const u = ((gx + 0.5) / g) * 2 - 1;
+        const d = side * u - term;                        // >0 lit, <0 night side
+        const x = gx * cell, y = gy * cell, w = cell + 0.4, h = cell + 0.4;
+        const rect = `M${x.toFixed(2)},${y.toFixed(2)}h${w.toFixed(2)}v${h.toFixed(2)}h${(-w).toFixed(2)}z`;
+        const b = moonBand(idx, u, v);
+        if (d >= 0) acc[b] += rect;
+        else if (d > -0.12) acc[Math.min(2, b + 1)] += rect;  // soft terminator tooth
+        else dark += rect;
+      }
+    }
+    let out = dark ? `<path d="${dark}" fill="${MOON_NIGHT}"/>` : "";
+    out += acc.map((d, i) => d ? `<path d="${d}" fill="${MOON_BANDS[i]}"/>` : "").join("");
+    return out;
+  }
+  /* the clock: holds each phase, then sweeps the terminator over 7s.
+     waning right-lit down to new, then waxing back left-lit to full. */
+  const MOON_STOPS = [
+    { a: 0.12, s: 1, hold: 34 }, { a: 0.30, s: 1, hold: 34 }, { a: 0.50, s: 1, hold: 34 },
+    { a: 0.68, s: 1, hold: 34 }, { a: 0.84, s: 1, hold: 34 }, { a: 1.00, s: 1, hold: 10 },
+    { a: 0.84, s: -1, hold: 34 }, { a: 0.50, s: -1, hold: 34 }, { a: 0.30, s: -1, hold: 34 },
+  ];
+  const MOON_MORPH = 7;
+  let moonStop = 0, moonT0 = (typeof performance !== "undefined" ? performance.now() : 0);
+  let moonState = { a: MOON_STOPS[0].a * Math.PI, s: 1 };
+  let moonRaf = 0, moonLastPaint = 0, moonPaintedKey = "";
+  function moonClock(now) {
+    const st = MOON_STOPS[moonStop];
+    const nx = MOON_STOPS[(moonStop + 1) % MOON_STOPS.length];
+    const t = (now - moonT0) / 1000;
+    if (t < st.hold) {
+      moonState = { a: st.a * Math.PI, s: st.s };
+    } else if (t < st.hold + MOON_MORPH) {
+      const k = (t - st.hold) / MOON_MORPH;
+      const e = k * k * (3 - 2 * k);
+      /* through new moon the side flips at the exact dark moment */
+      const a = (st.a + (nx.a === 1.00 && st.a === 0.84 ? 0.16 : nx.a - st.a) * e) * Math.PI;
+      let side = st.s;
+      if (st.a === 0.84 && nx.a === 1.00) side = 1;
+      if (st.a === 1.00 && nx.a === 0.84) side = e < 0.5 ? 1 : -1;
+      if (st.a === 1.00) side = e < 0.5 ? 1 : -1;
+      moonState = { a: Math.min(Math.PI, a), s: side };
+    } else {
+      moonStop = (moonStop + 1) % MOON_STOPS.length;
+      moonT0 = now;
+      moonState = { a: MOON_STOPS[moonStop].a * Math.PI, s: MOON_STOPS[moonStop].s };
+    }
+    const key = moonState.a.toFixed(4) + "|" + moonState.s;
+    if (key !== moonPaintedKey && now - moonLastPaint > 80) {   // ~12fps while morphing
+      moonLastPaint = now;
+      moonPaintedKey = key;
+      document.querySelectorAll("[data-moon]").forEach(gEl => {
+        const art = gEl.querySelector("[data-moonart]");
+        if (art) art.innerHTML = moonPaint(parseFloat(gEl.dataset.r) * 2, moonState.a, moonState.s);
+      });
+    }
+    moonRaf = requestAnimationFrame(moonClock);
+  }
+  function moonView(cx, cy, r, opt = {}) {
+    if (typeof MOON_DATA === "undefined") return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#d8dce0"/>`;
+    const size = r * 2;
+    const soft = opt.soft !== false && r >= 20;
+    return `<g data-moon="1" data-r="${r}" transform="translate(${cx - r},${cy - r})">
+      <circle data-moonglow="1" cx="${r}" cy="${r}" r="${(r * 1.9).toFixed(1)}" fill="url(#moonglow)" opacity="${opt.glowOp != null ? opt.glowOp : 0.42}"/>
+      <g data-moonart="1"${soft ? ' filter="url(#fxblur2)"' : ""}>${moonPaint(size, moonState.a, moonState.s)}</g>
+    </g>`;
+  }
+  function startMoonCycle() {
+    if (moonRaf || Settings.get("reducedMotion") || typeof MOON_DATA === "undefined") return;
+    if (typeof requestAnimationFrame === "undefined") return;
+    moonT0 = performance.now();
+    moonRaf = requestAnimationFrame(moonClock);
+  }
+
+  /* =====================================================================
+     ROOF SKIN — the AI close-up (uploads/roof-ref.png) decoded once by
+     scripts/gen/roof.js into js/roof-data.js: a six-step monotone night ramp
+     for the tile grain, plus the branch-dapple as its own mask. The grain is
+     painted as pixel rects (semi-realism), the dapple drifts across the slope
+     slowly, like branches moving in front of the moon. Vector courses, seams,
+     gutter and ridge stay on top, so the roof reads drawn, not photographed.
+  ===================================================================== */
+  function roofGrain() {
+    if (typeof ROOF_DATA === "undefined") return "";
+    const cw = 980 / ROOF_DATA.gw, ch = 94 / ROOF_DATA.gh;
+    const acc = ROOF_DATA.palette.map(() => "");
+    for (const row of ROOF_DATA.rows) {
+      const y = 30 + row.gy * ch;
+      for (const r of row.runs) {
+        const w = r[1] * cw + 0.7;
+        acc[r[2]] += `M${(150 + r[0] * cw).toFixed(1)},${y.toFixed(1)}h${w.toFixed(1)}v${(ch + 0.7).toFixed(1)}h${(-w).toFixed(1)}z`;
+      }
+    }
+    return `<g id="v_roof-grain" opacity="0.34" shape-rendering="crispEdges">${acc.map((d, i) => d ? `<path d="${d}" fill="${ROOF_DATA.palette[i]}"/>` : "").join("")}</g>`;
+  }
+  function roofShadow() {
+    if (typeof ROOF_DATA === "undefined") return "";
+    const cw = 980 / ROOF_DATA.gw, ch = 94 / ROOF_DATA.gh;
+    let d = "";
+    for (const row of ROOF_DATA.shadow) {
+      const y = 30 + row.gy * ch;
+      for (const r of row.runs) {
+        const w = r[1] * cw + 0.7;
+        d += `M${(150 + r[0] * cw).toFixed(1)},${y.toFixed(1)}h${w.toFixed(1)}v${(ch + 0.7).toFixed(1)}h${(-w).toFixed(1)}z`;
+      }
+    }
+    const rm = Settings.get("reducedMotion");
+    const drift = rm ? "" : `<animateTransform attributeName="transform" type="translate" values="-26,4;26,-3;-26,4" dur="47s" repeatCount="indefinite"/>`;
+    const drift2 = rm ? "" : `<animateTransform attributeName="transform" type="translate" values="34,-2;-34,3;34,-2" dur="63s" repeatCount="indefinite"/>`;
+    return `<g id="v_roof-shadow" opacity="0.42"><g>${drift}<path d="${d}" fill="#050403"/></g>${roofBranchShadow(drift2)}</g>`;
+  }
+  /* a branch silhouette creeping the other way: the dapple's movement stops
+     being a sliding texture and starts being a tree in front of the moon */
+  function roofBranchShadow(drift) {
+    const R = rngFrom(21);
+    let out = "";
+    const branch = (x1, y1, ang, len, w, depth) => {
+      const x2 = x1 + Math.cos(ang) * len, y2 = y1 + Math.sin(ang) * len;
+      out += `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} Q${((x1 + x2) / 2).toFixed(1)},${((y1 + y2) / 2 - 4).toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}" stroke="#040302" stroke-width="${w.toFixed(1)}" fill="none" stroke-linecap="round"/>`;
+      if (depth >= 3) {
+        out += `<ellipse cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" rx="${(9 + R() * 8).toFixed(1)}" ry="${(5 + R() * 4).toFixed(1)}" fill="#040302"/>`;
+        return;
+      }
+      const kids = 2 + (R() < 0.4 ? 1 : 0);
+      for (let i = 0; i < kids; i++) branch(x2, y2, ang + (i - (kids - 1) / 2) * 0.5 + (R() - 0.5) * 0.3, len * (0.66 + R() * 0.12), w * 0.6, depth + 1);
+    };
+    branch(1118, 66, Math.PI * 0.82, 96, 6, 0);
+    branch(1030, 42, Math.PI * 0.9, 82, 5, 0);
+    branch(880, 78, Math.PI * 0.78, 70, 4, 0);
+    return `<g opacity="0.4"><g>${drift}${out}</g></g>`;
+  }
+  /* staggered vertical tile joints, per course, following each slope */
+  function roofSeams() {
+    const ridge = 640, top = 30, eave = 124, run = 490;
+    const xL = y => ridge - run * (y - top) / (eave - top);
+    const xR = y => ridge + run * (y - top) / (eave - top);
+    let s = "", row = 0;
+    for (let y = 36; y <= 117; y += 7) {
+      const off = (row % 2) * 12;
+      for (let x = xL(y) + 10 + off; x < ridge - 6; x += 24) {
+        s += `<line x1="${x.toFixed(1)}" y1="${y}" x2="${(x - 2.4).toFixed(1)}" y2="${y + 7}" stroke="#0e0c0a" stroke-width="1.1" opacity="0.42"/>`;
+      }
+      for (let x = 646 + off; x < xR(y) - 8; x += 24) {
+        s += `<line x1="${x.toFixed(1)}" y1="${y}" x2="${(x + 2.4).toFixed(1)}" y2="${y + 7}" stroke="#0e0c0a" stroke-width="1.1" opacity="0.34"/>`;
+      }
+      row++;
+    }
+    return `<g id="v_roof-seams">${s}</g>`;
+  }
+
+  /* =====================================================================
+     PROCEDURAL TREES — drawn by JS as smooth tapered limbs, never pixels.
+     A seeded rng grows a trunk into limbs into twigs; each main limb (and
+     the trunk itself) gets its own slow rotate about its own root, so the
+     trunk rocks and the branches wave independently. Oaks carry soft
+     canopy blobs on their outer limbs; dead trees stay bare and wiry.
+  ===================================================================== */
+  function rngFrom(seed) {
+    let t = seed >>> 0;
+    return () => {
+      t += 0x6D2B79F5;
+      let r = Math.imul(t ^ t >>> 15, 1 | t);
+      r ^= r + Math.imul(r ^ r >>> 7, 61 | r);
+      return ((r ^ r >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function vecTree(seed, x, baseY, h, opt = {}) {
+    const R = rngFrom(seed);
+    const col = opt.color || "#04060a";
+    const leafCol = opt.leafColor || "#05070b";
+    const bare = !!opt.bare;
+    const lean = opt.lean || 0;
+    const rm = Settings.get("reducedMotion");
+    const swayDur = opt.swayDur || 9;
+    const swayAmt = opt.swayAmt || 0.5;
+    const maxDepth = opt.maxDepth || 4;
+    const sway = (px, py, amt, dur) => `<animateTransform attributeName="transform" type="rotate" values="${(-amt).toFixed(2)} ${px.toFixed(1)} ${py.toFixed(1)};${amt.toFixed(2)} ${px.toFixed(1)} ${py.toFixed(1)};${(-amt).toFixed(2)} ${px.toFixed(1)} ${py.toFixed(1)}" dur="${dur.toFixed(2)}s" repeatCount="indefinite"/>`;
+    function limb(x1, y1, ang, len, w, depth) {
+      const bend = (R() - 0.5) * 0.44;
+      const cx = x1 + Math.cos(ang + bend * 0.4) * len * 0.5;
+      const cy = y1 + Math.sin(ang + bend * 0.4) * len * 0.5;
+      const x2 = x1 + Math.cos(ang + bend) * len;
+      const y2 = y1 + Math.sin(ang + bend) * len;
+      let inner = `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} Q${cx.toFixed(1)},${cy.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}" stroke="${col}" stroke-width="${Math.max(1.1, w).toFixed(1)}" fill="none" stroke-linecap="round"/>`;
+      if (!bare && depth >= 2 && R() < 0.4) {
+        const rs = len * (0.34 + R() * 0.2);
+        inner += `<ellipse cx="${(x2 - rs * 0.4).toFixed(1)}" cy="${(y2 - rs * 0.3).toFixed(1)}" rx="${(rs * 0.9).toFixed(1)}" ry="${(rs * 0.42).toFixed(1)}" fill="${leafCol}" opacity="0.95"/>`;
+      }
+      if (!bare && depth >= maxDepth - 1) {
+        /* twigs poking past the canopy so the edge is never a clean scallop */
+        for (let k = 0; k < 2; k++) {
+          const ta = ang + (R() - 0.5) * 1.1;
+          const tl = len * (0.5 + R() * 0.4);
+          inner += `<path d="M${x2.toFixed(1)},${y2.toFixed(1)} q${(Math.cos(ta) * tl * 0.5).toFixed(1)},${(Math.sin(ta) * tl * 0.5).toFixed(1)} ${(Math.cos(ta) * tl).toFixed(1)},${(Math.sin(ta) * tl).toFixed(1)}" stroke="${col}" stroke-width="1.2" fill="none" stroke-linecap="round"/>`;
+        }
+      }
+      if (!bare && depth >= 3 && R() < 0.75) {
+        const rr = len * (0.6 + R() * 0.4);
+        inner += `<ellipse cx="${x2.toFixed(1)}" cy="${(y2 - rr * 0.18).toFixed(1)}" rx="${(rr * (1.15 + R() * 0.55)).toFixed(1)}" ry="${(rr * (0.48 + R() * 0.2)).toFixed(1)}" fill="${leafCol}"/>`;
+        inner += `<ellipse cx="${(x2 + rr * 0.5).toFixed(1)}" cy="${(y2 - rr * 0.42).toFixed(1)}" rx="${(rr * 0.8).toFixed(1)}" ry="${(rr * 0.34).toFixed(1)}" fill="${leafCol}" opacity="0.9"/>`;
+      }
+      if (depth >= maxDepth) return inner;
+      const kids = depth === 0 ? 3 : (bare ? (R() < 0.5 ? 3 : 2) : (R() < 0.35 ? 3 : 2));
+      let out = "";
+      for (let i = 0; i < kids; i++) {
+        const spread = (i - (kids - 1) / 2) * (0.52 + R() * 0.34) + (R() - 0.5) * 0.3;
+        out += limb(x2, y2, ang + spread, len * (0.64 + R() * 0.14), w * 0.6, depth + 1);
+      }
+      if (depth < 2) out += limb(x2, y2, ang + (R() - 0.5) * 0.22, len * 0.76, w * 0.68, depth + 1);
+      /* main limbs wave on their own pivot, faster and wider than the trunk */
+      if (depth <= 1 && !rm) {
+        return `<g>${sway(x1, y1, swayAmt * (1.5 + depth * 0.7 + R() * 0.6), swayDur * (0.5 + R() * 0.28))}${inner}${out}</g>`;
+      }
+      return inner + out;
+    }
+    const body = limb(x, baseY, -Math.PI / 2 + lean, h * 0.34, Math.max(9, h * 0.042), 0);
+    const wrapped = rm ? body : `<g>${sway(x, baseY, swayAmt, swayDur)}${body}</g>`;
+    return `<g pointer-events="none">${wrapped}</g>`;
+  }
+
   function forestFar() {
     if (!FOREST) return "";
     const gyOf = gy => 424 + (gy - FOREST.far.groundGy) * FOREST.cell;
-    return `<g id="v_forest-far" filter="url(#fxblur2)" opacity="0.62">${fRows(FOREST.far.rows, gyOf, FOREST.cell, 0)}</g>`;
+    return `<g id="v_forest-far" filter="url(#fxblur2)" opacity="0.62" shape-rendering="crispEdges">${fRows(FOREST.far.rows, gyOf, FOREST.cell, 0)}</g>`;
   }
   function forestFog() {
     return `<g id="v_forest-fog" pointer-events="none">
@@ -302,8 +638,17 @@ const Rooms = (() => {
     if (!FOREST) return "";
     const groundGy = FOREST.near.groundGy;
     const gyOf = gy => 536 + (gy - groundGy) * FOREST.cell;
-    const trees = FOREST.trees.map(t => fTree(t, { baseY: 536 })).join("");
-    return `<g id="v_forest-near">
+    /* the generated pixel trees are gone: JS regrows each one from its own
+       trunk position as a smooth bare tree, trunk rocking, branches waving */
+    const trees = FOREST.trees.map(t => {
+      const x = t.trunkCx * FOREST.cell;
+      const h = (groundGy - t.top) * FOREST.cell;
+      return vecTree(t.x0 + 3, x, 536, h * 0.92, {
+        bare: true, maxDepth: 3, color: "#0a0e15", lean: ((t.x0 % 7) - 3) * 0.015,
+        swayDur: 7 + (t.x0 % 5) * 1.1, swayAmt: 0.4 + (t.x0 % 3) * 0.12,
+      });
+    }).join("");
+    return `<g id="v_forest-near" filter="url(#fxblur2)" opacity="0.92" shape-rendering="crispEdges">
       <g id="v_forest-near-bg">${fRows(FOREST.near.rows, gyOf, FOREST.cell, 0)}</g>
       <g id="v_forest-trees">${trees}</g>
     </g>`;
@@ -377,94 +722,171 @@ const Rooms = (() => {
         <rect x="655" y="332" width="4" height="16" fill="#c9a35f"/>
       </g>` : `
       <!-- the long table, laid for five, plates for four -->
-      <g id="v_smallchair" transform="translate(${moved ? -258 : 0},0)">
-        <rect x="840" y="474" width="64" height="8" rx="4" fill="#4a3826"/>
-        <rect x="846" y="482" width="7" height="46" rx="3" fill="#3a2c1e"/>
-        <rect x="889" y="482" width="7" height="46" rx="3" fill="#3a2c1e"/>
-        <rect x="836" y="560" width="9" height="120" fill="#3a2c1e"/>
-        <rect x="892" y="560" width="9" height="120" fill="#3a2c1e"/>
-        <circle cx="840" cy="557" r="4.5" fill="#4a3826"/>
-        <circle cx="896" cy="557" r="4.5" fill="#4a3826"/>
-        <rect x="844" y="572" width="50" height="8" rx="3" fill="#4a3826"/>
-        <polygon points="834,600 902,600 908,616 828,616" fill="#4a3826"/>
-        <rect x="836" y="604" width="64" height="9" rx="3" fill="#a5503c" opacity="0.75"/>
+      <g id="v_smallchair" transform="translate(${moved ? -258 : 0},0) rotate(3.4 868 600)">
+        <ellipse cx="868" cy="688" rx="42" ry="7" fill="#0d0a08" opacity="0.4"/>
+        <!-- a child's chair: the back posts mortise into the seat rail, three
+             slats, turned legs joined front to back, a worn cushion -->
+        <rect x="842" y="470" width="7" height="132" rx="3" fill="#4a3826"/>
+        <rect x="887" y="470" width="7" height="132" rx="3" fill="#4a3826"/>
+        <circle cx="845.5" cy="468" r="4.5" fill="#5d4a35"/>
+        <circle cx="890.5" cy="468" r="4.5" fill="#5d4a35"/>
+        <rect x="847" y="480" width="42" height="7" rx="3" fill="#5d4a35"/>
+        <rect x="847" y="498" width="42" height="6" rx="3" fill="#4a3826"/>
+        <rect x="847" y="516" width="42" height="6" rx="3" fill="#42311f"/>
+        <rect x="845" y="534" width="46" height="5" rx="2.5" fill="#3a2c1e"/>
+        <polygon points="838,596 900,596 904,606 834,606" fill="#4a3826"/>
+        <polygon points="840,588 898,588 901,597 837,597" fill="#a5503c"/>
+        <polygon points="840,588 898,588 899,592 839,592" fill="#b8664f" opacity="0.85"/>
+        <path d="M846,592 q22,4 46,0" stroke="#7d3a2c" stroke-width="1.4" fill="none" opacity="0.7"/>
+        <rect x="836" y="604" width="8" height="78" rx="3" fill="#3a2c1e"/>
+        <rect x="892" y="604" width="8" height="78" rx="3" fill="#3a2c1e"/>
+        <rect x="840" y="640" width="58" height="7" rx="3" fill="#42311f"/>
+        <rect x="842" y="616" width="54" height="6" rx="3" fill="#3a2c1e"/>
       </g>
-      ${[420, 560, 700].map(x => `
-      <g transform="translate(${x},0)">
-        <rect x="6" y="470" width="68" height="9" rx="4" fill="#4a3826"/>
-        <rect x="12" y="479" width="7" height="50" rx="3" fill="#3a2c1e"/>
-        <rect x="61" y="479" width="7" height="50" rx="3" fill="#3a2c1e"/>
-        <rect x="0" y="536" width="10" height="150" fill="#3a2c1e"/>
-        <rect x="70" y="536" width="10" height="150" fill="#3a2c1e"/>
-        <circle cx="5" cy="533" r="5" fill="#4a3826"/>
-        <circle cx="75" cy="533" r="5" fill="#4a3826"/>
-        <rect x="8" y="548" width="64" height="9" rx="3" fill="#4a3826"/>
-        <polygon points="-2,596 82,596 90,614 -10,614" fill="#4a3826"/>
-        <polygon points="-2,596 82,596 88,608 -8,608" fill="#5d4a35"/>
+      ${[420, 560, 700].map((x, ci) => `
+      <g transform="translate(${x},0) rotate(${[-3.4, 2.6, -2.0][ci]} 40 604)">
+        <ellipse cx="40" cy="692" rx="48" ry="7" fill="#0d0a08" opacity="0.35"/>
+        <!-- a dining chair with a real back: posts run INTO the seat, finials,
+             three rails, an angled seat slab, legs joined by stretchers -->
+        <rect x="4" y="466" width="9" height="140" rx="3" fill="#3a2c1e"/>
+        <rect x="67" y="466" width="9" height="140" rx="3" fill="#3a2c1e"/>
+        <circle cx="8.5" cy="464" r="5.5" fill="#4a3826"/>
+        <circle cx="71.5" cy="464" r="5.5" fill="#4a3826"/>
+        <rect x="10" y="478" width="60" height="11" rx="4" fill="#4a3826"/>
+        <rect x="12" y="480" width="56" height="3" rx="1.5" fill="#5d4a35" opacity="0.8"/>
+        <rect x="10" y="502" width="60" height="7" rx="3" fill="#42311f"/>
+        <rect x="10" y="524" width="60" height="7" rx="3" fill="#3a2c1e"/>
+        <polygon points="0,598 80,598 84,610 -4,610" fill="#4a3826"/>
+        <polygon points="2,590 78,590 82,600 -2,600" fill="#6b4a3a"/>
+        <polygon points="2,590 78,590 79,594 1,594" fill="#7d5a46" opacity="0.85"/>
+        <rect x="2" y="608" width="9" height="76" rx="3" fill="#33261a"/>
+        <rect x="69" y="608" width="9" height="76" rx="3" fill="#33261a"/>
+        <rect x="6" y="646" width="68" height="7" rx="3" fill="#3a2c1e"/>
+        <rect x="8" y="606" width="64" height="6" rx="3" fill="#42311f" opacity="0.9"/>
       </g>`).join("")}
-      <g id="v_dtable">
-        <ellipse cx="660" cy="700" rx="360" ry="16" fill="#0d0a08" opacity="0.4"/>
-        <polygon points="360,614 960,614 1010,668 310,668" fill="url(#woodg)"/>
-        <polygon points="360,614 960,614 1010,668 310,668" fill="#4a3826" opacity="0.55"/>
-        <path d="M360,614 L960,614 M346,632 L974,632 M334,650 L988,650" stroke="#33261a" stroke-width="1.4" opacity="0.45"/>
-        <polygon points="470,614 850,614 880,656 440,656" fill="#8a7454" opacity="0.9"/>
-        <path d="M470,614 L440,656 M850,614 L880,656" stroke="#6b5544" stroke-width="1.4" opacity="0.5"/>
-        <polygon points="310,668 1010,668 1010,680 310,680" fill="#33261a"/>
-        <rect x="330" y="680" width="14" height="40" fill="#2c2115"/>
-        <rect x="976" y="680" width="14" height="40" fill="#2c2115"/>
-        <rect x="430" y="680" width="12" height="34" fill="#2c2115"/>
-        <rect x="878" y="680" width="12" height="34" fill="#2c2115"/>
-        <ellipse cx="337" cy="721" rx="12" ry="4" fill="#0d0a08" opacity="0.5"/>
-        <ellipse cx="982" cy="721" rx="12" ry="4" fill="#0d0a08" opacity="0.5"/>
-        ${[430, 560, 690, 820].map(x => `<ellipse cx="${x}" cy="${638}" rx="30" ry="9" fill="#cfc4a8"/><ellipse cx="${x}" cy="${637}" rx="22" ry="6.5" fill="#ded4bb"/>`).join("")}
+      <g id="v_dtable" transform="rotate(-0.7 660 640)">
+        <ellipse cx="660" cy="704" rx="372" ry="16" fill="#0d0a08" opacity="0.45"/>
+        <!-- the slab: lit top, thick front edge, apron, turned legs -->
+        <polygon points="360,610 960,610 1014,666 306,666" fill="url(#woodg)"/>
+        <polygon points="360,610 960,610 1014,666 306,666" fill="#5d4a35" opacity="0.3"/>
+        <path d="M368,620 L952,620 M352,636 L968,636 M338,652 L982,652" stroke="#33261a" stroke-width="1.2" opacity="0.5" fill="none"/>
+        <path d="M430,616 q70,10 140,4 M690,648 q90,-8 160,2 M520,660 q60,6 120,0" stroke="#241a11" stroke-width="1" opacity="0.4" fill="none"/>
+        <polygon points="306,666 1014,666 1014,679 306,679" fill="#2c2115"/>
+        <polygon points="306,666 1014,666 1014,670.5 306,670.5" fill="#6b5544" opacity="0.75"/>
+        <polygon points="360,610 960,610 966,616 354,616" fill="#241a11" opacity="0.55"/>
+        <path d="M306,666 L1014,666" stroke="#7d6248" stroke-width="1.6" opacity="0.5"/>
+        <rect x="336" y="679" width="648" height="9" fill="#241a11"/>
+        <g fill="#2c2115">
+          <rect x="342" y="688" width="16" height="36" rx="3"/><rect x="340" y="694" width="20" height="5" rx="2.5" fill="#3a2c1e"/>
+          <rect x="964" y="688" width="16" height="36" rx="3"/><rect x="962" y="694" width="20" height="5" rx="2.5" fill="#3a2c1e"/>
+          <rect x="450" y="688" width="13" height="30" rx="3"/><rect x="860" y="688" width="13" height="30" rx="3"/>
+        </g>
+        <ellipse cx="350" cy="725" rx="14" ry="4" fill="#0d0a08" opacity="0.5"/>
+        <ellipse cx="972" cy="725" rx="14" ry="4" fill="#0d0a08" opacity="0.5"/>
+        <!-- runner with a woven band and fringe -->
+        <polygon points="470,610 850,610 884,662 436,662" fill="#6f3a30" opacity="0.95"/>
+        <polygon points="470,610 850,610 856,619 464,619" fill="#84483a" opacity="0.9"/>
+        <polygon points="452,636 868,636 872,643 448,643" fill="#8a5a44" opacity="0.5"/>
+        <path d="M436,662 l-5,9 M452,662 l-5,9 M468,662 l-4,9 M852,662 l5,9 M868,662 l4,9" stroke="#5d3028" stroke-width="2" opacity="0.8"/>
+        <!-- four plates with rims and wells, and cutlery laid by each -->
+        ${[430, 560, 690, 820].map(x => `
+        <ellipse cx="${x}" cy="637" rx="33" ry="10.5" fill="#a89d84"/>
+        <ellipse cx="${x}" cy="635.5" rx="33" ry="10.5" fill="#d8cfb6"/>
+        <ellipse cx="${x}" cy="634.5" rx="23" ry="7" fill="#e8dfc8"/>
+        <ellipse cx="${x}" cy="633.6" rx="20" ry="5.8" fill="#cfc4a8" opacity="0.55"/>
+        <rect x="${x - 45}" y="628" width="3.6" height="17" rx="1.8" fill="#9aa0a6"/>
+        <rect x="${x + 41}" y="628" width="3.6" height="17" rx="1.8" fill="#9aa0a6"/>
+        <ellipse cx="${x + 34}" cy="620" rx="6" ry="3" fill="#b8c4c9" opacity="0.7"/>`).join("")}
+        <!-- the fifth setting: mat, fork, cup. no plate -->
         <rect x="906" y="630" width="52" height="14" rx="3" fill="#6b5544"/>
-        <path d="M918,628 l0,-10 M926,628 l0,-10" stroke="#8f8778" stroke-width="2"/>
+        <path d="M918,628 l0,-10 M926,628 l0,-10" stroke="#8f9691" stroke-width="2"/>
         <ellipse cx="946" cy="628" rx="9" ry="5" fill="#cfc4a8"/>
+        <ellipse cx="946" cy="626.6" rx="7" ry="3.6" fill="#8a7f6c"/>
       </g>
-      <g id="v_dcake">
-        <ellipse cx="640" cy="612" rx="52" ry="12" fill="#8a7454"/>
-        <path d="M600,610 q0,-44 40,-44 q40,0 40,44" fill="#b8c4c9" opacity="0.35" stroke="#9aa3ad" stroke-width="2"/>
+      <g id="v_dcake" transform="translate(0,24)">
+        <ellipse cx="640" cy="612" rx="54" ry="12" fill="#8a7454"/>
+        <ellipse cx="640" cy="610" rx="54" ry="11" fill="#9a8464"/>
+        <path d="M598,610 q0,-46 42,-46 q42,0 42,46" fill="#b8c4c9" opacity="0.3" stroke="#9aa3ad" stroke-width="2"/>
+        <path d="M606,586 q10,-14 34,-14 q24,0 34,14" fill="none" stroke="#dfe6ea" stroke-width="1.6" opacity="0.5"/>
         <rect x="612" y="588" width="56" height="20" rx="4" fill="#c9a878"/>
         <rect x="612" y="584" width="56" height="8" rx="4" fill="#e0d5c0"/>
+        <path d="M616,592 q6,6 10,0 q6,6 10,0 q6,6 10,0 q6,6 10,0" stroke="#a5825a" stroke-width="1.6" fill="none" opacity="0.7"/>
         ${act2 ? [...Array(17)].map((_, i) => `<line x1="${615 + i * 3.2}" y1="580" x2="${615 + i * 3.2}" y2="574" stroke="#a5503c" stroke-width="1.6"/>`).join("") : ""}
         <rect x="674" y="606" width="34" height="5" rx="2" fill="#8f9691"/>
       </g>
       <!-- the feast: food the house keeps impossibly fresh -->
-      <g id="v_feast">
-        <ellipse cx="500" cy="612" rx="44" ry="11" fill="#6b5544"/>
-        <ellipse cx="500" cy="610" rx="40" ry="9" fill="#c9a878"/>
-        <path d="M470,606 q30,-24 60,0 q-26,8 -60,0 Z" fill="#a5673c"/>
-        <path d="M478,600 q22,-16 44,0" fill="none" stroke="#d8a25c" stroke-width="3" opacity="0.7"/>
-        <line x1="532" y1="608" x2="546" y2="602" stroke="#e8e0d0" stroke-width="3" stroke-linecap="round"/>
-        <path d="M586,606 q24,16 0,24 q-24,-8 0,-24 Z" fill="#4a6a4a"/>
-        <path d="M588,608 q8,-10 16,-4 q4,10 -6,12 q-8,0 -10,-8 Z" fill="#6f9a54"/>
-        <path d="M606,608 q8,-8 14,-2 q2,8 -8,10 Z" fill="#8ab45e"/>
-        <circle cx="700" cy="616" r="9" fill="#c99a58"/>
-        <circle cx="720" cy="614" r="8" fill="#d3a563"/>
-        <circle cx="738" cy="616" r="9" fill="#c99a58"/>
-        <path d="M700,610 l0,3 M700,615 l0,3 M720,608 l0,3 M720,613 l0,3 M738,610 l0,3 M738,615 l0,3" stroke="#8a6238" stroke-width="1.6"/>
-        <path d="M808,600 q-2,-22 12,-24 q14,2 12,24 Z" fill="#c9d4d8" opacity="0.9"/>
-        <path d="M806,606 q-4,8 2,10" stroke="#c9d4d8" stroke-width="3" fill="none"/>
-        <path d="M812,580 q14,-4 26,0" stroke="#a8b8c0" stroke-width="3" fill="none"/>
-        <rect x="812" y="578" width="3" height="22" fill="#e4ecef" opacity="0.6"/>
-        <rect x="378" y="588" width="7" height="20" rx="2" fill="#e8e4d8"/>
-        <path d="M381.5,584 q0,-7 3,-4 q3,3 0,6 q-2,1 -3,-2 Z" fill="#e8913f"/>
-        <rect x="878" y="588" width="7" height="20" rx="2" fill="#e8e4d8"/>
-        <path d="M881.5,584 q0,-7 3,-4 q3,3 0,6 q-2,1 -3,-2 Z" fill="#e8913f"/>
+      <g id="v_feast" transform="translate(0,22)">
+        <!-- roast on a platter, bone ended, still steaming -->
+        <ellipse cx="500" cy="613" rx="48" ry="12" fill="#5a4632"/>
+        <ellipse cx="500" cy="611" rx="48" ry="11" fill="#cfc4a8"/>
+        <ellipse cx="500" cy="610" rx="40" ry="8.5" fill="#ded4bb"/>
+        <path d="M468,606 q32,-26 64,0 q-30,9 -64,0 Z" fill="#8a4f2c"/>
+        <path d="M474,600 q26,-18 52,0" fill="none" stroke="#c98a4a" stroke-width="3" opacity="0.8"/>
+        <path d="M480,604 q20,-12 40,0" fill="none" stroke="#e0b070" stroke-width="1.6" opacity="0.7"/>
+        <path d="M470,604 q-6,-2 -8,-6" stroke="#e8e0d0" stroke-width="4" stroke-linecap="round" fill="none"/>
+        <circle cx="461" cy="597" r="3.4" fill="#e8e0d0"/>
+        <path d="M486,590 q4,-10 0,-16 M502,588 q5,-9 1,-16 M516,590 q4,-10 0,-15" stroke="#d8dce0" stroke-width="1.6" fill="none" opacity="0.35"/>
+        <!-- a bowl of vegetables, each one a different shape -->
+        <path d="M576,604 q26,20 0,28 q-26,-8 0,-28 Z" fill="#4a6a4a"/>
+        <ellipse cx="590" cy="616" rx="20" ry="7" fill="#5d7a52"/>
+        <path d="M580,610 q6,-8 12,-3 q3,7 -5,9 q-7,0 -7,-6 Z" fill="#6f9a54"/>
+        <path d="M596,608 q7,-7 12,-1 q1,7 -8,9 Z" fill="#8ab45e"/>
+        <circle cx="586" cy="613" r="4" fill="#c9762c"/>
+        <circle cx="598" cy="614" r="3.4" fill="#d8862c"/>
+        <path d="M584,609 l2,-3 M596,607 l2,-3" stroke="#4a6a3a" stroke-width="1.4"/>
+        <!-- a basket of rolls -->
+        <path d="M686,616 q14,10 56,0 q-4,-12 -28,-12 q-24,0 -28,12 Z" fill="#6b5544"/>
+        <circle cx="700" cy="608" r="8.5" fill="#c99a58"/>
+        <circle cx="718" cy="606" r="8" fill="#d3a563"/>
+        <circle cx="735" cy="609" r="8.5" fill="#c99a58"/>
+        <path d="M696,604 q4,-4 8,0 M714,602 q4,-4 8,0 M731,605 q4,-4 8,0" stroke="#8a6238" stroke-width="1.6" fill="none"/>
+        <path d="M700,610 l0,3 M718,608 l0,3 M735,611 l0,3" stroke="#8a6238" stroke-width="1.4"/>
+        <!-- a jug and two candles, lit -->
+        <path d="M806,600 q-3,-24 13,-26 q16,2 13,26 Z" fill="#c9d4d8" opacity="0.92"/>
+        <path d="M804,606 q-5,9 3,11" stroke="#c9d4d8" stroke-width="3.4" fill="none"/>
+        <path d="M810,578 q15,-5 28,0" stroke="#a8b8c0" stroke-width="3" fill="none"/>
+        <ellipse cx="819" cy="600" rx="10" ry="3" fill="#e4ecef" opacity="0.5"/>
+        ${[476, 764].map(cx => `
+        <rect x="${cx - 3.5}" y="588" width="7" height="20" rx="2" fill="#e8e4d8"/>
+        <path d="M${cx - 3.5},592 q3,3 7,0" stroke="#cfc8b8" stroke-width="1.2" fill="none" opacity="0.8"/>
+        <path d="M${cx},584 q0,-7 3,-4 q3,3 0,6 q-2,1 -3,-2 Z" fill="#e8913f"/>
+        <circle cx="${cx + 1}" cy="585" r="1.4" fill="#f6d896"/>`).join("")}
       </g>
       ${State.flag("diningTidied") ? "" : `
       <!-- the plate gone bad: what the house did not bother keeping -->
-      <g id="v_spoilt">
-        <ellipse cx="368" cy="612" rx="34" ry="9" fill="#5a5648"/>
-        <path d="M350,608 q10,-10 20,-4 q8,6 6,10 q-14,8 -26,-6 Z" fill="#7a8a5e"/>
-        <path d="M356,604 q4,-6 10,-4 q4,4 2,8 q-8,4 -12,-4 Z" fill="#9aa888" opacity="0.8"/>
-        <path d="M368,606 q3,-5 8,-3 q3,3 1,7 q-6,3 -9,-4 Z" fill="#6b7a52"/>
-        <path d="M352,602 q2,-5 6,-6 M362,600 q3,-4 7,-4 M372,602 q2,-4 6,-5" stroke="#b8c4a8" stroke-width="1.6" fill="none" opacity="0.8"/>
+      <g id="v_spoilt" transform="translate(0,18)">
+        <ellipse cx="368" cy="613" rx="36" ry="10" fill="#4a4638"/>
+        <ellipse cx="368" cy="611" rx="36" ry="9.5" fill="#6a6552"/>
+        <ellipse cx="368" cy="610" rx="26" ry="6.8" fill="#57543f"/>
+        <!-- the food itself: collapsed, weeping, wrong coloured -->
+        <path d="M348,606 q12,-12 24,-5 q10,6 7,11 q-16,9 -31,-6 Z" fill="#6d7a4a"/>
+        <path d="M352,604 q6,-7 13,-4 q5,4 2,9 q-9,4 -15,-5 Z" fill="#8a9468" opacity="0.85"/>
+        <path d="M366,605 q4,-6 10,-3 q3,4 0,8 q-7,3 -10,-5 Z" fill="#5d6b3e"/>
+        <path d="M354,610 q4,6 2,10 M372,609 q3,6 1,10" stroke="#4a5232" stroke-width="2" fill="none" opacity="0.8"/>
+        <!-- mould: fuzzy colonies, white rims and green hearts -->
+        <g filter="url(#fxblur2)">
+          <circle cx="356" cy="602" r="4.6" fill="#b8c4a8" opacity="0.75"/>
+          <circle cx="356" cy="602" r="2.4" fill="#7d8a52" opacity="0.9"/>
+          <circle cx="370" cy="600" r="3.6" fill="#c4ccb4" opacity="0.7"/>
+          <circle cx="370" cy="600" r="1.8" fill="#6d7a46" opacity="0.9"/>
+          <circle cx="364" cy="608" r="2.8" fill="#a8b494" opacity="0.7"/>
+          <circle cx="378" cy="606" r="2.2" fill="#b8c4a8" opacity="0.6"/>
+        </g>
+        <circle cx="356" cy="602" r="1" fill="#e8ecdc" opacity="0.9"/>
+        <circle cx="370" cy="600" r="0.8" fill="#e8ecdc" opacity="0.85"/>
+        <circle cx="364" cy="608" r="0.7" fill="#dfe6d0" opacity="0.8"/>
+        <!-- a slime trail over the rim and a stain on the cloth -->
+        <path d="M344,610 q-4,6 -2,12 q2,4 6,2" stroke="#5d6b3e" stroke-width="2.4" fill="none" opacity="0.7"/>
+        <ellipse cx="368" cy="617" rx="30" ry="4.6" fill="#3f4030" opacity="0.5"/>
+        <ellipse cx="392" cy="616" rx="10" ry="3" fill="#4a4632" opacity="0.55"/>
+        <!-- a tipped glass and a dropped fork -->
         <path d="M420,614 l-4,-14 l8,0 Z" fill="#9fb6c0" opacity="0.5" transform="rotate(28 420 606)"/>
         <ellipse cx="428" cy="614" rx="7" ry="3" fill="#5a3a34" opacity="0.7"/>
-        <circle cx="400" cy="618" r="6" fill="#6a4a32"/>
-        <path d="M400,612 q2,-4 5,-2" stroke="#8a6a4a" stroke-width="1.6" fill="none"/>
-        <path d="M397,620 q3,2 6,0" stroke="#3a2a1e" stroke-width="1.4" fill="none" opacity="0.7"/>
+        <path d="M404,618 l14,3 M406,615 l2,5 M410,616 l2,5 M414,617 l2,5" stroke="#8f9691" stroke-width="1.6" fill="none" opacity="0.8"/>
+        <!-- something small crawled here and died -->
+        <circle cx="400" cy="618" r="5" fill="#5a4030"/>
+        <path d="M400,613 q2,-4 5,-2" stroke="#7a5a40" stroke-width="1.6" fill="none"/>
+        <path d="M396,620 q3,2 6,0 M398,616 l-3,2 M403,621 l2,3" stroke="#3a2a1e" stroke-width="1.2" fill="none" opacity="0.75"/>
       </g>
       <!-- the rubbish the house is still deciding what to do with -->
       <g id="v_garbage">
@@ -478,25 +900,29 @@ const Rooms = (() => {
         <path d="M1080,600 q2,12 8,22" stroke="#3a3a36" stroke-width="2" fill="none" opacity="0.6"/>
         <path d="M1128,600 q2,10 6,20" stroke="#2f2f2b" stroke-width="2" fill="none" opacity="0.6"/>
       </g>`}`}
-      <!-- conservatory: a glass door to the left, mist on the far side -->
-      <g id="v_consdoor">
-        <rect x="36" y="352" width="140" height="148" fill="#0d1a22" stroke="#1a130d" stroke-width="6"/>
-        <rect x="48" y="364" width="54" height="124" fill="#1d2e38" stroke="#0c141a" stroke-width="3"/>
-        <rect x="110" y="364" width="54" height="124" fill="#1d2e38" stroke="#0c141a" stroke-width="3"/>
-        <line x1="75" y1="364" x2="75" y2="488" stroke="#0c141a" stroke-width="2" opacity="0.6"/>
-        <line x1="137" y1="364" x2="137" y2="488" stroke="#0c141a" stroke-width="2" opacity="0.6"/>
-        <line x1="48" y1="426" x2="102" y2="426" stroke="#0c141a" stroke-width="2" opacity="0.6"/>
-        <line x1="110" y1="426" x2="164" y2="426" stroke="#0c141a" stroke-width="2" opacity="0.6"/>
-        <line x1="58" y1="380" x2="56" y2="414" stroke="#9fc0d0" stroke-width="1.6" opacity="0.25"/>
-        <line x1="120" y1="396" x2="118" y2="432" stroke="#9fc0d0" stroke-width="1.6" opacity="0.25"/>
-        <!-- plants beyond the glass, deep green and blurred by distance -->
-        <g opacity="0.5">
-          <path d="M60,488 q10,-30 0,-52 M84,488 q8,-26 2,-48 M140,488 q-10,-30 0,-52 M116,488 q-8,-26 -2,-48" stroke="#2f4a30" stroke-width="5" fill="none" stroke-linecap="round"/>
-        </g>
-        <!-- cool light spilling under the door, slanted across the boards -->
-        <polygon points="36,500 176,500 212,562 18,562" fill="#9cc3dc" opacity="0.08"/>
-        <rect x="162" y="400" width="6" height="14" rx="2" fill="#8a7148"/>
-        <path d="M36,352 L176,352" stroke="#2c2117" stroke-width="8"/>
+      <!-- a fireplace, boarded shut: the house does not use it, and has
+           made sure nobody else can either -->
+      <g id="v_fire">
+        <rect x="26" y="330" width="178" height="182" fill="#241c13"/>
+        <rect x="40" y="344" width="150" height="152" fill="#120e0a"/>
+        <rect x="20" y="320" width="190" height="14" rx="3" fill="#3a2c1e"/>
+        <rect x="20" y="332" width="190" height="4" fill="#5d4a35" opacity="0.5"/>
+        <!-- boards across the opening, each at its own careless angle -->
+        <rect x="36" y="362" width="158" height="15" rx="2" fill="#33261a" transform="rotate(5 115 369)"/>
+        <rect x="36" y="412" width="158" height="15" rx="2" fill="#2c2115" transform="rotate(-4 115 419)"/>
+        <rect x="36" y="458" width="158" height="14" rx="2" fill="#33261a" transform="rotate(2 115 465)"/>
+        <path d="M52,368 l6,10 M176,414 l-6,10 M60,462 l5,9" stroke="#171310" stroke-width="2.4"/>
+        <!-- hearth, ash, and one log that was never allowed to burn -->
+        <polygon points="40,496 190,496 200,514 30,514" fill="#3d3931"/>
+        <rect x="24" y="512" width="182" height="10" fill="#2c2823"/>
+        <ellipse cx="115" cy="494" rx="52" ry="7" fill="#26221d"/>
+        <ellipse cx="104" cy="492" rx="20" ry="4.6" fill="#4a453c" opacity="0.7"/>
+        <rect x="92" y="482" width="46" height="9" rx="4" fill="#241a11" transform="rotate(-6 115 486)"/>
+        <rect x="100" y="476" width="40" height="8" rx="4" fill="#2c2115" transform="rotate(7 120 480)"/>
+        <!-- a small oval mirror over the mantel, reflecting nothing useful -->
+        <ellipse cx="115" cy="252" rx="34" ry="44" fill="#221a12"/>
+        <ellipse cx="115" cy="252" rx="28" ry="38" fill="#1b2731"/>
+        <path d="M100,232 q14,18 8,44" stroke="#33495a" stroke-width="2.4" fill="none" opacity="0.5"/>
       </g>
       <!-- sideboard -->
       <g id="v_sideboard">
@@ -530,13 +956,133 @@ const Rooms = (() => {
       ${hs("mbox2", 608, 324, 98, 84, "A music box, out of place", "v_mbox2")}
       ${hs("chalk", 380, 556, 560, 138, "A chalk outline on the floor", "v_chalk")}` : `
       ${hs("dtable", 340, 600, 620, 90, "The table, laid for dinner", "v_dtable")}
-      ${hs("dcake", 592, 556, 120, 64, "A cake under glass", "v_dcake")}
-      ${hs("feast", 460, 552, 300, 70, "Dinner, still warm", "v_feast")}
-      ${State.flag("diningTidied") ? "" : hs("spoilt", 336, 556, 116, 62, "A plate gone bad", "v_spoilt")}
+      ${hs("dcake", 592, 578, 120, 66, "A cake under glass", "v_dcake")}
+      ${hs("feast", 452, 572, 320, 72, "Dinner, still warm", "v_feast")}
+      ${State.flag("diningTidied") ? "" : hs("spoilt", 336, 572, 116, 64, "A plate gone bad", "v_spoilt")}
       ${State.flag("diningTidied") ? "" : hs("garbage", 1048, 540, 160, 112, "Rubbish bags", "v_garbage")}
       ${hs("smallchair", moved ? 570 : 820, 548, 96, 140, "A small chair with a cushion", "v_smallchair")}`}
-      ${hs("dconservatory", 18, 320, 182, 214, "Through to the conservatory", "v_consdoor")}
+      ${hs("fire", 18, 312, 196, 216, "A fireplace, boarded shut", "v_fire")}
       ${hs("dback", 1210, 140, 70, 420, "Back to the kitchen", "")}
+    </g>
+    </svg>`;
+  }
+
+  /* =====================================================================
+     THE BACK LANDING — a corridor the house added upstairs without adding
+     it to the outside. A glass door to the conservatory (which is not an
+     upstairs room), a door down to the dining room (which is not a downstairs
+     landing), and a window that proves the height is a lie.
+  ===================================================================== */
+  function svgGallery() {
+    const act2 = State.flag("act2");
+    return `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
+    ${DEFS}
+    <defs>
+      <linearGradient id="gsky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#10161f"/><stop offset="1" stop-color="#1a2230"/>
+      </linearGradient>
+      <clipPath id="gwinclip"><rect x="560" y="150" width="200" height="150"/></clipPath>
+    </defs>
+    <g id="layer-back">
+      <rect width="1280" height="470" fill="url(#wallg)"/>
+      ${[...Array(32)].map((_, i) => `<line x1="${i * 40}" y1="80" x2="${i * 40}" y2="460" stroke="#352c23" stroke-width="12" opacity="0.3"/>`).join("")}
+      <rect x="0" y="72" width="1280" height="8" fill="#241d16"/>
+      <rect x="0" y="460" width="1280" height="12" fill="#1c1610"/>
+      <rect x="0" y="472" width="1280" height="248" fill="url(#floorg)"/>
+      ${[...Array(9)].map((_, i) => `<line x1="${i * 160}" y1="472" x2="${i * 160 + 46}" y2="720" stroke="#100c09" stroke-width="2" opacity="0.5"/>`).join("")}
+      <!-- a narrow runner, worn in the middle -->
+      <polygon points="470,520 810,520 860,690 420,690" fill="#3f2c22" opacity="0.85"/>
+      <polygon points="496,534 786,534 826,676 456,676" fill="none" stroke="#54422f" stroke-width="3" opacity="0.6"/>
+      <!-- the window: treetops and the porch roof, far below where a roof
+           should be if this floor existed -->
+      <g id="v_gwin">
+        <rect x="555" y="145" width="210" height="160" fill="url(#gsky)" stroke="#2c241c" stroke-width="9"/>
+        <g clip-path="url(#gwinclip)">
+          ${moonView(600, 180, 12, { soft: false, glowOp: 0.3 })}
+          ${[...Array(14)].map((_, i) => `<circle cx="${(i * 97 + 30) % 200 + 560}" cy="${(i * 41) % 60 + 152}" r="${i % 3 === 0 ? 1.4 : 0.9}" fill="#cfd8e0" opacity="${0.3 + (i % 4) * 0.12}"/>`).join("")}
+          <!-- treetops, seen from above -->
+          <path d="M555,268 q30,-26 62,-6 q26,-22 58,-4 q30,-18 60,2 q14,-8 25,-2 L760,305 L555,305 Z" fill="#0c1116"/>
+          <path d="M560,282 q40,-16 78,-2 q44,-14 84,2 q20,-8 38,0 L760,305 L555,305 Z" fill="#0a0e13" opacity="0.9"/>
+          <!-- the porch roof, impossibly at eye level -->
+          <polygon points="580,296 660,268 740,296" fill="#171310"/>
+          <polygon points="580,296 660,268 740,296" fill="none" stroke="#0e0c0a" stroke-width="2"/>
+        </g>
+        <line x1="660" y1="145" x2="660" y2="305" stroke="#2c241c" stroke-width="6"/>
+        <line x1="555" y1="225" x2="765" y2="225" stroke="#2c241c" stroke-width="6"/>
+      </g>
+    </g>
+    <g id="layer-mid">
+      <!-- the conservatory door: glass, mist and ferns on the far side,
+           one floor above where a conservatory belongs -->
+      <g id="v_gcons">
+        <rect x="60" y="150" width="180" height="330" fill="#0d1a22" stroke="#1a130d" stroke-width="7"/>
+        <rect x="74" y="164" width="72" height="302" fill="#1d2e38" stroke="#0c141a" stroke-width="3"/>
+        <rect x="154" y="164" width="72" height="302" fill="#1d2e38" stroke="#0c141a" stroke-width="3"/>
+        <line x1="110" y1="164" x2="110" y2="466" stroke="#0c141a" stroke-width="2" opacity="0.6"/>
+        <line x1="190" y1="164" x2="190" y2="466" stroke="#0c141a" stroke-width="2" opacity="0.6"/>
+        <line x1="74" y1="260" x2="146" y2="260" stroke="#0c141a" stroke-width="2" opacity="0.6"/>
+        <line x1="154" y1="260" x2="226" y2="260" stroke="#0c141a" stroke-width="2" opacity="0.6"/>
+        <line x1="74" y1="360" x2="146" y2="360" stroke="#0c141a" stroke-width="2" opacity="0.6"/>
+        <line x1="154" y1="360" x2="226" y2="360" stroke="#0c141a" stroke-width="2" opacity="0.6"/>
+        <line x1="84" y1="182" x2="80" y2="240" stroke="#9fc0d0" stroke-width="1.6" opacity="0.25"/>
+        <line x1="164" y1="290" x2="160" y2="350" stroke="#9fc0d0" stroke-width="1.6" opacity="0.25"/>
+        <g opacity="0.5">
+          <path d="M86,466 q12,-40 0,-70 M118,466 q10,-34 2,-64 M196,466 q-12,-40 0,-70 M166,466 q-10,-34 -2,-64" stroke="#2f4a30" stroke-width="6" fill="none" stroke-linecap="round"/>
+          <path d="M100,430 q16,-10 26,-2 M176,420 q-16,-10 -26,-2" stroke="#3f5f40" stroke-width="3" fill="none" stroke-linecap="round"/>
+        </g>
+        <rect x="74" y="164" width="152" height="302" fill="#9cc3dc" opacity="0.05"/>
+        <polygon points="60,480 240,480 280,548 30,548" fill="#9cc3dc" opacity="0.05"/>
+        <rect x="222" y="320" width="7" height="16" rx="2" fill="#8a7148"/>
+        <path d="M60,150 L240,150" stroke="#2c2117" stroke-width="9"/>
+        <text x="150" y="580" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">the conservatory</text>
+      </g>
+      <!-- the bathroom door: paint scraped to bare wood at handle height,
+           as if somebody held on while they decided whether to go in -->
+      <g id="v_gbath">
+        <rect x="980" y="150" width="160" height="330" fill="#241c13"/>
+        <rect x="988" y="158" width="144" height="322" fill="#3a2c1e" stroke="#1c1510" stroke-width="5"/>
+        <rect x="1000" y="172" width="120" height="120" fill="#2c211a" stroke="#1c1510" stroke-width="3"/>
+        <rect x="1000" y="310" width="120" height="150" fill="#2c211a" stroke="#1c1510" stroke-width="3"/>
+        <circle cx="1010" cy="330" r="6" fill="#8a7148"/>
+        <path d="M996,320 q10,14 4,26 M1002,352 q8,10 2,20" stroke="#5d4a35" stroke-width="3" fill="none" opacity="0.7"/>
+        <!-- cold light under the door, and water light moving on the ceiling -->
+        <rect x="990" y="475" width="140" height="4" fill="#9cc3dc" opacity="0.22"/>
+        <polygon points="988,480 1132,480 1160,520 962,520" fill="#9cc3dc" opacity="0.06"/>
+        <text x="1060" y="580" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">the small bathroom</text>
+      </g>
+      <!-- a framed photograph of the house, taken from the path -->
+      <g id="v_gphoto">
+        <rect x="420" y="180" width="90" height="110" fill="#221a12" stroke="#4a3826" stroke-width="6"/>
+        <rect x="430" y="190" width="70" height="90" fill="#c9bb9b"/>
+        <polygon points="438,246 465,226 492,246" fill="#5a4a3a"/>
+        <rect x="442" y="246" width="46" height="26" fill="#6b5d4a"/>
+        <rect x="460" y="254" width="10" height="18" fill="#3a2f22"/>
+        <path d="M432,268 q34,-6 66,0" stroke="#8a7f6c" stroke-width="2" fill="none" opacity="0.7"/>
+        <text x="465" y="318" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="13" fill="#6b5d4a" font-style="italic">house 17, from the path</text>
+      </g>
+      <!-- a chair, facing the wall, waiting -->
+      <g id="v_gchair">
+        <ellipse cx="860" cy="560" rx="44" ry="7" fill="#0d0a08" opacity="0.4"/>
+        <rect x="828" y="392" width="8" height="120" rx="3" fill="#3a2c1e"/>
+        <rect x="884" y="392" width="8" height="120" rx="3" fill="#3a2c1e"/>
+        <rect x="833" y="404" width="54" height="9" rx="3" fill="#4a3826"/>
+        <rect x="833" y="424" width="54" height="7" rx="3" fill="#42311f"/>
+        <rect x="824" y="470" width="72" height="11" rx="4" fill="#4a3826"/>
+        <rect x="826" y="462" width="68" height="10" rx="5" fill="#5d4a35"/>
+        <rect x="826" y="481" width="8" height="76" rx="3" fill="#33261a"/>
+        <rect x="886" y="481" width="8" height="76" rx="3" fill="#33261a"/>
+      </g>
+    </g>
+    <g id="layer-front">
+      <rect width="1280" height="720" fill="#0b0806" opacity="${act2 ? "0.16" : "0.08"}"/>
+    </g>
+    <g id="hotspots">
+      ${hs("gcons", 52, 140, 196, 350, "A glass door, misted from the other side", "v_gcons")}
+      ${hs("gbath", 972, 140, 176, 360, "A bathroom door, paint scraped at the handle", "v_gbath")}
+      ${hs("gphoto", 412, 172, 106, 126, "A framed photograph", "v_gphoto")}
+      ${hs("gwin", 548, 138, 224, 174, "The window", "v_gwin")}
+      ${hs("gchair", 816, 384, 88, 180, "A chair, facing the wall", "v_gchair")}
+      ${hs("gback", 1180, 140, 100, 440, "Back to the corridor", "")}
     </g>
     </svg>`;
   }
@@ -573,8 +1119,7 @@ const Rooms = (() => {
     <g id="layer-back">
       <rect width="1280" height="720" fill="url(#consky)"/>
       <!-- moon, high and small, through the glass -->
-      <circle cx="985" cy="84" r="30" fill="#d8dce0" opacity="0.8"/>
-      <circle cx="972" cy="76" r="26" fill="#141d26"/>
+      ${moonView(985, 84, 28)}
       <!-- a treeline far away, seen through the mist -->
       <path d="M0,236 q60,-34 120,0 q60,-30 120,0 q60,-30 120,0 q60,-30 120,0 q60,-30 120,0 q60,-30 120,0 q60,-30 120,0 q60,-28 120,0 q60,-30 120,0 q60,-30 120,0 q60,-28 120,0 l0,80 l-1280,0 Z" fill="#0e1a20" opacity="0.9"/>
       <!-- glass roof: a ridge at top, panes sloping to the eave -->
@@ -710,6 +1255,12 @@ const Rooms = (() => {
         <stop offset="1" stop-color="#060505" stop-opacity="0"/>
       </linearGradient>
       <clipPath id="roofclip"><polygon points="150,124 640,30 1130,124"/></clipPath>
+      <clipPath id="mistclip"><path clip-rule="evenodd" d="M0,540 H1280 V720 H0 Z M600,574 L680,574 L830,720 L452,720 Z"/></clipPath>
+      <linearGradient id="roofsheen" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#8aa2bc" stop-opacity="0"/>
+        <stop offset="0.5" stop-color="#8aa2bc" stop-opacity="0.10"/>
+        <stop offset="1" stop-color="#8aa2bc" stop-opacity="0"/>
+      </linearGradient>
       <linearGradient id="forestfog" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="#8a97a6" stop-opacity="0"/>
         <stop offset="0.5" stop-color="#8a97a6" stop-opacity="0.16"/>
@@ -718,7 +1269,7 @@ const Rooms = (() => {
     </defs>
     <g id="layer-back">
       <rect width="1280" height="720" fill="url(#nightg)"/>
-      ${[...Array(26)].map((_, i) => `<circle cx="${(i * 137 + 40) % 1280}" cy="${(i * 61) % 200 + 12}" r="${i % 3 === 0 ? 1.6 : 1}" fill="#cfd8e0" opacity="${0.25 + (i % 5) * 0.1}"/>`).join("")}
+      ${[...Array(46)].map((_, i) => `<circle cx="${(i * 137 + 40) % 1280}" cy="${(i * 61) % 200 + 12}" r="${i % 3 === 0 ? 1.7 : i % 4 === 0 ? 1.2 : 0.9}" fill="#cfd8e0" opacity="${0.3 + (i % 5) * 0.11}"/>`).join("")}
       ${reducedMotion ? "" : `
       <!-- an occasional shooting star, gone almost before it is seen -->
       <g transform="translate(310,120)">
@@ -742,17 +1293,13 @@ const Rooms = (() => {
           </g>
         </g>
       </g>`}
-      <circle cx="1120" cy="90" r="34" fill="#d8dce0" opacity="0.85"/>
-      <circle cx="1108" cy="82" r="30" fill="#1d2733"/>
+      ${moonView(1120, 90, 34)}
       <!-- generated forest: far treeline, drifting fog, then the near trees whose branches wave -->
       <g id="v_forest">
         ${forestFar()}
         ${forestFog()}
         ${forestNear()}
-        ${bird(96, 330)}
-        ${bird(132, 356)}
-        ${bird(1152, 336)}
-        ${bird(1190, 360)}
+        ${typeof Birds !== "undefined" ? Birds.part("back") : ""}
       </g>
       <rect x="0" y="540" width="1280" height="180" fill="#12161c"/>
       <rect x="0" y="536" width="1280" height="6" fill="#0c0f13"/>
@@ -767,6 +1314,27 @@ const Rooms = (() => {
       <ellipse cx="658" cy="674" rx="46" ry="11" fill="#23272f"/>
       <ellipse cx="658" cy="677" rx="46" ry="11" fill="none" stroke="#10131a" stroke-width="2" opacity="0.6"/>
       <ellipse cx="636" cy="710" rx="52" ry="12" fill="#1f232b"/>
+      <!-- dark yard fog: three banks rolling across the garden BEHIND the
+           house (the facade is layer-mid, so it stands in front of them).
+           Darker and quicker than the indoor fog: a weather, not a mood. -->
+      <g id="v_yardfog" pointer-events="none" filter="url(#fxblur8)">
+        <g opacity="0.4">
+          <ellipse cx="240" cy="516" rx="300" ry="34" fill="#0a0e14"/>
+          <ellipse cx="660" cy="536" rx="380" ry="40" fill="#0b0f16"/>
+          <ellipse cx="1060" cy="512" rx="300" ry="32" fill="#0a0e14"/>
+          <animateTransform attributeName="transform" type="translate" values="-380,0;380,0;-380,0" dur="17s" repeatCount="indefinite"/>
+        </g>
+        <g opacity="0.55">
+          <ellipse cx="300" cy="596" rx="340" ry="30" fill="#080b10"/>
+          <ellipse cx="880" cy="612" rx="420" ry="34" fill="#070a0e"/>
+          <animateTransform attributeName="transform" type="translate" values="420,0;-420,0;420,0" dur="14s" repeatCount="indefinite"/>
+        </g>
+        <g opacity="0.36">
+          <ellipse cx="520" cy="668" rx="460" ry="26" fill="#06080c"/>
+          <ellipse cx="1100" cy="682" rx="380" ry="24" fill="#06080c"/>
+          <animateTransform attributeName="transform" type="translate" values="-460,0;460,0;-460,0" dur="12s" repeatCount="indefinite"/>
+        </g>
+      </g>
     </g>
     <g id="layer-mid">
       <!-- house facade -->
@@ -778,6 +1346,9 @@ const Rooms = (() => {
           <rect x="150" y="30" width="980" height="94" fill="#221c16"/>
           <polygon points="640,30 1130,124 640,124" fill="#26201a"/>
           <polygon points="150,124 640,30 640,124" fill="#191410" opacity="0.6"/>
+          ${roofGrain()}
+          <!-- the chimney's own shadow, thrown down the left slope -->
+          <polygon points="336,86 368,86 350,124 316,124" fill="#060505" opacity="0.24"/>
           <!-- shingle courses: each side follows its own slope and stops at the
                ridge and the eave, so no line ever crosses off the roof -->
           ${(() => {
@@ -805,10 +1376,33 @@ const Rooms = (() => {
               return s;
             })()}
           </g>
+          ${roofSeams()}
+          ${roofShadow()}
+          <!-- moonlight sheen: one wide band creeping across the tiles -->
+          ${reducedMotion ? "" : `<rect x="-420" y="28" width="300" height="98" fill="url(#roofsheen)" opacity="0.55"><animateTransform attributeName="transform" type="translate" values="0,0;1620,0" dur="150s" repeatCount="indefinite"/></rect>`}
           <line x1="644" y1="34" x2="1126" y2="122" stroke="#8aa2bc" stroke-width="3" opacity="0.18" filter="url(#blurf)"/>
           <line x1="640" y1="30" x2="1130" y2="124" stroke="#6b86a3" stroke-width="1.4" opacity="0.4"/>
           <line x1="150" y1="124" x2="640" y2="30" stroke="#0e0c0a" stroke-width="2" opacity="0.6"/>
+          <!-- ridge cap stones, apex to eave on both rake edges -->
+          ${(() => {
+            let s = "";
+            for (let i = 0; i <= 14; i++) {
+              const t = i / 14;
+              s += `<rect x="${(150 + 486 * t - 7).toFixed(1)}" y="${(124 - 92 * t - 4).toFixed(1)}" width="15" height="8" rx="2" fill="#2c251e" transform="rotate(${(10.7).toFixed(1)} ${(150 + 486 * t).toFixed(1)} ${(124 - 92 * t).toFixed(1)})" opacity="0.9"/>`;
+              s += `<rect x="${(644 + 486 * t - 8).toFixed(1)}" y="${(32 + 92 * t - 4).toFixed(1)}" width="15" height="8" rx="2" fill="#332b23" transform="rotate(${(-10.7).toFixed(1)} ${(644 + 486 * t).toFixed(1)} ${(32 + 92 * t).toFixed(1)})" opacity="0.9"/>`;
+            }
+            return s;
+          })()}
         </g>
+        <!-- eave gutter and its downpipe, moonlit on the lip -->
+        <g id="v_gutter">
+          <rect x="146" y="122" width="988" height="7" rx="3" fill="#1a1613"/>
+          <rect x="146" y="122" width="988" height="2.4" fill="#3a3128" opacity="0.7"/>
+          <rect x="1096" y="128" width="7" height="424" fill="#1a1613"/>
+          <rect x="1097" y="128" width="2.2" height="424" fill="#3a3128" opacity="0.5"/>
+          ${[180, 420, 660, 900, 1100].map(x => `<rect x="${x}" y="126" width="4" height="6" fill="#0e0c0a"/>`).join("")}
+        </g>
+        ${typeof Birds !== "undefined" ? Birds.part("mid") : ""}
         <polygon points="150,124 640,30 1130,124" fill="none" stroke="#171310" stroke-width="5"/>
         <polygon points="150,124 640,30 1130,124" fill="none" stroke="#241d16" stroke-width="2" opacity="0.8"/>
         <!-- the shadow the eaves cast across the wall below -->
@@ -821,6 +1415,25 @@ const Rooms = (() => {
           <rect x="338" y="44" width="3" height="44" fill="#0e0c0a" opacity="0.6"/>
         </g>
       </g>
+      <!-- smoke: the house keeps a fire behind one boarded chimney, and the
+           smoke forgets to stop. Puffs grow and lean with the wind as they
+           climb; medium, not a whisper. -->
+      ${reducedMotion ? "" : `<g id="v_smoke" pointer-events="none">
+        ${[0, 1, 2, 3].map(i => `
+        <g opacity="0">
+          <animate attributeName="opacity" values="0;0.17;0.12;0" keyTimes="0;0.22;0.62;1" dur="12s" begin="${(i * 3).toFixed(1)}s" repeatCount="indefinite"/>
+          <g>
+            <animateTransform attributeName="transform" type="translate" values="0,0; ${8 + i * 3},${-64 - i * 6}; ${22 + i * 5},${-148 - i * 9}" keyTimes="0;0.5;1" dur="12s" begin="${(i * 3).toFixed(1)}s" repeatCount="indefinite"/>
+            <ellipse cx="352" cy="38" rx="${9 + i * 2}" ry="${6.5 + i * 1.3}" fill="#8a93a0">
+              <animate attributeName="rx" values="${9 + i * 2};${16 + i * 2.4};${24 + i * 3}" dur="12s" begin="${(i * 3).toFixed(1)}s" repeatCount="indefinite"/>
+              <animate attributeName="ry" values="${6.5 + i * 1.3};${11 + i * 1.6};${16 + i * 2}" dur="12s" begin="${(i * 3).toFixed(1)}s" repeatCount="indefinite"/>
+            </ellipse>
+            <ellipse cx="${345 - i * 2}" cy="${31 - i * 2}" rx="${6 + i * 1.4}" ry="${4.5 + i}" fill="#79828e" opacity="0.8">
+              <animate attributeName="rx" values="${6 + i * 1.4};${11 + i * 1.8};${17 + i * 2.2}" dur="12s" begin="${(i * 3).toFixed(1)}s" repeatCount="indefinite"/>
+            </ellipse>
+          </g>
+        </g>`).join("")}
+      </g>`}
       <!-- dark windows -->
       <g id="v_win1"><rect x="270" y="210" width="120" height="150" fill="#0d1015" stroke="#171310" stroke-width="7"/><line x1="330" y1="210" x2="330" y2="360" stroke="#171310" stroke-width="5"/><line x1="270" y1="285" x2="390" y2="285" stroke="#171310" stroke-width="5"/></g>
       <g id="v_win2"><rect x="900" y="210" width="120" height="150" fill="#0d1015" stroke="#171310" stroke-width="7"/><line x1="960" y1="210" x2="960" y2="360" stroke="#171310" stroke-width="5"/><line x1="900" y1="285" x2="1020" y2="285" stroke="#171310" stroke-width="5"/>
@@ -917,7 +1530,10 @@ const Rooms = (() => {
       <g id="v_mat"><rect x="576" y="556" width="128" height="22" rx="3" fill="#4a3a2a"/><rect x="584" y="560" width="112" height="14" rx="2" fill="none" stroke="#5d4a35" stroke-width="2"/></g>
     </g>
     <g id="layer-front">
-      <!-- ground fog: slow thin wisps breathing across the yard -->
+      ${yardMist()}
+      <!-- ground fog: slow thin wisps breathing across the yard, clipped off
+           the pathway so the walk stays clear -->
+      <g clip-path="url(#mistclip)">
       <ellipse cx="420" cy="620" rx="260" ry="22" fill="#7a8492" opacity="0.09" filter="url(#blurf)">
         <animateTransform attributeName="transform" type="translate" values="-180,0;360,0;-180,0" dur="96s" repeatCount="indefinite"/>
         <animate attributeName="opacity" values="0.09;0.14;0.09" dur="41s" repeatCount="indefinite"/>
@@ -926,16 +1542,20 @@ const Rooms = (() => {
         <animateTransform attributeName="transform" type="translate" values="260,0;-200,0;260,0" dur="120s" repeatCount="indefinite"/>
         <animate attributeName="opacity" values="0.07;0.11;0.07" dur="53s" repeatCount="indefinite"/>
       </ellipse>
+      </g>
       <rect x="0" y="690" width="1280" height="30" fill="#0b0d10"/>
       <path d="M0,700 Q120,660 200,706 L0,720 Z" fill="#0e1116"/>
       <path d="M1280,700 Q1150,656 1080,708 L1280,720 Z" fill="#0e1116"/>
-      <!-- foreground framing: two huge dark trees at the very edges, near the lens -->
+      <!-- foreground framing: two huge dark trees at the very edges, near the
+           lens. Drawn by JS as tapered limbs and canopy blobs (no pixel grid):
+           the trunk rocks on its base while each main branch waves on its own. -->
       <g id="v_near" opacity="0.96">
         <ellipse cx="50" cy="712" rx="120" ry="16" fill="#04060a" opacity="0.6"/>
-        ${pixTree(TREE_OAK, 8, -46, 712, { pivotCol: 11, branches: true, swayDur: 8, swayAmt: 0.7 })}
+        ${vecTree(7, 34, 714, 560, { swayDur: 9, swayAmt: 0.45, lean: 0.07 })}
         <ellipse cx="1236" cy="720" rx="120" ry="16" fill="#04060a" opacity="0.6"/>
-        ${pixTree(TREE_DEAD, 8, 1206, 720, { pivotCol: 11, flip: true, swayDur: 11, swayAmt: 0.7 })}
+        ${vecTree(13, 1248, 722, 600, { bare: true, swayDur: 11, swayAmt: 0.55, lean: -0.06 })}
       </g>
+      ${typeof Birds !== "undefined" ? Birds.part("front") : ""}
       ${reducedMotion ? "" : `
       <!-- wind: streaks so faint they are more felt than seen -->
       <g id="v_wind" pointer-events="none" opacity="0.06">
@@ -1305,7 +1925,7 @@ const Rooms = (() => {
         <rect x="520" y="120" width="240" height="180" fill="url(#nightg)" stroke="#2c241c" stroke-width="10"/>
         <line x1="640" y1="120" x2="640" y2="300" stroke="#2c241c" stroke-width="7"/>
         <line x1="520" y1="210" x2="760" y2="210" stroke="#2c241c" stroke-width="7"/>
-        ${falseK ? `<rect x="525" y="125" width="230" height="170" fill="#2a1f2e" opacity="0.55"/>` : `<circle cx="700" cy="160" r="14" fill="#d8dce0" opacity="0.7"/>`}
+        ${falseK ? `<rect x="525" y="125" width="230" height="170" fill="#2a1f2e" opacity="0.55"/>` : moonView(700, 160, 12, { soft: false, glowOp: 0.3 })}
         <path d="M530,290 q40,-26 80,0 q30,-20 60,0 q40,-24 80,0 Z" fill="#232d3a" opacity="0.8"/>
       </g>
       <!-- hanging lamp: fixture only; the beam and pool come from the FX light layer -->
@@ -1675,6 +2295,16 @@ const Rooms = (() => {
       </g>
     </g>
     <g id="layer-mid">
+      <!-- the corridor bends left past the frames: the back landing, a part
+           of this floor the stairs never mentioned -->
+      <g id="v_gopen">
+        <rect x="0" y="140" width="86" height="352" fill="#120e0a"/>
+        <rect x="0" y="140" width="86" height="352" fill="url(#wallg)" opacity="0.22"/>
+        <polygon points="0,492 86,492 58,700 0,700" fill="#100c09"/>
+        <polygon points="0,540 58,540 38,690 0,690" fill="#3f2c22" opacity="0.7"/>
+        <rect x="80" y="140" width="8" height="352" fill="#241d16"/>
+        <rect x="0" y="132" width="88" height="10" fill="#241d16"/>
+      </g>
       <!-- child room door, ajar, crayon marks low on the wood; the house can take this room away -->
       ${childGone ? `
       <g id="v_cdoor">
@@ -1755,6 +2385,7 @@ const Rooms = (() => {
       ${hs("gostudy", 758, 140, 170, 366, studyOpen ? "The study" : "A locked door", "v_sdoor")}
       ${hs("frames", 318, 172, 88, 312, "Three small frames", "v_frames")}
       ${hs("scratch", 588, 458, 48, 40, "A scratch in the skirting", "v_scratch")}
+      ${hs("gogallery", 0, 150, 92, 430, "The corridor bends left", "v_gopen")}
       ${hs("godown", 1168, 140, 112, 440, "Back downstairs", "")}
     </g>
     </svg>`;
@@ -1772,18 +2403,45 @@ const Rooms = (() => {
       ${[...Array(16)].map((_, i) => `<circle cx="${60 + i * 80}" cy="${140 + (i % 3) * 120}" r="10" fill="#4a415c" opacity="0.5"/>`).join("")}
       <rect x="0" y="500" width="1280" height="220" fill="url(#floorg)"/>
       <ellipse cx="500" cy="620" rx="260" ry="46" fill="#5d5a7a" opacity="0.35"/>
-      <!-- rain window: live rain is drawn by the FX layer, plus one honest crack -->
+      <!-- rain window: a generated night garden behind the glass; the live
+           rain, drifting clouds and a passing bird are drawn over it by the
+           FX layer, all clipped inside the panes so nothing falls indoors -->
       <g id="v_cwin">
-        <rect x="900" y="120" width="220" height="190" fill="url(#nightg)" stroke="#2c241c" stroke-width="10"/>
+        <defs>
+          <clipPath id="cwinglass"><rect x="905" y="125" width="210" height="180"/></clipPath>
+        </defs>
+        <rect x="900" y="120" width="220" height="190" fill="#0b1017"/>
+        <g clip-path="url(#cwinglass)">
+          <!-- the night garden, painted cell by cell from generated data:
+               no photograph is loaded, only its approximated colours -->
+          ${windowView(905, 125, 210, 180)}
+          <!-- the night keeps its own weather: huge slow clouds slide over
+               the generated sky and darken it in passes -->
+          <g fill="#0a0e15">
+            <ellipse cx="940" cy="150" rx="90" ry="26" opacity="0.55" filter="url(#fxblur10)">
+              <animateTransform attributeName="transform" type="translate" values="-30,0;60,0;-30,0" dur="95s" repeatCount="indefinite"/>
+            </ellipse>
+            <ellipse cx="1060" cy="136" rx="110" ry="30" opacity="0.5" filter="url(#fxblur10)">
+              <animateTransform attributeName="transform" type="translate" values="20,0;-70,0;20,0" dur="120s" repeatCount="indefinite"/>
+            </ellipse>
+            <ellipse cx="1000" cy="176" rx="130" ry="26" opacity="0.42" filter="url(#fxblur10)">
+              <animateTransform attributeName="transform" type="translate" values="-50,0;40,0;-50,0" dur="140s" repeatCount="indefinite"/>
+            </ellipse>
+          </g>
+          <!-- cold wash so the picture sits at the room's brightness -->
+          <rect x="905" y="125" width="210" height="180" fill="#0a0e14" opacity="0.34"/>
+          <rect x="905" y="125" width="210" height="60" fill="#0a0e14" opacity="0.18"/>
+        </g>
         <line x1="1010" y1="120" x2="1010" y2="310" stroke="#2c241c" stroke-width="7"/>
         <line x1="900" y1="215" x2="1120" y2="215" stroke="#2c241c" stroke-width="7"/>
+        <rect x="900" y="120" width="220" height="190" fill="none" stroke="#2c241c" stroke-width="10"/>
         <!-- a little crack, low in the left pane -->
-        <g stroke="#bfe0f2" stroke-width="1.4" fill="none" opacity="0.55">
+        <g stroke="#bfe0f2" stroke-width="1.1" fill="none" opacity="0.35">
           <path d="M934,290 L956,272 L968,282 L986,258"/>
           <path d="M956,272 L948,254 L958,242"/>
           <path d="M968,282 L984,292"/>
         </g>
-        <circle cx="934" cy="290" r="2" fill="#bfe0f2" opacity="0.6"/>
+        <circle cx="934" cy="290" r="1.6" fill="#bfe0f2" opacity="0.4"/>
       </g>
     </g>
     <g id="layer-mid">
@@ -1946,7 +2604,7 @@ const Rooms = (() => {
         <rect x="960" y="110" width="220" height="260" fill="url(#nightg)" stroke="#2c241c" stroke-width="10"/>
         <line x1="1070" y1="110" x2="1070" y2="370" stroke="#2c241c" stroke-width="7"/>
         <line x1="960" y1="240" x2="1180" y2="240" stroke="#2c241c" stroke-width="7"/>
-        <circle cx="1140" cy="150" r="12" fill="#d8dce0" opacity="0.7"/>
+        ${moonView(1140, 150, 10, { soft: false, glowOp: 0.3 })}
         <path d="M965,360 q30,-30 60,0 q30,-24 60,0 q40,-30 90,0 Z" fill="#232d3a" opacity="0.85"/>
       </g>
     </g>
@@ -2273,7 +2931,193 @@ const Rooms = (() => {
     </svg>`;
   }
 
-  const builders = { porch: svgPorch, hallway: svgHallway, kitchen: svgKitchen, study: svgStudy, basement: svgBasement, memory: svgMemory, landing: svgLanding, childroom: svgChildroom, attic: svgAttic, diningroom: svgDining, conservatory: svgConservatory };
+  /* ============ THE SMALL BATHROOM (off the back landing) ============
+     Where the steps-down door used to be, there is now a plain door into
+     a small tiled bathroom that the house keeps ready for someone: a
+     clawfoot bath full of still warm water, and a high window looking
+     out on a moonlit sea, twenty miles from any coast. */
+  function svgBathroom() {
+    const reduced = Settings.get("reducedMotion");
+    /* one tile row of the wainscot, with the odd tile cracked or gone */
+    const tiles = (() => {
+      let out = "";
+      for (let r = 0; r < 7; r++) {
+        for (let c = 0; c < 24; c++) {
+          const x = c * 56, y = 300 + r * 38;
+          const miss = (r === 2 && c === 9) || (r === 5 && c === 17);
+          const crack = (r === 1 && c === 14) || (r === 4 && c === 4);
+          out += miss
+            ? `<rect x="${x + 2}" y="${y + 2}" width="52" height="34" fill="#0b0e10"/>`
+            : `<rect x="${x + 2}" y="${y + 2}" width="52" height="34" rx="2" fill="${(r + c) % 2 ? "#20282b" : "#242d30"}" opacity="0.9"/>`;
+          if (crack) out += `<path d="M${x + 10},${y + 6} l14,12 l-6,10 l12,8" stroke="#0b0e10" stroke-width="1.6" fill="none" opacity="0.8"/>`;
+        }
+      }
+      return out;
+    })();
+    /* the checkerboard floor, drawn in four receding bands */
+    const floor = (() => {
+      let out = "";
+      const bands = [[560, 34, 64], [594, 40, 80], [634, 46, 96], [680, 40, 120]];
+      for (let b = 0; b < bands.length; b++) {
+        const [y, h, w] = bands[b];
+        for (let c = -1; c < 1280 / w + 1; c++) {
+          out += `<rect x="${c * w + (b % 2 ? w / 2 : 0)}" y="${y}" width="${w}" height="${h}" fill="${(c + b) % 2 ? "#161b1e" : "#22292c"}"/>`;
+        }
+      }
+      return out;
+    })();
+    /* moonlight lying on the bath water: short dashes, quieter each row */
+    const glints = (() => {
+      let out = "";
+      const rows = [[470, 0.5], [482, 0.38], [494, 0.28], [506, 0.2]];
+      rows.forEach(([y, o], ri) => {
+        for (let i = 0; i < 7 - ri; i++) {
+          const x = 560 + i * 44 + (ri % 2) * 20 + ((i * 37 + ri * 53) % 17);
+          out += `<rect x="${x}" y="${y}" width="${16 + ((i * 13) % 12)}" height="2.4" rx="1.2" fill="#cfd8de" opacity="${o * (0.6 + ((i * 29) % 40) / 100)}"/>`;
+        }
+      });
+      return out;
+    })();
+    return `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
+    ${DEFS}
+    <defs>
+      <linearGradient id="bwall" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#14181a"/><stop offset="1" stop-color="#0e1214"/>
+      </linearGradient>
+      <linearGradient id="bsea" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#0b1119"/><stop offset="0.55" stop-color="#15222c"/><stop offset="1" stop-color="#0d1820"/>
+      </linearGradient>
+      <linearGradient id="btub" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#5d656b"/><stop offset="0.5" stop-color="#414a50"/><stop offset="1" stop-color="#2b3238"/>
+      </linearGradient>
+    </defs>
+    <g id="layer-back">
+      <rect width="1280" height="720" fill="url(#bwall)"/>
+      <!-- damp plaster above the tiles, with a tide line of its own -->
+      <path d="M0,120 q160,26 320,10 q200,-18 400,8 q180,22 360,4 q120,-10 200,2 l0,-124 l-1280,0 Z" fill="#101416" opacity="0.8"/>
+      <path d="M0,296 q220,10 440,2 q260,-8 520,4 q180,8 320,0" stroke="#0a0d0f" stroke-width="3" fill="none" opacity="0.7"/>
+      <g id="v_btiles">${tiles}</g>
+      <rect x="0" y="556" width="1280" height="6" fill="#0a0d0f"/>
+      <g id="v_bfloor">${floor}</g>
+      <!-- wet sheen on the checkers, and the bath's dark reflection -->
+      <polygon points="430,596 900,596 950,668 380,668" fill="#0d1418" opacity="0.5"/>
+      <polygon points="520,600 820,600 850,640 490,640" fill="#2a3a44" opacity="0.18"/>
+      <polygon points="60,600 260,600 280,636 40,636" fill="#2a3a44" opacity="0.12"/>
+      <!-- the high window: a moonlit sea, horizon dead flat, moon path on it -->
+      <g id="v_bwin">
+        <rect x="852" y="102" width="256" height="176" rx="4" fill="#3d4348"/>
+        <rect x="862" y="112" width="236" height="156" fill="url(#bsea)"/>
+        ${moonView(1012, 152, 13, { soft: false, glowOp: 0.4 })}
+        <line x1="862" y1="200" x2="1098" y2="200" stroke="#0a1016" stroke-width="2" opacity="0.9"/>
+        <rect x="862" y="200" width="236" height="68" fill="#12202a" opacity="0.8"/>
+        ${[...Array(10)].map((_, i) => `<rect x="${984 + (i % 3) * 9 - i * 2}" y="${205 + i * 6}" width="${28 - i * 2}" height="2.2" rx="1.1" fill="#cfd8de" opacity="${0.45 - i * 0.035}"/>`).join("")}
+        ${[...Array(5)].map((_, i) => `<rect x="${880 + i * 26}" y="${214 + (i % 3) * 14}" width="14" height="1.6" rx="0.8" fill="#8fa8b8" opacity="0.22"/>`).join("")}
+        ${[...Array(6)].map((_, i) => `<circle cx="${880 + i * 38}" cy="${126 + (i % 3) * 12}" r="1.1" fill="#cfd8de" opacity="0.5"/>`).join("")}
+        <!-- a far headland, low and wrong, on an inland horizon -->
+        <path d="M862,196 q40,-10 74,-2 q30,6 52,2 l0,6 l-126,0 Z" fill="#0a1218" opacity="0.9"/>
+        <line x1="980" y1="112" x2="980" y2="268" stroke="#3d4348" stroke-width="7"/>
+        <line x1="862" y1="190" x2="1098" y2="190" stroke="#3d4348" stroke-width="7"/>
+        <rect x="846" y="276" width="268" height="10" rx="3" fill="#4a5157"/>
+        <rect x="846" y="284" width="268" height="4" fill="#2c3236"/>
+      </g>
+      <!-- a pipe down the right wall, sweating -->
+      <rect x="1168" y="0" width="14" height="560" fill="#33393d"/>
+      <rect x="1170" y="0" width="4" height="560" fill="#4a5157" opacity="0.7"/>
+      ${[80, 240, 400].map(y => `<rect x="1162" y="${y}" width="26" height="9" rx="3" fill="#272c30"/>`).join("")}
+      <circle cx="1175" cy="332" r="2.6" fill="#9cc3dc" opacity="0.5"/>
+      <circle cx="1175" cy="470" r="2.2" fill="#9cc3dc" opacity="0.4"/>
+    </g>
+    <g id="layer-mid">
+      <!-- the door back to the landing: plain, cold light under it -->
+      <g id="v_bback">
+        <rect x="0" y="150" width="92" height="330" fill="#241c13"/>
+        <rect x="0" y="158" width="84" height="322" fill="#3a2c1e" stroke="#1c1510" stroke-width="5"/>
+        <rect x="0" y="172" width="60" height="120" fill="#2c211a" stroke="#1c1510" stroke-width="3"/>
+        <rect x="0" y="310" width="60" height="150" fill="#2c211a" stroke="#1c1510" stroke-width="3"/>
+        <circle cx="70" cy="330" r="6" fill="#8a7148"/>
+        <rect x="0" y="476" width="80" height="4" fill="#9cc3dc" opacity="0.2"/>
+      </g>
+      <!-- the clawfoot bath: full, still, and warm after eleven years -->
+      <g id="v_bbath">
+        <ellipse cx="660" cy="612" rx="270" ry="16" fill="#0a0d0f" opacity="0.55"/>
+        <path d="M420,452 q-16,80 22,120 q30,30 90,34 l256,0 q60,-4 90,-34 q38,-40 22,-120 Z" fill="url(#btub)"/>
+        <path d="M420,452 q-16,80 22,120 q30,30 90,34 l40,0 q-52,-8 -78,-40 q-30,-38 -20,-114 Z" fill="#3d4348" opacity="0.6"/>
+        <path d="M404,446 q256,-26 512,0 q10,2 10,10 q0,8 -10,10 q-256,26 -512,0 q-10,-2 -10,-10 q0,-8 10,-10 Z" fill="#7d848a"/>
+        <path d="M404,446 q256,-26 512,0" stroke="#c9cdd0" stroke-width="3" fill="none" opacity="0.35"/>
+        <path d="M884,452 q14,60 -18,104" stroke="#c9cdd0" stroke-width="3" fill="none" opacity="0.22"/>
+        <path d="M424,458 q236,-22 472,0 q-20,26 -236,26 q-216,0 -236,-26 Z" fill="#101a22"/>
+        ${glints}
+        <!-- four claw feet, brass gone brown -->
+        ${[452, 560, 760, 868].map(x => `<path d="M${x},600 q-4,18 6,22 q10,4 14,-4 q4,-10 -4,-18 Z" fill="#6b5a3a"/><path d="M${x + 2},606 q6,4 10,10" stroke="#4a3d26" stroke-width="2" fill="none"/>`).join("")}
+        <!-- the chain and plug, laid on the rim like a served utensil -->
+        <path d="M880,452 q14,10 10,26" stroke="#8a8378" stroke-width="2" fill="none"/>
+        <circle cx="890" cy="482" r="5" fill="#8a8378"/>
+        <!-- steam that the fog layer will carry; a hint left here to read -->
+        ${reduced ? "" : `<path d="M560,436 q10,-18 0,-34 q-8,-14 2,-28 M660,432 q12,-20 2,-38 q-8,-14 2,-26 M760,436 q10,-18 0,-34 q-8,-14 2,-28" stroke="#9cc3dc" stroke-width="2.4" fill="none" opacity="0.14"/>`}
+      </g>
+      <!-- a washstand: jug full, basin clean, towel folded beneath -->
+      <g id="v_bstand">
+        <ellipse cx="240" cy="606" rx="96" ry="10" fill="#0a0d0f" opacity="0.5"/>
+        <rect x="160" y="470" width="160" height="12" rx="4" fill="#4a3826"/>
+        <rect x="166" y="482" width="9" height="120" rx="3" fill="#3a2c1e"/>
+        <rect x="305" y="482" width="9" height="120" rx="3" fill="#3a2c1e"/>
+        <rect x="170" y="540" width="140" height="8" rx="3" fill="#42311f"/>
+        <rect x="196" y="520" width="52" height="18" rx="4" fill="#4a4f54"/>
+        <rect x="196" y="520" width="52" height="6" rx="3" fill="#5d6268"/>
+        <ellipse cx="262" cy="468" rx="46" ry="12" fill="#b8bdc1"/>
+        <ellipse cx="262" cy="464" rx="40" ry="9" fill="#8f969b"/>
+        <ellipse cx="262" cy="464" rx="32" ry="6.4" fill="#16222a"/>
+        <path d="M250,462 q-16,-2 -18,-16 q-2,-12 6,-20 q-4,-8 2,-12 l22,0 q6,4 2,12 q8,8 6,20 q-2,14 -20,16 Z" fill="#8f969b"/>
+        <path d="M240,414 l22,0 l-3,6 l-16,0 Z" fill="#7d848a"/>
+        <path d="M268,424 q12,4 10,16 q-2,10 -10,12" stroke="#8f969b" stroke-width="4" fill="none"/>
+        <path d="M246,420 q-4,16 2,34" stroke="#c9cdd0" stroke-width="2" fill="none" opacity="0.4"/>
+      </g>
+      <!-- a mirror cabinet, door ajar: the mirror gives back the room -->
+      <g id="v_bcab">
+        <rect x="196" y="206" width="124" height="150" rx="4" fill="#3a2c1e"/>
+        <rect x="204" y="214" width="108" height="134" fill="#101416"/>
+        <rect x="208" y="252" width="100" height="6" fill="#2c211a"/>
+        <rect x="208" y="300" width="100" height="6" fill="#2c211a"/>
+        <rect x="226" y="226" width="14" height="22" rx="3" fill="#22392c" opacity="0.85"/>
+        <rect x="250" y="232" width="12" height="16" rx="3" fill="#4a3826"/>
+        <rect x="272" y="228" width="10" height="20" rx="3" fill="#31503c" opacity="0.7"/>
+        <rect x="222" y="312" width="40" height="10" rx="4" fill="#4a4f54"/>
+        <!-- the door, open on its left hinge, mirror catching the sea light -->
+        <polygon points="196,206 148,220 148,368 196,356" fill="#42311f"/>
+        <polygon points="190,214 154,226 154,360 190,348" fill="#1b2731"/>
+        <path d="M162,238 q10,40 4,96" stroke="#33495a" stroke-width="2.4" fill="none" opacity="0.55"/>
+        <path d="M178,232 q-6,52 2,104" stroke="#26374a" stroke-width="2" fill="none" opacity="0.4"/>
+        <circle cx="152" cy="294" r="3" fill="#8a7148"/>
+      </g>
+      <!-- towel rail and a grey towel, damp at the hem -->
+      <g id="v_btowel">
+        <rect x="946" y="376" width="150" height="7" rx="3.5" fill="#6b5a3a"/>
+        <circle cx="946" cy="379" r="5" fill="#4a3d26"/><circle cx="1096" cy="379" r="5" fill="#4a3d26"/>
+        <path d="M972,382 l96,0 l6,120 q-52,10 -108,0 Z" fill="#4a4f54"/>
+        <path d="M986,382 l4,116 M1016,382 l2,120 M1046,382 l-2,118" stroke="#3d4247" stroke-width="3" fill="none" opacity="0.8"/>
+        <path d="M966,486 q54,10 110,0 l2,16 q-56,10 -114,0 Z" fill="#3d4247"/>
+      </g>
+      <!-- a bath mat, wrung out and laid straight -->
+      <g id="v_bmat">
+        <rect x="520" y="640" width="280" height="42" rx="16" fill="#2a2f33"/>
+        <rect x="528" y="646" width="264" height="30" rx="12" fill="#343a3f" opacity="0.8"/>
+        ${[...Array(9)].map((_, i) => `<line x1="${540 + i * 30}" y1="650" x2="${540 + i * 30}" y2="672" stroke="#2a2f33" stroke-width="3" opacity="0.7"/>`).join("")}
+      </g>
+    </g>
+    <g id="layer-front"></g>
+    <g id="hotspots">
+      ${hs("bback", 0, 150, 92, 330, "Back to the back landing", "")}
+      ${hs("bbath", 400, 420, 520, 200, "A clawfoot bath, full and still", "v_bbath")}
+      ${hs("bwin", 846, 100, 268, 190, "A high window over a moonlit sea", "v_bwin")}
+      ${hs("bstand", 150, 420, 190, 190, "A washstand, jug and basin", "v_bstand")}
+      ${hs("bcab", 144, 200, 180, 172, "A mirror cabinet, half open", "v_bcab")}
+      ${hs("btowel", 940, 366, 168, 140, "A grey towel on a rail", "v_btowel")}
+      ${hs("bmat", 516, 636, 288, 50, "A bath mat, wrung out", "v_bmat")}
+    </g>
+    </svg>`;
+  }
+
+  const builders = { porch: svgPorch, hallway: svgHallway, kitchen: svgKitchen, study: svgStudy, basement: svgBasement, memory: svgMemory, landing: svgLanding, childroom: svgChildroom, attic: svgAttic, diningroom: svgDining, conservatory: svgConservatory, gallery: svgGallery, bathroom: svgBathroom };
 
   /* ---------- render + wiring ---------- */
   function render() {
@@ -2283,6 +3127,7 @@ const Rooms = (() => {
     wireHotspots(holder, room);
     wireParallax(holder);
     if (room === "attic") wireTorch(holder);
+    startMoonCycle();
     updateNavArrows(holder, room);
     if (typeof FX !== "undefined" && FX.apply) FX.apply(holder, room);
     if (typeof Fog !== "undefined" && Fog.apply) Fog.apply(holder, room);
@@ -2408,5 +3253,5 @@ const Rooms = (() => {
     });
   }
 
-  return { render, goto };
+  return { render, goto, _moonState: () => ({ ...moonState, stop: moonStop }), _moonJump: (i) => { moonStop = ((i % MOON_STOPS.length) + MOON_STOPS.length) % MOON_STOPS.length; moonT0 = typeof performance !== "undefined" ? performance.now() : 0; } };
 })();
