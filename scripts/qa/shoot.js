@@ -156,6 +156,25 @@ async function waitFade(page) { await page.waitForTimeout(700); }
   await shot(page, "13g-attic-photo"); await closeTopPopup(page);
   await clickHotspot(page, "aback"); await waitFade(page);
 
+  // THE BACK LANDING: the left arrow, and the two doors that make no sense
+  await page.click("#nav-left"); await waitFade(page);
+  await shot(page, "13h-gallery");
+  await clickHotspot(page, "gphoto");
+  await clickHotspot(page, "gwin");
+  await clickHotspot(page, "gcons"); await waitFade(page);
+  await shot(page, "13i-conservatory");
+  await clickHotspot(page, "gramophone"); await page.waitForTimeout(300);
+  await shot(page, "13i2-gramophone"); await closeTopPopup(page);
+  await page.click("#nav-left"); await waitFade(page);   // back to the gallery
+  await clickHotspot(page, "gbath"); await waitFade(page);
+  await shot(page, "13j-bathroom");
+  await clickHotspot(page, "bbath"); await page.waitForTimeout(300);
+  await shot(page, "13j2-bath-warm"); await closeTopPopup(page);
+  await clickHotspot(page, "bwin"); await page.waitForTimeout(300);
+  await closeTopPopup(page);
+  await page.click("#nav-left"); await waitFade(page);   // bback: the gallery again
+  await page.click("#nav-right"); await waitFade(page);  // gback: the corridor again
+
   // study: unlocked from the landing, where its door actually is
   await clickHotspot(page, "gostudy"); await page.waitForTimeout(400); // unlock
   await clickHotspot(page, "gostudy"); await waitFade(page);

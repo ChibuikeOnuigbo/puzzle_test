@@ -14,7 +14,7 @@ window.HTMLCanvasElement.prototype.getContext = window.HTMLCanvasElement.prototy
   window.setTimeout = function(fn, d){ return o(fn, (d||0)/20); };
 })();
 </script>`;
-const files = ["js/config.js","js/audio.js","js/core.js","js/forest-data.js","js/rooms.js","js/puzzles.js","js/fx.js","js/fog.js","js/mirror.js","js/main.js"];
+const files = ["js/config.js","js/audio.js","js/core.js","js/forest-data.js","js/window-data.js","js/roof-data.js","js/moon-data.js","js/bird-data.js","js/birds.js","js/rooms.js","js/puzzles.js","js/fx.js","js/fog.js","js/mirror.js","js/main.js"];
 for (const f of files) {
   const code = fs.readFileSync(path.join(root,f), "utf8").replace(/<\/script>/gi, "<\\/script>");
   html = html.replace(`<script src="${f}"></script>`, `<script>${code}</script>`);
@@ -88,22 +88,22 @@ const w = dom.window, wait = ms => new Promise(r=>setTimeout(r,ms)), ev = c => w
   ev("State.setRoom('kitchen'); State.setFlag('tapOn',false); Rooms.render()");
   ev("RoomActions.kitchen.tap()"); await wait(40);
   check("tap on: full stream", ev("document.querySelector('#v_tap').innerHTML.includes('dasharray')"));
-  await wait(420); // ~8s scaled -> tapOverflow (slow drips)
-  check("8s: sink overflows", ev("State.flag('tapOverflow')===true"));
+  await wait(1350); // ~26s scaled -> tapOverflow (slow drips)
+  check("26s: sink overflows", ev("State.flag('tapOverflow')===true"));
   check("overflow: slow falling drops rendered", ev("document.querySelectorAll('#v_tap animate[attributeName=cy]').length>=3"));
   check("overflow: drips ease in as they fall", ev("document.querySelector('#v_tap').innerHTML.includes('keySplines')"));
-  await wait(520); // ~18s -> house off, spread starts SLOW
-  check("18s: house turned tap off", ev("State.flag('tapHouseOff')===true && State.flag('tapOn')===false"));
-  check("18s: floor water slow first", ev("State.flag('wetFloor')===true && State.flag('tapFloodFast')===false"));
+  await wait(1300); // ~52s -> house off, spread starts SLOW
+  check("52s: house turned tap off", ev("State.flag('tapHouseOff')===true && State.flag('tapOn')===false"));
+  check("52s: floor water slow first", ev("State.flag('wetFloor')===true && State.flag('tapFloodFast')===false"));
   ev("Rooms.render()");
-  check("18s: no tap stream after off", ev("document.querySelector('#v_tap').innerHTML.includes('dasharray')") === false);
-  check("18s: slow ripple on floor", ev("document.querySelectorAll('#v_puddle ellipse').length===1"));
-  await wait(300); // ~23s -> spread turns FAST
-  check("23s: spread turns fast", ev("State.flag('tapFloodFast')===true"));
+  check("52s: no tap stream after off", ev("document.querySelector('#v_tap').innerHTML.includes('dasharray')") === false);
+  check("52s: slow ripple on floor", ev("document.querySelectorAll('#v_puddle ellipse').length===1"));
+  await wait(500); // ~62s -> spread turns FAST
+  check("62s: spread turns fast", ev("State.flag('tapFloodFast')===true"));
   ev("Rooms.render()");
-  check("23s: fast ripples on floor", ev("document.querySelectorAll('#v_puddle ellipse').length>=2"));
-  await wait(350); // ~29s -> settle
-  check("29s: spread settles", ev("State.flag('tapFloodFast')===false"));
+  check("62s: fast ripples on floor", ev("document.querySelectorAll('#v_puddle ellipse').length>=2"));
+  await wait(500); // ~72s -> settle
+  check("72s: spread settles", ev("State.flag('tapFloodFast')===false"));
   // ~34s -> sink starts draining (holds, then sinks). The draining window is
   // narrow, and render overhead makes fixed waits flaky, so poll for it.
   let drainingSaw = false;
@@ -111,32 +111,32 @@ const w = dom.window, wait = ms => new Promise(r=>setTimeout(r,ms)), ev = c => w
     await wait(20);
     drainingSaw = ev("State.flag('tapDrained')===true && State.flag('tapOverflow')===true");
   }
-  check("34s: sink draining, drips still falling", drainingSaw);
+  check("84s: sink draining, drips still falling", drainingSaw);
   ev("Rooms.render()");
-  check("34s: final drips rendered while draining", ev("document.querySelectorAll('#v_tap animate[attributeName=cy]').length>=2"));
-  check("34s: basin holds then sinks", ev("document.querySelector('#v_tap').innerHTML.includes('0;0.35;1')"));
-  let drainDone = false; // ~37.5s -> drips stop, floor keeps water
+  check("84s: final drips rendered while draining", ev("document.querySelectorAll('#v_tap animate[attributeName=cy]').length>=2"));
+  check("84s: basin holds then sinks", ev("document.querySelector('#v_tap').innerHTML.includes('0;0.35;1')"));
+  let drainDone = false; // ~90s -> drips stop, floor keeps water
   for (let i = 0; i < 30 && !drainDone; i++) {
     await wait(20);
     drainDone = ev("State.flag('tapOverflow')===false");
   }
-  check("37.5s: drips stopped", drainDone);
+  check("90s: drips stopped", drainDone);
   ev("Rooms.render()");
-  check("37.5s: drips gone, water stays", ev("document.querySelectorAll('#v_tap animate[attributeName=cy]').length===0 && State.flag('wetFloor')===true"));
-  let evapSaw = false; // ~75s -> evaporate
+  check("90s: drips gone, water stays", ev("document.querySelectorAll('#v_tap animate[attributeName=cy]').length===0 && State.flag('wetFloor')===true"));
+  let evapSaw = false; // ~150s -> evaporate
   for (let i = 0; i < 150 && !evapSaw; i++) {
     await wait(20);
     evapSaw = ev("State.flag('wetFloor')===false && State.flag('tapMoist')===true");
   }
-  check("75s: evaporated, moisture left", evapSaw);
+  check("150s: evaporated, moisture left", evapSaw);
   ev("Rooms.render()");
   check("moisture patch rendered", q("#v_moist"));
-  let goneSaw = false; // ~85s -> moisture gone
-  for (let i = 0; i < 50 && !goneSaw; i++) {
+  let goneSaw = false; // ~165s -> moisture gone
+  for (let i = 0; i < 90 && !goneSaw; i++) {
     await wait(20);
     goneSaw = ev("State.flag('tapMoist')===false");
   }
-  check("85s: moisture gone", goneSaw);
+  check("165s: moisture gone", goneSaw);
   ev("Rooms.render()");
   check("no moisture after", ev("document.querySelectorAll('#v_moist').length===0"));
 
@@ -159,11 +159,11 @@ const w = dom.window, wait = ms => new Promise(r=>setTimeout(r,ms)), ev = c => w
   ev("State.setRoom('conservatory'); Rooms.render()"); await wait(60);
   check("conservatory: gramophone secret hotspot", ev("!!document.querySelector('#v_gramophone') && !!document.querySelector('.hotspot[data-hs=gramophone]')"));
   check("conservatory: back arrow works", ev("document.getElementById('nav-left').hidden === false && document.getElementById('nav-left').dataset.hs === 'cback'"));
-  check("conservatory: fog applied and dense", ev("Fog._count()") >= 60 && ev("document.querySelector('#fog-root') !== null"));
+  check("conservatory: fog applied and thinned", ev("Fog._count()") >= 40 && ev("document.querySelector('#fog-root') !== null"));
   ev("Settings.set('reducedMotion', false)");   // flies rest under reduced motion
   ev("State.setRoom('diningroom'); Rooms.render()"); await wait(80);
   const fliesN = ev("document.querySelectorAll('#fx-flies .fx-fly').length");
-  check("dining: more than 300 flies", fliesN >= 300);
+  check("dining: a large fly population", fliesN >= 150);
   ev("State.setFlag('hallLampOn', !State.flag('hallLampOn')); Rooms.render()"); await wait(40);
   check("dining: flies persist through a re-render", ev("document.querySelectorAll('#fx-flies .fx-fly').length") === fliesN);
   ev("State.addItem('torch'); State.setFlag('torchOn', false); State.setRoom('attic'); Rooms.render()"); await wait(40);
@@ -175,7 +175,7 @@ const w = dom.window, wait = ms => new Promise(r=>setTimeout(r,ms)), ev = c => w
   check("inventory: no top-left or top-right icon clutter", ev("document.getElementById('hud-right') === null && document.getElementById('inventory') === null"));
 
   // --- no oval light glows remain anywhere ---
-  const ROOMS_ALL = ["porch","hallway","kitchen","diningroom","conservatory","landing","study","childroom","attic","basement","memory"];
+  const ROOMS_ALL = ["porch","hallway","kitchen","diningroom","conservatory","landing","study","childroom","attic","basement","memory","gallery","bathroom"];
   ev(`(${JSON.stringify(ROOMS_ALL)}).forEach(r => { State.setRoom(r); Rooms.render(); })`);
   const ovals = ev(`(${JSON.stringify(ROOMS_ALL)}).reduce((n,r)=>{ State.setRoom(r); Rooms.render(); return n + document.querySelectorAll('#scene-holder ellipse[fill="url(#lampglow)"], #scene-holder ellipse[fill="url(#coldglow)"]').length; }, 0)`);
   check("no oval glow ellipses in any room", ovals === 0);

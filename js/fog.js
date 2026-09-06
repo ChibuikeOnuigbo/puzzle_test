@@ -217,8 +217,9 @@ const Fog = (() => {
     trap: (p) => ({ type: "quad", pts: p }),
   };
 
-  /* streamer config helper: narrow columns of mist that rise and dissolve */
-  const STREAM = (count, w, h, dur, o) => ({ count, w, h, dur, o });
+  /* streamer config helper: narrow columns of mist that rise and dissolve.
+     w and h are authored as single numbers and widened into ranges here. */
+  const STREAM = (count, w, h, dur, o) => ({ count, w: [w * 0.7, w * 1.3], h: [h * 0.7, h * 1.3], dur, o });
   /* event helper: a timed swell in one bank */
   const EVT = (at, swell, dur) => ({ at, swell, dur });
 
@@ -229,24 +230,24 @@ const Fog = (() => {
       gust: { period: 24000, strength: 14, len: 2600 },
       glow: [[445, 322, "#e8a04c", 210], [640, 210, "#9cc3dc", 160], [880, 300, "#e8a04c", 120]],
       banks: [
-        { seed: 101, region: R.rect(0, 560, 1280, 160), count: 34, rMin: 40, rMax: 130, oMin: 0.10, oMax: 0.30,
+        { seed: 101, region: R.rect(0, 600, 1280, 120), count: 10, rMin: 30, rMax: 90, oMin: 0.06, oMax: 0.16,
           drift: [10, -3], flow: 0.5, rise: -4, sway: 40, wrap: true, shape: "blob", hue: "#76839a", settle: 0.5,
           streamers: STREAM(4, 26, 130, 14000, 0.2) },
-        { seed: 102, region: R.rect(0, 500, 1280, 120), count: 26, rMin: 60, rMax: 190, oMin: 0.06, oMax: 0.20,
+        { seed: 102, region: R.rect(0, 620, 1280, 100), count: 8, rMin: 40, rMax: 120, oMin: 0.04, oMax: 0.13,
           drift: [16, -2], flow: 0.7, rise: -2, sway: 70, wrap: true, shape: "streak", hue: "#8a97a6", settle: 0.4,
           streamers: STREAM(3, 40, 150, 16000, 0.16) },
-        { seed: 103, region: R.rect(0, 640, 1280, 80), count: 30, rMin: 30, rMax: 90, oMin: 0.16, oMax: 0.36,
+        { seed: 103, region: R.rect(0, 648, 1280, 72), count: 10, rMin: 22, rMax: 62, oMin: 0.08, oMax: 0.16,
           drift: [22, -5], flow: 0.9, rise: -7, sway: 60, wrap: true, shape: "streak", hue: "#6d7b88", settle: 0.35,
           streamers: STREAM(5, 20, 90, 10000, 0.24) },
-        { seed: 104, region: R.ellipse(240, 470, 300, 90), count: 18, rMin: 24, rMax: 70, oMin: 0.08, oMax: 0.22,
+        { seed: 104, region: R.ellipse(240, 500, 300, 70), count: 8, rMin: 24, rMax: 60, oMin: 0.05, oMax: 0.12,
           drift: [6, -4], flow: 0.4, rise: -6, sway: 30, wrap: false, shape: "blob", hue: "#96a3b2", settle: 0.6 },
-        { seed: 105, region: R.ellipse(1030, 500, 320, 100), count: 18, rMin: 26, rMax: 74, oMin: 0.08, oMax: 0.24,
+        { seed: 105, region: R.ellipse(1030, 520, 320, 80), count: 8, rMin: 26, rMax: 62, oMin: 0.05, oMax: 0.12,
           drift: [8, -3], flow: 0.45, rise: -5, sway: 34, wrap: false, shape: "blob", hue: "#96a3b2", settle: 0.55 },
-        { seed: 106, region: R.band(452, 680, 830, 720), count: 16, rMin: 20, rMax: 60, oMin: 0.10, oMax: 0.24,
+        { seed: 106, region: R.band(452, 686, 830, 720), count: 6, rMin: 16, rMax: 44, oMin: 0.06, oMax: 0.14,
           drift: [-6, -2], flow: 0.3, rise: -3, sway: 24, wrap: false, shape: "streak", hue: "#8f9aa6", settle: 0.5 },
-        { seed: 107, region: R.rect(0, 40, 1280, 180), count: 14, rMin: 60, rMax: 200, oMin: 0.03, oMax: 0.10,
+        { seed: 107, region: R.rect(0, 30, 1280, 170), count: 10, rMin: 60, rMax: 190, oMin: 0.03, oMax: 0.09,
           drift: [9, 1], flow: 0.3, rise: 0, sway: 90, wrap: true, shape: "streak", hue: "#98a5b3", settle: 0.7 },
-        { seed: 108, region: R.rect(0, 300, 500, 240), count: 14, rMin: 50, rMax: 140, oMin: 0.04, oMax: 0.12,
+        { seed: 108, region: R.rect(0, 60, 500, 160), count: 8, rMin: 50, rMax: 120, oMin: 0.03, oMax: 0.08,
           drift: [13, -1], flow: 0.5, rise: -1, sway: 60, wrap: true, shape: "blob", hue: "#8b98a5", settle: 0.6 },
         { seed: 109, region: R.trap([150, 520, 200, 520, 320, 660, 120, 660]), count: 10, rMin: 24, rMax: 62, oMin: 0.10, oMax: 0.24,
           drift: [4, -5], flow: 0.4, rise: -6, sway: 26, wrap: false, shape: "streak", hue: "#6f7c88", settle: 0.5,
@@ -254,13 +255,13 @@ const Fog = (() => {
         { seed: 110, region: R.trap([1100, 520, 1160, 520, 1240, 664, 1040, 664]), count: 10, rMin: 24, rMax: 62, oMin: 0.10, oMax: 0.24,
           drift: [4, -5], flow: 0.4, rise: -6, sway: 26, wrap: false, shape: "streak", hue: "#6f7c88", settle: 0.5,
           streamers: STREAM(2, 18, 100, 12000, 0.2) },
-        { seed: 111, region: R.ellipse(640, 360, 380, 92), count: 16, rMin: 28, rMax: 80, oMin: 0.05, oMax: 0.14,
+        { seed: 111, region: R.ellipse(640, 120, 380, 70), count: 8, rMin: 28, rMax: 70, oMin: 0.03, oMax: 0.08,
           drift: [9, -2], flow: 0.45, rise: -3, sway: 42, wrap: false, shape: "blob", hue: "#93a0ae", settle: 0.55 },
-        { seed: 112, region: R.rect(0, 220, 1280, 150), count: 16, rMin: 60, rMax: 170, oMin: 0.03, oMax: 0.09,
+        { seed: 112, region: R.rect(0, 90, 1280, 130), count: 10, rMin: 60, rMax: 150, oMin: 0.03, oMax: 0.08,
           drift: [15, -1], flow: 0.6, rise: -1, sway: 82, wrap: true, shape: "streak", hue: "#9aa7b4", settle: 0.6 },
-        { seed: 113, region: R.band(300, 640, 720, 700), count: 12, rMin: 22, rMax: 60, oMin: 0.08, oMax: 0.2,
+        { seed: 113, region: R.band(300, 664, 720, 712), count: 8, rMin: 16, rMax: 44, oMin: 0.06, oMax: 0.16,
           drift: [7, -3], flow: 0.4, rise: -4, sway: 28, wrap: false, shape: "streak", hue: "#7c8894", settle: 0.45 },
-        { seed: 114, region: R.ellipse(700, 560, 220, 70), count: 12, rMin: 20, rMax: 52, oMin: 0.09, oMax: 0.22,
+        { seed: 114, region: R.ellipse(700, 640, 220, 50), count: 8, rMin: 16, rMax: 42, oMin: 0.07, oMax: 0.16,
           drift: [5, -4], flow: 0.35, rise: -5, sway: 22, wrap: false, shape: "blob", hue: "#84909c", settle: 0.5 },
       ],
       events: [
@@ -389,6 +390,22 @@ const Fog = (() => {
         EVT(33000, 1.4, 3600),
         EVT(52000, 1.35, 3400),
 
+      ],
+    },
+
+    /* ================= BATHROOM — steam kept warm over still water ================= */
+    bathroom: {
+      kind: "room", density: 0.8, tint: "#7f929c", clarityFloor: 0.35, clarityCeil: 0.9,
+      gust: { period: 24000, strength: 7, len: 3000 },
+      glow: [[660, 460, "#9cc3dc", 200]],
+      banks: [
+        { seed: 601, region: R.ellipse(660, 452, 300, 80), count: 16, rMin: 40, rMax: 110, oMin: 0.07, oMax: 0.18,
+          drift: [5, -3], flow: 0.35, rise: -4, sway: 50, wrap: true, shape: "blob", hue: "#7f929c", settle: 0.5,
+          streamers: STREAM(4, 20, 120, 13000, 0.16) },
+        { seed: 602, region: R.rect(0, 560, 1280, 160), count: 18, rMin: 40, rMax: 110, oMin: 0.06, oMax: 0.16,
+          drift: [6, -1], flow: 0.4, rise: -1, sway: 60, wrap: true, shape: "streak", hue: "#6f828c", settle: 0.5 },
+        { seed: 603, region: R.rect(0, 90, 1280, 180), count: 10, rMin: 50, rMax: 140, oMin: 0.03, oMax: 0.09,
+          drift: [7, 1], flow: 0.3, rise: 0, sway: 70, wrap: true, shape: "streak", hue: "#8aa0aa", settle: 0.6 },
       ],
     },
 
@@ -744,6 +761,15 @@ const Fog = (() => {
       draughts: [DRAUGHT(60, 600, 80, true, 0.04), DRAUGHT(1210, 600, 80, true, 0.04)],
     },
 
+    /* ================= BATHROOM — one cold shaft off the sea window ================= */
+    bathroom: {
+      shafts: [
+        SHAFT(980, 150, 880, 620, 130, 0.06, "#a8c8da", 12),
+      ],
+      draughts: [DRAUGHT(46, 560, 70, true, 0.04)],
+      wisps: { count: 3, o: 0.05, speed: 0.3 },
+    },
+
     /* ================= CONSERVATORY — glass shafts, drips, an eddy ================= */
     conservatory: {
       shafts: [
@@ -785,6 +811,36 @@ const Fog = (() => {
     /* ================= LANDING — daylight shaft ================= */
     landing: {
       shafts: [SHAFT(600, 172, 600, 640, 100, 0.06, "#f2e3b8", 8)],
+    },
+
+    /* ================= BACK LANDING — mist seeps from both wrong doors ==== */
+    gallery: {
+      kind: "ceiling", density: 0.5, tint: "#8a8070", clarityFloor: 0.58, clarityCeil: 0.92,
+      gust: { period: 38000, strength: 5, len: 1800 },
+      glow: [[150, 320, "#9cc3dc", 150], [1060, 470, "#e8c87a", 130]],
+      banks: [
+        { seed: 1201, region: R.rect(0, 80, 1280, 130), count: 14, rMin: 40, rMax: 110, oMin: 0.05, oMax: 0.12,
+          drift: [6, 0], flow: 0.35, rise: -2, sway: 44, wrap: true, shape: "blob", hue: "#8a8070", settle: 0.75,
+          streamers: STREAM(2, 18, 80, 17000, 0.12) },
+        { seed: 1202, region: R.trap([60, 470, 240, 470, 320, 620, 20, 620]), count: 8, rMin: 18, rMax: 46, oMin: 0.06, oMax: 0.14,
+          drift: [4, -2], flow: 0.3, rise: -3, sway: 18, wrap: false, shape: "streak", hue: "#7f9a94", settle: 0.7,
+          streamers: STREAM(2, 14, 90, 12000, 0.14) },
+        { seed: 1203, region: R.trap([980, 470, 1140, 470, 1200, 610, 940, 610]), count: 7, rMin: 16, rMax: 42, oMin: 0.05, oMax: 0.12,
+          drift: [-4, -2], flow: 0.3, rise: -3, sway: 16, wrap: false, shape: "streak", hue: "#a8926c", settle: 0.7 },
+        { seed: 1204, region: R.rect(0, 160, 1280, 90), count: 10, rMin: 30, rMax: 84, oMin: 0.04, oMax: 0.1,
+          drift: [5, 0], flow: 0.3, rise: -1, sway: 38, wrap: true, shape: "blob", hue: "#857c6c", settle: 0.75 },
+      ],
+      events: [
+        EVT(10000, 1.3, 3400),
+        EVT(28000, 1.35, 3200),
+        EVT(46000, 1.3, 3000),
+      ],
+    },
+
+    /* ================= BACK LANDING — cold glass, warm stair ================= */
+    gallery: {
+      shafts: [SHAFT(660, 150, 640, 620, 100, 0.06, "#9cc3dc", 9)],
+      draughts: [DRAUGHT(150, 480, 90, true, 0.05), DRAUGHT(1060, 480, 90, true, 0.05)],
     },
 
     /* ================= CHILD ROOM — rain window ================= */
@@ -901,6 +957,12 @@ const Fog = (() => {
       motes: MOTES(6, 0.45),
       corners: [CURL(40, 90, 80, 0.07, "#a89a7f"), CURL(1240, 90, 80, 0.07, "#a89a7f")],
     },
+    gallery: {
+      weather: WEATHER(120000, 0.15),
+      motes: MOTES(6, 0.45),
+      corners: [CURL(40, 86, 80, 0.07, "#8a8070"), CURL(1240, 86, 80, 0.07, "#8a8070")],
+      breaths: [BREATH(150, 500, 20, 130, 10000, 0.08, "#7f9a94")],
+    },
     childroom: {
       weather: WEATHER(115000, 0.16),
       panes: [PANE(900, 110, 180, 150, 0.05, 0.02)],
@@ -933,10 +995,10 @@ const Fog = (() => {
      The fog is tuned to whisper, not to shout. Every actor's opacity is
      multiplied by this factor, set per room kind in apply():
 
-       • outside  — the porch keeps a faint ground mist (the one part of the
-                    fog that is meant to stay visible, but very low).
+       • outside  — the porch keeps a faint ground mist, and the middle of
+                    the view stays clear so the house is always readable.
        • room     — conservatory, attic, memory: a bare tint of air.
-       • floor    — the basement: barely-there cold haze.
+       • floor    — the basement: cold haze that lives on the floor only.
        • ceiling  — hall, kitchen, dining, study, landing, child room: the
                     lightest touch of all.
 
@@ -944,12 +1006,71 @@ const Fog = (() => {
      the single dial for how much fog the player actually sees. */
   function roomOpacityFactor(kind) {
     switch (kind) {
-      case "outside": return 0.4;   // porch: faint rolling mist remains
-      case "room":    return 0.22;  // conservatory, attic, memory
-      case "floor":   return 0.18;  // basement floor fog
-      default:        return 0.18;  // ceiling rooms: the lightest touch
+      case "outside": return 0.16;  // porch: a breath of mist at top and floor
+      case "room":    return 0.12;  // conservatory, attic, memory
+      case "floor":   return 0.14;  // basement floor fog
+      default:        return 0.10;  // ceiling rooms: the lightest touch
     }
   }
+
+  /* Per-blob opacity caps: nothing in the field may ever get louder than
+     this, whatever the bank data says. Floor fog is allowed 0.2 (the one
+     place mist is meant to be seen); everywhere else stays under it. */
+  function opacityCap(kind) {
+    switch (kind) {
+      case "outside": return 0.2;
+      case "floor":   return 0.2;
+      case "room":    return 0.16;
+      default:        return 0.14;
+    }
+  }
+
+  /* Vertical attenuation: WHERE in the frame fog is allowed to live.
+     Outside, the middle band of the screen is kept almost clear so the house
+     facade and the path never sit behind a wall; mist is welcome high (sky /
+     treeline) and low (the floor). Floor rooms keep their mist on the floor.
+     Returns a 0..1 multiplier for a blob centre's y. */
+  function verticalMask(kind, y) {
+    if (kind === "outside") {
+      // top: full from y<210, gone by y=330; bottom: gone above y=545, full by 620
+      const top = 1 - smooth(norm(y, 210, 330));
+      const bottom = smooth(norm(y, 545, 620));
+      return clamp(Math.max(top * 0.9, bottom) + 0.06, 0, 1);
+    }
+    if (kind === "floor") {
+      // basement: nothing above mid height, full on the boards
+      return clamp(smooth(norm(y, 430, 560)) * 0.95 + 0.05, 0, 1);
+    }
+    if (kind === "room") return 1;
+    // ceiling rooms: mist clings high and fades before eye level
+    return clamp(1 - smooth(norm(y, 150, 330)) * 0.85, 0.15, 1);
+  }
+
+  /* GLOBAL DRIFT SCALE
+     Bank drift values are authored as "how fast this bank wants to move"
+     (roughly px/second at value 20). They are applied per frame, so they are
+     divided by 20 here: a bank at drift 20 crosses the 1280px stage in about
+     20 seconds, and the slow banks take a minute or more. Nothing in the
+     field may sprint; the fog crawls, in straight lines. */
+  const DRIFT_SCALE = 1 / 20;
+  /* interiors breathe even slower than the yard */
+  const INTERIOR_DRIFT = 0.5;
+
+  /* PER-ROOM THINNING
+     Some rooms carried far more mist than they needed. Each room's bank
+     counts are multiplied by this on top of the player's density setting, so
+     a room can be cleared out without rewriting its choreography. */
+  const ROOM_THIN = {
+    porch: 0.6, hallway: 0.6, kitchen: 0.6, diningroom: 0.6,
+    conservatory: 0.55, study: 0.55, basement: 0.7, landing: 0.6,
+    childroom: 0.6, attic: 0.7, memory: 0.6, gallery: 0.6,
+  };
+
+  /* the fog's colour: every hue the banks declare is pulled toward a cold
+     near-black, so mist reads as gloom in the dark rooms and as shadow
+     outdoors instead of a pale wash over the art. */
+  const FOG_BLACK = "#141a21";
+  const fogHue = (hex) => tintToward(hex, FOG_BLACK, 0.55);
 
   /* ==========================================================================
      3. ENGINE STATE
@@ -974,6 +1095,12 @@ const Fog = (() => {
   let density = 1;                // from Settings.fogDensity
   let enabled = true;             // from Settings.fog
   let reduced = false;            // from Settings.reducedMotion
+  let curKind = "room";           // current room kind (outside/room/floor/ceiling)
+  let curCap = 0.2;               // per-blob opacity cap for the current room
+  let curThin = 0.6;              // per-room bank count thinning
+  let curProfile = null;          // merged profile, cached per mount
+  let svgRect = null, svgRectAt = 0;  // cached stage rect (layout reads are slow)
+  let frameEMA = 16.6, stride = 1, frameNo = 0;  // adaptive quality
 
   /* layer-two actors */
   let shafts = [];                // light shafts (fog caught in a beam)
@@ -1143,16 +1270,19 @@ const Fog = (() => {
     group.appendChild(clip);
     const layer = mk("g", { "clip-path": "url(#" + clipId + ")", class: "fog-bank", "data-seed": bank.seed }, group);
     const wraps = regionWraps(bank.region);
-    const count = Math.round(bank.count * density);
+    const count = Math.max(3, Math.round(bank.count * density * curThin));
+    const driftMul = DRIFT_SCALE * (curKind === "outside" ? 1 : INTERIOR_DRIFT);
 
     for (let i = 0; i < count; i++) {
       const [x, y] = pointInRegion(bank.region, rng);
       const r = lerp(bank.rMin, bank.rMax, rng());
-      const baseO = lerp(bank.oMin, bank.oMax, rng()) * opacFactor;
+      /* opacity is capped per room kind and attenuated by height, so a bank
+         that sits where fog is not allowed simply spawns quieter */
+      const baseO = Math.min(lerp(bank.oMin, bank.oMax, rng()) * opacFactor * verticalMask(curKind, y), curCap);
       const streak = bank.shape === "streak";
       const aspect = streak ? lerp(2.6, 4.4, rng()) : lerp(0.7, 1.15, rng());
       const rot = streak ? lerp(-18, 12, rng()) : 0;
-      const hue = tintToward(bank.hue, "#cfd6dc", rng() * 0.18);
+      const hue = fogHue(tintToward(bank.hue, "#cfd6dc", rng() * 0.18));
 
       const el = mk("ellipse", {
         class: "fog-blob",
@@ -1170,15 +1300,18 @@ const Fog = (() => {
         hue,
         ph: rng() * TAU,
         seed: bank.seed + i,
-        driftX: bank.drift[0], driftY: bank.drift[1],
-        flow: bank.flow || 0.4,
-        rise: bank.rise || 0,
-        sway: bank.sway || 40,
+        driftX: bank.drift[0] * driftMul, driftY: bank.drift[1] * driftMul,
+        flow: (bank.flow || 0.4) * (curKind === "outside" ? 0.35 : 0.12),
+        rise: (bank.rise || 0) * driftMul,
+        sway: (bank.sway || 40) * (curKind === "outside" ? 0.35 : 0.2),
         settle: bank.settle != null ? bank.settle : 0.5,
         wrap: wraps,
         region: bank.region,
         streak,
         bankSeed: bank.seed,
+        /* temporal LOD: half the field updates on odd frames, half on even */
+        parity: i & 1,
+        oAge: 0,
       });
     }
 
@@ -1195,7 +1328,7 @@ const Fog = (() => {
           y: y1,
           width: lerp(st.w[0], st.w[1], srng()),
           height: 0,
-          fill: tintToward(bank.hue, "#e8ecf0", 0.2),
+          fill: fogHue(tintToward(bank.hue, "#e8ecf0", 0.2)),
           opacity: 0,
           filter: "url(#fogblur24)",
         }, layer);
@@ -1205,7 +1338,7 @@ const Fog = (() => {
           y0, y1,
           h: lerp(st.h[0], st.h[1], srng()),
           dur: lerp(st.dur * 0.7, st.dur * 1.3, srng()),
-          o: lerp(st.o * 0.7, st.o * 1.3, srng()) * opacFactor,
+          o: Math.min(lerp(st.o * 0.7, st.o * 1.3, srng()) * opacFactor, curCap * 0.8),
           t: srng() * st.dur * 1.4,   // desynchronised starts
           phase: srng() * TAU,
           rise: lerp(0.12, 0.3, srng()),
@@ -1225,7 +1358,7 @@ const Fog = (() => {
         cx: lerp(-60, STAGE_W + 60, rng()),
         cy: lerp(80, STAGE_H - 60, rng()),
         rx: r, ry: r * 0.6,
-        fill: profile.tint || "#8a97a6",
+        fill: fogHue(profile.tint || "#8a97a6"),
         opacity: lerp(0.02, 0.05, rng()) * opacFactor,
         filter: "url(#fogblur52)",
       }, group);
@@ -1285,7 +1418,7 @@ const Fog = (() => {
       const el = mk("ellipse", {
         class: "fog-draught",
         cx: d.x, cy: d.y, rx: d.w * 0.5, ry: 14,
-        fill: "#cfd6dc",
+        fill: fogHue("#cfd6dc"),
         opacity: (d.o * opacFactor).toFixed(3),
         filter: "url(#fogblur24)",
       }, group);
@@ -1317,14 +1450,14 @@ const Fog = (() => {
       const core = mk("ellipse", {
         class: "fog-vortex",
         cx: v.cx, cy: v.cy, rx: v.r * 0.35, ry: v.r * 0.22,
-        fill: "#d4dce2", opacity: vo.toFixed(3), filter: "url(#fogblur24)",
+        fill: fogHue("#d4dce2"), opacity: vo.toFixed(3), filter: "url(#fogblur24)",
       }, group);
       const sat = [];
       for (let k = 0; k < 3; k++) {
         const se = mk("ellipse", {
           class: "fog-vortex-sat",
           cx: v.cx, cy: v.cy, rx: v.r * 0.16, ry: v.r * 0.1,
-          fill: "#dfe6ea", opacity: (vo * 0.6).toFixed(3), filter: "url(#fogblur16)",
+          fill: fogHue("#dfe6ea"), opacity: (vo * 0.6).toFixed(3), filter: "url(#fogblur16)",
         }, group);
         sat.push({ el: se, a0: rng() * TAU, rr: lerp(v.r * 0.55, v.r, rng()), sp: lerp(0.8, 1.6, rng()) * (rng() < 0.5 ? 1 : -1) });
       }
@@ -1345,7 +1478,7 @@ const Fog = (() => {
       const el = mk("ellipse", {
         class: "fog-wisp",
         cx: rng() * STAGE_W, cy: y, rx: r, ry: r * 0.32,
-        fill: profile.tint || "#aab4bd",
+        fill: fogHue(profile.tint || "#aab4bd"),
         opacity: wO.toFixed(3),
         filter: "url(#fogblur52)",
       }, g);
@@ -1391,7 +1524,7 @@ const Fog = (() => {
       const film = mk("rect", {
         class: "fog-pane",
         x: p.x, y: p.y, width: p.w, height: p.h,
-        fill: "#c9d6de", opacity: (p.o * opacFactor).toFixed(3), filter: "url(#fogblur24)",
+        fill: fogHue("#c9d6de"), opacity: (p.o * opacFactor).toFixed(3), filter: "url(#fogblur24)",
       }, group);
       const streaks = [];
       for (let k = 0; k < 3; k++) {
@@ -1428,7 +1561,7 @@ const Fog = (() => {
     profile.ribbons.forEach((r) => {
       const el = mk("path", {
         class: "fog-ribbon",
-        fill: "none", stroke: r.hue, "stroke-width": r.h,
+        fill: "none", stroke: fogHue(r.hue), "stroke-width": r.h,
         "stroke-linecap": "round",
         d: ribbonPath(r, 0, rng() * TAU),
         opacity: (r.o * opacFactor).toFixed(3), filter: "url(#fogblur24)",
@@ -1467,14 +1600,14 @@ const Fog = (() => {
       const core = mk("ellipse", {
         class: "fog-curl",
         cx: c.x, cy: c.y, rx: c.r, ry: c.r * 0.6,
-        fill: c.hue, opacity: co.toFixed(3), filter: "url(#fogblur36)",
+        fill: fogHue(c.hue), opacity: co.toFixed(3), filter: "url(#fogblur36)",
       }, group);
       const subs = [];
       for (let k = 0; k < 2; k++) {
         const se = mk("ellipse", {
           class: "fog-curl-sub",
           cx: c.x, cy: c.y, rx: c.r * 0.5, ry: c.r * 0.3,
-          fill: c.hue, opacity: (co * 0.5).toFixed(3), filter: "url(#fogblur24)",
+          fill: fogHue(c.hue), opacity: (co * 0.5).toFixed(3), filter: "url(#fogblur24)",
         }, group);
         subs.push({ el: se, a0: rng() * TAU, rr: c.r * 0.6, sp: 0.3 + rng() * 0.4 });
       }
@@ -1490,7 +1623,7 @@ const Fog = (() => {
       const el = mk("ellipse", {
         class: "fog-breath",
         cx: b.x, cy: b.y, rx: b.r0, ry: b.r0 * 0.5,
-        fill: b.hue, opacity: 0, filter: "url(#fogblur24)",
+        fill: fogHue(b.hue), opacity: 0, filter: "url(#fogblur24)",
       }, group);
       breaths.push({ el, b: { ...b, o: b.o * opacFactor }, t: rng() * b.dur });
     });
@@ -1535,12 +1668,17 @@ const Fog = (() => {
     initClarity();
 
     const profile = mergeProfile(P[newRoom] || P.hallway, P2[newRoom], P3[newRoom]);
-    opacFactor = roomOpacityFactor(profile.kind);
+    curProfile = profile;
+    curKind = profile.kind || "room";
+    curCap = opacityCap(curKind);
+    curThin = ROOM_THIN[newRoom] != null ? ROOM_THIN[newRoom] : 0.6;
+    opacFactor = roomOpacityFactor(curKind);
+    svgRect = null; svgRectAt = 0;
     if (enabled && profile) {
       if (profile.tint) {
         const scrim = mk("rect", {
           x: 0, y: 0, width: STAGE_W, height: STAGE_H,
-          fill: profile.tint, opacity: (0.03 * opacFactor).toFixed(3),
+          fill: fogHue(profile.tint), opacity: (0.03 * opacFactor).toFixed(3),
         }, root);
         root.insertBefore(scrim, root.firstChild);
       }
@@ -1644,11 +1782,18 @@ const Fog = (() => {
     raf = requestAnimationFrame(loop);
     if (!mounted || !blobs.length) return;
 
-    const dt = clamp((t - lastT) / 16.6, 0.05, 3);
+    const rawDt = t - lastT;
+    const dt = clamp(rawDt / 16.6, 0.05, 3);
     lastT = t;
     elapsed += dt * 16.6;
+    frameNo++;
+    /* adaptive quality: if frames run long, update the field in two
+       alternating halves so the frame cost halves without visible stutter */
+    frameEMA = frameEMA * 0.9 + rawDt * 0.1;
+    stride = frameEMA > 30 ? 2 : 1;
+    const half = frameNo & 1;
 
-    const profile = mergeProfile(P[room] || P.hallway, P2[room], P3[room]);
+    const profile = curProfile || (curProfile = mergeProfile(P[room] || P.hallway, P2[room], P3[room]));
     const floor = (profile && profile.clarityFloor != null) ? profile.clarityFloor : 0.5;
     const ceil = (profile && profile.clarityCeil != null) ? profile.clarityCeil : 0.9;
     /* slow weather: the whole room's fog thickens and thins over minutes */
@@ -1697,13 +1842,18 @@ const Fog = (() => {
     };
     const swell = eventSwell();
 
-    /* ---- 4. cursor position in stage coords ---- */
+    /* ---- 4. cursor position in stage coords ----
+       the stage rect is a layout read; it is cached and refreshed at most
+       once a second (and on mount / resize). */
     let px = -9999, py = -9999;
     if (mouse.active && svgEl) {
-      let r = svgEl.getBoundingClientRect();
-      if (!r || !r.width) r = { left: 0, top: 0, width: 1280, height: 720 };
-      const sx = STAGE_W / r.width, sy = STAGE_H / r.height;
-      px = (mouse.x - r.left) * sx; py = (mouse.y - r.top) * sy;
+      if (!svgRect || t - svgRectAt > 1000) {
+        const r = svgEl.getBoundingClientRect();
+        svgRect = (r && r.width) ? r : { left: 0, top: 0, width: 1280, height: 720 };
+        svgRectAt = t;
+      }
+      const sx = STAGE_W / svgRect.width, sy = STAGE_H / svgRect.height;
+      px = (mouse.x - svgRect.left) * sx; py = (mouse.y - svgRect.top) * sy;
     }
 
     /* ---- 4b. spatial clarity field: stamp where the mouse swept, heal ---- */
@@ -1730,58 +1880,70 @@ const Fog = (() => {
     const pulseAge = elapsed - pulseAt;
     const pulseOn = pulseAge >= 0 && pulseAge < 1200;
 
+    const cap = curCap;
+    const tSec = elapsed * 0.001;
     for (const b of blobs) {
       if (reduced) continue;   // static fog: leave attributes as spawned
+      /* temporal LOD: on slow machines each half of the field moves on
+         alternate frames (still the same speed, half the attribute writes) */
+      if (stride === 2 && b.parity !== half) continue;
 
-      /* organic drift: base wind + rotational flow + sway + gust shove */
-      const ang = flowAngle(b.x * 0.01, b.y * 0.01, elapsed * 0.001, b.seed);
-      b.ph += 0.006 * dt;
-      b.x += (b.driftX + gust + Math.cos(ang) * 6 * b.flow) * dt + Math.cos(b.ph) * b.sway * 0.004 * dt;
-      b.y += (b.driftY + b.rise + Math.sin(ang * 0.7) * 5 * b.flow) * dt;
+      /* drift is LINEAR: a constant crawl plus a whisper of sine for life.
+         The old rotational noise field made the mist swirl and race; the
+         house's fog now crosses the stage in long, straight, slow passes. */
+      b.ph += 0.0015 * dt;
+      b.x += (b.driftX + gust * DRIFT_SCALE + Math.sin(tSec * 0.05 + b.seed) * 0.35 * b.flow) * dt
+           + Math.cos(b.ph) * b.sway * 0.0012 * dt;
+      b.y += (b.driftY + b.rise + Math.sin(tSec * 0.04 + b.seed * 0.7) * 0.25 * b.flow) * dt;
 
       keepInside(b, dt);
 
-      /* opacity: base * breathing * swell * clarity * (mouse clearing) * light scatter */
-      let o = b.baseO;
-      o *= 0.82 + 0.18 * breathe(elapsed, 4200 + b.seed % 900, 1);
-      o *= swell;
-      o *= weather;
-      o *= lerp(0.55, 1.0, clarity);
-      /* spatial clarity: fog thinned where the mouse recently swept */
-      const local = sampleClarity(b.x, b.y);
-      if (local > 0.001) o *= lerp(1, 0.25, clamp(local, 0, 1));
-      if (px > -999) {
-        const d2c = dist2(b.x, b.y, px, py);
-        const r2 = clearRadius * clearRadius;
-        if (d2c < r2) {
-          const d = Math.sqrt(d2c) || 0.001;
-          const k = smooth(1 - d / clearRadius);     // 1 at centre, 0 at edge
-          o *= lerp(1, 0.16, k);
-        }
-      }
-      if (pulseOn) {
-        const d = dist(b.x, b.y, pulseX, pulseY);
-        if (d < pulseR) o *= lerp(1, 0.2, smooth(1 - d / pulseR) * (1 - pulseAge / 1200));
-      }
-      if (beam) {
-        const d = dist(b.x, b.y, beam.x, beam.y);
-        if (d < beam.r) o *= lerp(1, 0.12, smooth(1 - d / beam.r));
-      }
-      if (light) {
-        for (const g of light) {
-          const d = dist(b.x, b.y, g[0], g[1]);
-          const glow = g[3];
-          if (d < glow) {
-            const k = smooth(1 - d / glow);
-            o += 0.05 * opacFactor * k;              // lamplight makes fog visible
+      /* opacity: base * breathing * swell * clarity * (mouse clearing) * light scatter.
+         Position is written every visit; opacity every other visit, which the
+         eye cannot tell apart at these values. */
+      b.oAge ^= 1;
+      if (b.oAge) {
+        let o = b.baseO;
+        o *= 0.82 + 0.18 * breathe(elapsed, 4200 + b.seed % 900, 1);
+        o *= swell;
+        o *= weather;
+        o *= lerp(0.55, 1.0, clarity);
+        /* spatial clarity: fog thinned where the mouse recently swept */
+        const local = sampleClarity(b.x, b.y);
+        if (local > 0.001) o *= lerp(1, 0.25, clamp(local, 0, 1));
+        if (px > -999) {
+          const d2c = dist2(b.x, b.y, px, py);
+          const r2 = clearRadius * clearRadius;
+          if (d2c < r2) {
+            const d = Math.sqrt(d2c) || 0.001;
+            const k = smooth(1 - d / clearRadius);     // 1 at centre, 0 at edge
+            o *= lerp(1, 0.16, k);
           }
         }
+        if (pulseOn) {
+          const d = dist(b.x, b.y, pulseX, pulseY);
+          if (d < pulseR) o *= lerp(1, 0.2, smooth(1 - d / pulseR) * (1 - pulseAge / 1200));
+        }
+        if (beam) {
+          const d = dist(b.x, b.y, beam.x, beam.y);
+          if (d < beam.r) o *= lerp(1, 0.12, smooth(1 - d / beam.r));
+        }
+        if (light) {
+          for (const g of light) {
+            const d = dist(b.x, b.y, g[0], g[1]);
+            const glow = g[3];
+            if (d < glow) {
+              const k = smooth(1 - d / glow);
+              o += 0.05 * opacFactor * k;              // lamplight makes fog visible
+            }
+          }
+        }
+        b.lastO = clamp(o, 0, cap);
+        b.el.setAttribute("opacity", b.lastO.toFixed(3));
       }
-      o = clamp(o, 0, 0.5);
 
       b.el.setAttribute("cx", b.x.toFixed(1));
       b.el.setAttribute("cy", b.y.toFixed(1));
-      b.el.setAttribute("opacity", o.toFixed(3));
     }
 
     /* ---- 6. streamers: rise, sway, dissolve ---- */
@@ -1790,7 +1952,7 @@ const Fog = (() => {
       const cycle = s.t % s.dur;
       const k = cycle / s.dur;
       const h = s.h * Math.sin(k * Math.PI);        // grow then shrink
-      const xw = s.x0 + Math.sin(cycle * 0.001 + s.phase) * 8;
+      const xw = s.x0 + Math.sin(cycle * 0.0004 + s.phase) * 8;
       const opacity = s.o * Math.sin(k * Math.PI) * lerp(0.5, 1, clarity) * swell;
       s.el.setAttribute("x", xw.toFixed(1));
       s.el.setAttribute("y", (s.y1 - h).toFixed(1));
@@ -1801,7 +1963,7 @@ const Fog = (() => {
     /* ---- 7. light shafts: sway and breathe with the fog ---- */
     if (!reduced) {
       for (const sh of shafts) {
-        sh.ph += 0.004 * dt;
+        sh.ph += 0.0016 * dt;
         const sway = Math.sin(sh.ph) * sh.s.sway + gust * 0.6;
         sh.el.setAttribute("points", shaftPoints(sh.s, sway));
         sh.el.setAttribute("opacity", (sh.s.o * (0.8 + 0.2 * breathe(elapsed, 5200 + sh.s.x1 % 700, 1)) * swell).toFixed(3));
@@ -1811,7 +1973,7 @@ const Fog = (() => {
     /* ---- 8. draughts: curl up and away from the door gap ---- */
     if (!reduced) {
       for (const d of draughts) {
-        d.ph += 0.01 * dt;
+        d.ph += 0.0035 * dt;
         const xw = d.d.x + Math.sin(d.ph) * d.d.w * 0.3;
         const yw = d.d.y + Math.sin(d.ph * 0.7) * 6 + Math.cos(d.ph) * 5;
         d.el.setAttribute("cx", xw.toFixed(1));
@@ -1834,7 +1996,7 @@ const Fog = (() => {
     /* ---- 10. vortices: spin their wisps and pull nearby fog ---- */
     if (!reduced) {
       for (const vx of vortices) {
-        vx.ang += 0.004 * dt;
+        vx.ang += 0.0014 * dt;
         for (const sat of vx.sat) {
           const a = sat.a0 + vx.ang * sat.sp;
           sat.el.setAttribute("cx", (vx.v.cx + Math.cos(a) * sat.rr).toFixed(1));
@@ -1847,7 +2009,7 @@ const Fog = (() => {
           const d2v = dx * dx + dy * dy;
           if (d2v < pullR * pullR) {
             const d = Math.sqrt(d2v) || 0.001;
-            const k = (1 - d / pullR) * vx.v.pull * 0.16;
+            const k = (1 - d / pullR) * vx.v.pull * 0.05;
             b.x += -dy * k * dt;
             b.y += dx * k * dt;
           }
@@ -1859,7 +2021,7 @@ const Fog = (() => {
     /* ---- 11. wisps: foreground drift, faint and slow ---- */
     if (!reduced) {
       for (const w of wisps) {
-        w.x += w.sp * dt * 0.6;
+        w.x += w.sp * dt * 0.18;
         if (w.x < -w.r) w.x = STAGE_W + w.r;
         if (w.x > STAGE_W + w.r) w.x = -w.r;
         w.el.setAttribute("cx", w.x.toFixed(1));
@@ -1871,7 +2033,7 @@ const Fog = (() => {
     /* ---- 12. bands: shadow strips drifting across the floor ---- */
     if (!reduced) {
       for (const bd of bands) {
-        bd.x += bd.b.speed * bd.dir * dt * 10;
+        bd.x += bd.b.speed * bd.dir * dt * 3;
         if (bd.x < -200) bd.x = STAGE_W + 200;
         if (bd.x > STAGE_W + 200) bd.x = -200;
         bd.el.setAttribute("cx", bd.x.toFixed(1));
@@ -1885,10 +2047,10 @@ const Fog = (() => {
       for (const p of panes) {
         p.el.setAttribute("opacity", (p.p.o * weather * (0.8 + 0.2 * breathe(elapsed, 11000, 1))).toFixed(3));
         for (const st of p.streaks) {
-          const y = p.p.y + ((st.phase + elapsed * st.sp) % p.p.h);
+          const y = p.p.y + ((st.phase + elapsed * st.sp * 0.4) % p.p.h);
           st.el.setAttribute("y1", y.toFixed(1));
           st.el.setAttribute("y2", (y + st.len).toFixed(1));
-          st.el.setAttribute("opacity", (0.5 * opacFactor * Math.sin(((elapsed * st.sp) / p.p.h) * TAU * 0.5 + st.phase) ** 2).toFixed(3));
+          st.el.setAttribute("opacity", (0.5 * opacFactor * Math.sin(((elapsed * st.sp * 0.4) / p.p.h) * TAU * 0.5 + st.phase) ** 2).toFixed(3));
         }
       }
     }
@@ -1896,7 +2058,7 @@ const Fog = (() => {
     /* ---- 14. ribbons: undulating mist lines ---- */
     if (!reduced) {
       for (const rb of ribbons) {
-        rb.el.setAttribute("d", ribbonPath(rb.r, elapsed * 0.001, rb.ph));
+        rb.el.setAttribute("d", ribbonPath(rb.r, elapsed * 0.0003, rb.ph));
         rb.el.setAttribute("opacity", (rb.r.o * weather * (0.8 + 0.2 * breathe(elapsed, 7600, 1))).toFixed(3));
       }
     }
@@ -1904,8 +2066,8 @@ const Fog = (() => {
     /* ---- 15. motes: dust drifting and twinkling in the light ---- */
     if (!reduced) {
       for (const m of motes) {
-        m.x += m.spx * dt;
-        m.y += m.spy * dt;
+        m.x += m.spx * dt * 0.4;
+        m.y += m.spy * dt * 0.4;
         if (m.x < 0) m.x = STAGE_W; if (m.x > STAGE_W) m.x = 0;
         if (m.y < 40) m.y = STAGE_H - 40; if (m.y > STAGE_H - 40) m.y = 40;
         m.el.setAttribute("cx", m.x.toFixed(1));
@@ -1918,7 +2080,7 @@ const Fog = (() => {
     /* ---- 16. curls: corner fog rolling in place ---- */
     if (!reduced) {
       for (const cl of curls) {
-        cl.ang += 0.003 * dt;
+        cl.ang += 0.0011 * dt;
         for (const sb of cl.subs) {
           const a = sb.a0 + cl.ang * sb.sp;
           sb.el.setAttribute("cx", (cl.c.x + Math.cos(a) * sb.rr).toFixed(1));
@@ -2015,6 +2177,8 @@ const Fog = (() => {
     setEnabled, setDensity, pulse, gustNow,
     /* QA / debug introspection */
     _count: () => blobs.length,
+    _blobs: () => blobs.map(b => ({ y: b.y, o: b.baseO, x: b.x })),
+    _kind: () => curKind,
     _streamers: () => streamers.length,
     _shafts: () => shafts.length,
     _draughts: () => draughts.length,

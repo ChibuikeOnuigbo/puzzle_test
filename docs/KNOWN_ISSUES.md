@@ -223,3 +223,129 @@ break.js 0 errors, states.js 0 errors (hallway 9 hotspots expected).
 
 Verified: itemshot.js 0 errors (separation gapY 6), shoot.js 0 errors,
 break.js 0 errors, states.js 0 errors (hallway 9 hotspots expected).
+
+## Update: the slow fog, the honest rain, and the back landing (Sep 2026)
+Added and verified this pass:
+- FOG SLOWED AND THINNED EVERYWHERE. Drift is now linear and authored in
+  px/second: the fastest outdoor bank crosses the 1280px stage in about 20
+  seconds, interiors crawl at roughly a tenth of that. Opacity is capped per
+  room kind (0.2 outdoors and on floors, 0.16/0.14 elsewhere) and attenuated
+  by height: outside, the middle of the frame is kept almost clear so the
+  house facade always reads, with mist allowed high (sky and treeline) and
+  low (the boards). Floor fog lives on the floor only. Every hue is pulled
+  toward a cold near black, so mist reads as gloom rather than a pale wash.
+  Per-room thinning factors clear the rooms that carried too much.
+- FOG PERFORMANCE. The merged profile is cached per mount instead of per
+  frame; the stage rect is read at most once a second; the per-blob rotational
+  noise field is gone (replaced by a cheap sine); opacity is written on
+  alternate visits; and when frame time runs long the field updates in two
+  alternating halves. Flies and dust motes in js/fx.js update in alternating
+  halves too.
+- RAIN BEHIND THE GLASS. The child room window now looks out on a generated
+  night garden (uploads/window-rain-night.png) with slow dark clouds sliding
+  over it. Rain is clipped to the four panes, so a drop passing a mullion is
+  hidden by it and no drop can fall into the room. Drops are small and varied:
+  mostly short straight sticks, some leaning either way, some only dots, every
+  length and width rolled individually, each with a faint thinner tail as a
+  fake motion blur. White fog puffs lie over the garden and a small bird
+  crosses now and then.
+- THE KITCHEN FLOOD ON A LONGER CLOCK: overflow at ~26s, the house shuts the
+  tap at ~52s, the floor spread goes slow then fast then slow, the sink holds
+  and then sinks at ~84s, drips stop at ~90s, evaporation at ~150s. Dialogue
+  budget unchanged: three lines across the flowing and house-off beats plus
+  one small line when the sink drains.
+- DINING ROOM REBUILT: chairs with real backs (posts, finials, three rails,
+  cushions), a thicker slab table with lit edge, apron and turned legs, a
+  runner with fringe, rimmed plates with cutlery, a roast with bone and steam,
+  a vegetable bowl, a basket of rolls, a jug, two lit candles, and a spoilt
+  plate with fuzzy mould colonies, a slime trail and a stain.
+- NEW ROOM: THE BACK LANDING (gallery). The landing's left arrow now works and
+  the corridor bends into it. It carries the conservatory's glass door, a
+  plain door into the small bathroom, a window level with the treetops and the
+  porch roof, and a framed photograph of the house from the path. The
+  protagonist says, out loud, that none of this adds up and that the house
+  looked small from outside.
+- NEW ROOM: THE SMALL BATHROOM, off the back landing's right door. The
+  upstairs-to-dining door (two stone steps down) is GONE: the gallery's right
+  doorway is now a bathroom door with cold light and water-light under it, and
+  the dining room's left doorway is a fireplace boarded shut from the room
+  side. The bathroom holds a clawfoot bath full of still, warm water, a high
+  window onto a moonlit SEA (the fifth wrong sky), a washstand with a full
+  jug, a mirror cabinet ajar, a damp grey towel and a wrung bath mat. Steam
+  hangs over the bath; flies rarely come here.
+- BIRDS (js/birds.js, ~600 lines + scripts/gen/birds.js): two AI silhouette
+  sheets (eight flight poses, six perched poses) decoded to two-tone pixel runs
+  in js/bird-data.js. One session seed rolls the whole sky: sometimes no birds
+  at all; otherwise 1-3 groups of size 1-7 (rare flocks 8-11) in line/vee/
+  column/echelon/scatter formation, each bird with its own lane, speed, bob,
+  wing style (flapper/glider/mixer), depth scale and blur, plus an acrobatics
+  library (loop-the-loop, hunting stoop, zig, tumble spin, mid-air roll) and
+  speed bursts via keyPoints. Perches on ridge stones, eaves, gutter, chimney,
+  the front trees near the lens and the back trees behind the house; some birds
+  land while you watch (motion freezes, sprite swaps to a perched pose), some
+  take off again. Motion is SMIL so hidden tabs and reduced motion behave;
+  offline snapshots park flyers mid-run because resvg has no animateMotion.
+- MOON v2 — SLOW TERMINATOR, NOT A SWAP: the AI full moon is an albedo cell
+  matrix; every frame of a phase change recomputes each cell against the
+  terminator ellipse (side*u >= -cos(alpha)*sqrt(1-v^2)) with a two-cell soft
+  tooth and an earthshine disc on the night side. The clock holds each phase
+  34s, then sweeps alpha over 7s: waning right-lit down to new, side flip at
+  the exact dark moment, waxing back left-lit to full. Repaints throttled to
+  ~12fps; glow breathes with the lit fraction; reduced motion keeps a full moon.
+- MOON PHASES FROM AN AI SHEET: scripts/gen/moon.js decodes uploads/moon-phases.png
+  (full, gibbous, half, thick and thin crescent on black), finds each disc by
+  column luminance and quantises it into a five-step cool-grey ramp with the
+  unlit side left empty (js/moon-data.js). Every moon in the house - porch sky,
+  conservatory glass, gallery and kitchen and study windows, the bathroom sea -
+  is a JS clone of the same data (moonView), big discs blurred so the limb is
+  soft, all of them cross-fading to the next phase together every 34 seconds
+  (static under reduced motion). The old hard-edged circle-plus-cutout is gone.
+- CHIMNEY SMOKE: the porch chimney breathes a medium plume - four staggered
+  12s puffs that grow, lean with the wind and fade; still under reduced motion.
+- GROUND MIST WITH A MIND: yardMist() lays a 40x6 matrix over the yard and marks
+  the pathway cells (point-in-polygon on the dirt path plus the stepping
+  stones); path cells keep only 30% of the mist, and the drifting wisps are
+  clipped off the path with an evenodd clip. The FX light root renders above
+  the mist, so the lamp pool on the path sits over it.
+- PERF: fly populations capped (dining 150-190 was 220-280, etc), porch ground
+  fog banks thinned (counts and opacities), pixel-grid layers (roof grain,
+  forest) render crispEdges, and every SMIL clock pauses while the tab is
+  hidden (visibilitychange -> svg.pauseAnimations).
+- ROOF UPGRADE (AI reference, painted back as vector+pixel): scripts/gen/roof.js
+  decodes uploads/roof-ref.png (AI architectural close-up of tiled roof with
+  branch shadows), takes a band of pure tile+dapple and splits it: per-cell
+  luminance monotonised into a six-step slate-brown night ramp (js/roof-data.js,
+  painted as pixel rects = the semi-realistic tooth) and the low-frequency
+  branch dapple as its own mask. On the porch the dapple drifts +-26px over
+  47s while a procedural branch silhouette creeps the other way over 63s, both
+  clipped to the roof; a 150s moonlight sheen band crosses the tiles. Vector
+  stays on top: staggered per-course tile joints, ridge cap stones, eave gutter
+  with brackets and a downpipe, chimney cast shadow. Reduced motion freezes it.
+- PORCH FOREGROUND TREES ARE NOW PROCEDURAL: the two huge framing trees at the
+  screen edges (and the fourteen mid-distance trees along the treeline) are no
+  longer pixel grids; rooms.js vecTree() grows each one from a seeded rng as
+  tapered quadratic limbs with canopy blobs and protruding twigs. The trunk
+  rocks on its base while every main branch waves on its own pivot (nested
+  animateTransform rotates, skipped under reduced motion). The generated pixel
+  data now only supplies trunk positions and the understorey band.
+- DARK YARD FOG BEHIND THE HOUSE: three near-black fog banks roll across the
+  garden inside layer-back, so the house facade (layer-mid) stands in front of
+  them; they are denser (0.36-0.55) and quicker (12-17s sweeps) than the indoor
+  fog, reading as weather moving behind the house rather than mist in front.
+- BEDROOM WINDOW REPAINTED FROM ITS OWN PIXELS: the child room's rain window no
+  longer loads uploads/window-rain-night.png at runtime. scripts/gen/windowview.js
+  reads the PNG once at build time, hue-tweaks and quantises it into 13 colours
+  in family bands (sky/leaf/ground) on a 64x54 grid, and writes js/window-data.js;
+  rooms.js windowView() paints that grid back as vector rects with grain on the
+  band edges and glints in the sky. The photograph survives only as generator
+  input; the game ships the approximation.
+- FLIES ARE ROLLED PER ROOM per session: a quarter of rooms come out nearly
+  empty, a third moderate, the rest swarming; the dining room always keeps its
+  crowd. Two playthroughs never smell the same.
+- Porch stars increased to 46; the yard keeps its wind, interiors breathe at a
+  fraction of the speed.
+
+Verified: jsdom_check.js and jsdom_check2.js (flood timeline rescaled) 0
+failures; offline resvg renders of every changed room inspected by eye
+(scripts/qa/render.mjs). Playwright harnesses updated for the new route but
+not runnable in this sandbox (Chromium download is blocked here).

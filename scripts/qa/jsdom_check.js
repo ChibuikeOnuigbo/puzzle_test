@@ -9,7 +9,7 @@ const boot = `<script>
 window.matchMedia = window.matchMedia || (q => ({ matches:false, media:q, addEventListener(){}, removeEventListener(){}, addListener(){}, removeListener(){} }));
 window.HTMLCanvasElement.prototype.getContext = window.HTMLCanvasElement.prototype.getContext || (() => null);
 </script>`;
-const files = ["js/config.js","js/audio.js","js/core.js","js/forest-data.js","js/rooms.js","js/puzzles.js","js/fx.js","js/fog.js","js/mirror.js","js/main.js"];
+const files = ["js/config.js","js/audio.js","js/core.js","js/forest-data.js","js/window-data.js","js/roof-data.js","js/moon-data.js","js/bird-data.js","js/birds.js","js/rooms.js","js/puzzles.js","js/fx.js","js/fog.js","js/mirror.js","js/main.js"];
 for (const f of files) {
   const code = fs.readFileSync(path.join(root,f), "utf8").replace(/<\/script>/gi, "<\\/script>");
   html = html.replace(`<script src="${f}"></script>`, `<script>${code}</script>`);
@@ -31,7 +31,8 @@ const w = dom.window, wait = ms => new Promise(r => setTimeout(r, ms)), ev = c =
   check("fog shafts are polygons, never ovals", ev("document.querySelectorAll('#fog-root .fog-shaft ellipse').length") === 0);
   check("fog engine is a >2000 line complex system", fs.readFileSync(path.join(root, "js", "fog.js"), "utf8").split("\n").length > 2000);
   ev("State.setRoom('landing'); Rooms.render()"); await wait(60);
-  check("landing left off / right on", ev("document.getElementById('nav-left').hidden === true && document.getElementById('nav-right').hidden === false"));
+  check("landing left arrow now opens the back landing", ev("document.getElementById('nav-left').hidden === false && document.getElementById('nav-left').dataset.hs === 'gogallery'"));
+  check("landing right still goes down", ev("document.getElementById('nav-right').dataset.hs === 'godown'"));
   ev("State.setRoom('hallway'); State.setFlag('act2',true); Rooms.render()");
   ev("Mirror.tap(); Mirror.tap(); Mirror.tap();"); await wait(30);
   check("mirror cracks on 3rd look", ev("State.flag('mirrorCracked') === true"));
@@ -43,12 +44,24 @@ const w = dom.window, wait = ms => new Promise(r => setTimeout(r, ms)), ev = c =
   ev("State.setRoom('conservatory'); Rooms.render()"); await wait(60);
   check("conservatory renders gramophone + back hotspot", ev("!!document.querySelector('#v_gramophone') && !!document.querySelector('.hotspot[data-hs=cback]')"));
   check("conservatory left arrow visible", ev("document.getElementById('nav-left').hidden === false"));
-  check("conservatory fog is dense", ev("Fog._count()") >= 60);
+  check("conservatory fog present but thinned", ev("Fog._count()") >= 40 && ev("Fog._count()") < 160);
+  // --- the back landing: new room between the corridor, the glasshouse and the dining room ---
+  ev("State.setRoom('gallery'); Rooms.render()"); await wait(60);
+  check("gallery renders both wrong doors", ev("!!document.querySelector('#v_gcons') && !!document.querySelector('#v_gbath')"));
+  check("gallery right arrow returns to the corridor", ev("document.getElementById('nav-right').dataset.hs === 'gback'"));
+  check("gallery is in the house graph", ev("(HOUSE_GRAPH.gallery || []).join(',')") === "landing,conservatory,bathroom");
+  check("bathroom hangs off the gallery only", ev("(HOUSE_GRAPH.bathroom || []).join(',')") === "gallery");
+  check("dining no longer touches the gallery", ev("(HOUSE_GRAPH.diningroom || []).join(',')") === "kitchen");
+  // --- outside fog must keep the middle of the frame clear ---
+  ev("State.setRoom('porch'); Rooms.render()"); await wait(60);
+  check("porch fog keeps mid screen clear", ev("Math.max(...Fog._blobs().filter(b => b.y > 330 && b.y < 520).map(b => b.o), 0)") <= 0.03);
+  check("porch floor fog capped at 0.2", ev("Math.max(...Fog._blobs().filter(b => b.y > 560).map(b => b.o), 0)") <= 0.2001);
 
   // --- persistent flies: >300 in the dining room, surviving re-renders ---
   ev("State.setRoom('diningroom'); Rooms.render()"); await wait(80);
   const flyN = ev("document.querySelectorAll('#fx-flies .fx-fly').length");
-  check("dining room keeps > 300 flies", flyN >= 300);
+  check("dining room keeps a big fly population", flyN >= 150);
+  check("fly populations are rolled per room, some scarce some swarming", ev(`(() => { const rs = ["hallway","kitchen","study","attic","basement","childroom","porch","conservatory","gallery"]; const m = rs.map(r => FX._flyMult(r)); return Math.max(...m) / Math.min(...m) >= 2; })()`));
   ev("Rooms.render()"); await wait(30);
   check("flies persist across a re-render", ev("document.querySelectorAll('#fx-flies .fx-fly').length") === flyN);
 

@@ -622,7 +622,7 @@ const Game = (() => {
     const chance = Math.min(0.5, 0.05 + aware / 240);
     if (Math.random() < chance) {
       const r = Math.random();
-      const upstairs = ["landing", "childroom", "attic"].includes(st.room);
+      const upstairs = ["landing", "childroom", "attic", "gallery"].includes(st.room);
       if (r < 0.42) AudioM.randomCreak();
       else if (r < 0.66) AudioM.distantKnock();
       else if (r < 0.88) {
@@ -696,6 +696,15 @@ const Game = (() => {
     AudioM.stopAmbient();
     document.getElementById("btn-continue").disabled = !State.hasSave();
   }
+
+  /* ---------- background-tab thrift: pause every SMIL clock while the
+     tab is hidden, so the house holds its breath instead of burning CPU --> */
+  function syncAnimPause() {
+    document.querySelectorAll("svg").forEach(sv => {
+      try { if (document.hidden) sv.pauseAnimations(); else sv.unpauseAnimations(); } catch (e) { /* not an SVG root */ }
+    });
+  }
+  document.addEventListener("visibilitychange", syncAnimPause);
 
   /* ---------- boot ---------- */
   function bootLoader() {

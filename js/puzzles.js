@@ -398,14 +398,14 @@ function disarmTapTimers() { clearTapTimers(); }
 /* The flood, on the house's clock. Dialogue budget for the whole scene:
    max 3 lines across the flowing + house-off beats, plus one small line
    when the sink drains. Everything after that is visual only.
-   ~8s    the sink backs up and drips over the edge (slow drips) — 1 short line
-   ~18s   the house turns the tap off; water reaches the floor, spreads SLOW — 2 lines
-   ~23s   the spread turns FAST (slow, then fast)
-   ~29s   the spread settles to a slow crawl
-   ~34s   the sink starts to drain; the water level holds, then sinks — 1 small line
-   ~37.5s the dripping stops, the floor keeps its water (silent)
-   ~75s   the water evaporates, leaving a light stain (silent)
-   ~85s   the stain is gone */
+   ~26s   the sink backs up and drips over the edge (slow drips) — 1 short line
+   ~52s   the house turns the tap off; water reaches the floor, spreads SLOW — 2 lines
+   ~62s   the spread turns FAST (slow, then fast)
+   ~72s   the spread settles to a slow crawl
+   ~84s   the sink starts to drain; the water level holds, then sinks — 1 small line
+   ~90s   the dripping stops, the floor keeps its water (silent)
+   ~150s  the water evaporates, leaving a light stain (silent)
+   ~165s  the stain is gone */
 function armTapTimers() {
   clearTapTimers();
   const inKitchen = () => State.get().room === "kitchen";
@@ -419,7 +419,7 @@ function armTapTimers() {
         "The sink's full — and it's spilling over.",
       ]));
     }
-  }, 8000);
+  }, 26000);
   tapT1 = setTimeout(() => {
     if (!State.flag("tapOn")) return;
     State.setFlag("tapHouseOff");
@@ -438,17 +438,17 @@ function armTapTimers() {
     } else {
       State.setFlag("tapCatchup", true);
     }
-  }, 18000);
+  }, 52000);
   tapT2 = setTimeout(() => {
     if (!State.flag("wetFloor")) return;
     State.setFlag("tapFloodFast", true); // slow, then fast
     if (inKitchen()) Rooms.render();
-  }, 23000);
+  }, 62000);
   tapT2b = setTimeout(() => {
     if (!State.flag("wetFloor")) return;
     State.setFlag("tapFloodFast", false); // the surge settles to a slow crawl
     if (inKitchen()) Rooms.render();
-  }, 29000);
+  }, 72000);
   tapT3 = setTimeout(() => {
     if (!State.flag("wetFloor")) return;
     // keep tapOverflow true: the sink visibly holds, then sinks, before the
@@ -461,23 +461,23 @@ function armTapTimers() {
         "There it goes — down the drain. The floor isn't going anywhere.",
       ]));
     }
-  }, 34000);
+  }, 84000);
   tapT3b = setTimeout(() => {
     if (!State.flag("tapDrained")) return;
     State.setFlag("tapOverflow", false); // drips stop; the floor keeps its water
     if (inKitchen()) Rooms.render();
-  }, 37500);
+  }, 90000);
   tapT4 = setTimeout(() => {
     if (!State.flag("wetFloor")) return;
     State.setFlag("wetFloor", false);
     State.setFlag("tapMoist");
     if (inKitchen()) Rooms.render(); // silent: the pale boards are the line
-  }, 75000);
+  }, 150000);
   tapT5 = setTimeout(() => {
     if (!State.flag("tapMoist")) return;
     State.setFlag("tapMoist", false);
     if (inKitchen()) Rooms.render();
-  }, 85000);
+  }, 165000);
 }
 
 /* if the player shuts the tap early but water is already on the floor, it still dries */
@@ -491,12 +491,12 @@ function armEvapTimers() {
       Rooms.render();
       Dialogue.say("The floor's dry. Just pale boards where the water lay.");
     }
-  }, 60000);
+  }, 110000);
   tapT5 = setTimeout(() => {
     if (!State.flag("tapMoist")) return;
     State.setFlag("tapMoist", false);
     if (State.get().room === "kitchen") Rooms.render();
-  }, 70000);
+  }, 125000);
 }
 
 /* the house does not like the stove left burning */
@@ -1101,13 +1101,13 @@ const RoomActions = {
   /* ============ DINING ROOM / ARCHIVE ============ */
   diningroom: {
     dback() { Rooms.goto("kitchen", null); },
-    dconservatory() {
-      const first = !State.flag("visitedConservatory");
-      State.setFlag("visitedConservatory");
-      Rooms.goto("conservatory", first ? [
-        "A glasshouse, half drowned in its own mist. The panes run with it, like the room is breathing.",
-        "The house keeps a jungle in here. Everything in it is alive, and none of it should be.",
-      ] : null);
+    fire() {
+      Dialogue.say(Dialogue.pick("fire", [
+        "A fireplace, boarded over with its own mantel shelf still up. Three planks, each at its own angle, nailed from the room side.",
+        "Whoever closed this fire closed it from in here, and meant it. There is ash in the hearth and one log that never got its turn.",
+        "The house has plenty of ways through its walls. This is one it decided to shut. I do not know which of us it was keeping out.",
+      ]));
+      State.addAware(1);
     },
     dwin() {
       State.addAware(1);
@@ -1312,9 +1312,65 @@ const RoomActions = {
     },
   },
 
+  /* ============ THE SMALL BATHROOM ============ */
+  bathroom: {
+    bback() { Rooms.goto("gallery", null); },
+    bbath() {
+      State.addAware(2);
+      const n = State.bumpClick("bbath");
+      Dialogue.say(n === 1 ? [
+        "A clawfoot bath, filled to within an inch of the rim. No tap is running. No tap has run in eleven years.",
+        "The water is warm. Not tepid, not cooling: warm, held there, the way the roast is warm and the dawn is stuck. The house keeps its temperatures like promises.",
+        "There is a film on the surface, just enough to catch the window light. Nothing has disturbed it. Nobody has got in, and nobody has got out.",
+      ] : Dialogue.pick("bbath2", [
+        "Still warm. I have stopped testing it and started believing it, which is worse.",
+        "The plug is laid on the rim with its chain coiled beside it, like a knife and fork. The bath has not been emptied. It is being kept.",
+        "I put my hand in to the wrist. Warm, and absolutely still, and under my palm, very faintly, something like a current going the other way.",
+      ]));
+    },
+    bwin() {
+      State.addAware(2);
+      const n = State.bumpClick("bwin");
+      Dialogue.say(n === 1 ? [
+        "The sea. A flat horizon, a moon path on the water, a headland low at the left edge. It moves: the light on it shifts the way light on water does.",
+        "This house is twenty miles inland. I drove here. I remember the road, the hedges, the sign at the turning with the village name on it.",
+        "Night at the porch. Night in the kitchen. Dawn in the dining room. Treetops at the gallery window. And now the sea, upstairs, in the bathroom. Five outsides, and not one of them is the outside of this house.",
+      ] : Dialogue.pick("bwin2", [
+        "The tide is in. Or out. It changes when I am not looking, and never while I am.",
+        "A moonlit sea in a bathroom window. If I lean out I would step into water thirty feet below a room that is itself thirty feet above the ground it is not on.",
+        "I have started to think of the windows as doors the house has not decided to open. This one opens onto somewhere with weather of its own.",
+      ]));
+    },
+    bstand() {
+      Dialogue.say(Dialogue.pick("bstand", [
+        "A washstand, small and scrubbed. The jug is full of water and the basin is empty and clean, the opposite way round to any basin I have ever left.",
+        "A folded towel on the shelf beneath, edges aligned. Someone kept this room ready. Someone keeps it ready still.",
+      ]));
+    },
+    bcab() {
+      State.addAware(1);
+      Dialogue.say(Dialogue.pick("bcab", [
+        "A mirror cabinet, door ajar. Inside: one shelf, a green bottle, a hairbrush with no hair in it. A room's worth of small things, and none of them used.",
+        "The mirror on the door faces into the room at an angle, and gives me back the bath, the window, the sea. In the glass the water is not still.",
+      ]));
+    },
+    btowel() {
+      Dialogue.say(Dialogue.pick("btowel", [
+        "A grey towel on a brass rail, damp at the hem. Damp. In a house where the feast stays hot and the bath stays warm, the towel stays damp.",
+        "It has been wrung out and hung with care, as if the person who used it meant to come back for it in the morning.",
+      ]));
+    },
+    bmat() {
+      Dialogue.say(Dialogue.pick("bmat", [
+        "A bath mat, wrung out and laid straight in front of the tub. There are no wet footprints on it. There are no wet footprints anywhere in this house.",
+        "Whoever bathed here last, dried off, folded the towel, and left the water in. Eleven years ago. Or this morning. The house does not distinguish.",
+      ]));
+    },
+  },
+
   /* ============ CONSERVATORY ============ */
   conservatory: {
-    cback() { Rooms.goto("diningroom"); },
+    cback() { Rooms.goto("gallery"); },
     gramophone() {
       if (State.foundSecret("gramophone")) {
         AudioM.discover();
@@ -1391,6 +1447,15 @@ const RoomActions = {
   /* ============ UPSTAIRS LANDING ============ */
   landing: {
     godown() { Rooms.goto("hallway"); },
+    gogallery() {
+      const first = !State.flag("visitedGallery");
+      State.setFlag("visitedGallery");
+      Rooms.goto("gallery", first ? [
+        "A corridor I have not seen. Up here. Behind a wall I would have sworn was the end of the floor.",
+        "From the path this house was two rooms wide and one room deep. I have counted nine doors since the porch, and not one of them agrees with the outside.",
+        "There is a glass door at the far end with mist behind it, and a plain door on the right with cold light under it. Both of them are wrong. I can hear both of them waiting.",
+      ] : null);
+    },
     gostudy() {
       if (State.flag("studyUnlocked")) {
         Rooms.goto("study", State.flag("visitedStudy") ? null : ["The study. The air is warmer in here. Like a room that was just left."]);
@@ -1559,6 +1624,51 @@ const RoomActions = {
         "A one and a seven, scratched into the skirting board. Low down. Child height.",
         "Seventeen again, carved small, hidden where only someone crawling would find it.",
       ]));
+    },
+  },
+
+  /* ============ THE BACK LANDING ============ */
+  gallery: {
+    gback() { Rooms.goto("landing"); },
+    gcons() {
+      const first = !State.flag("visitedConservatory");
+      State.setFlag("visitedConservatory");
+      Rooms.goto("conservatory", first ? [
+        "A glasshouse, half drowned in its own mist. The panes run with it, like the room is breathing.",
+        "The house keeps a jungle in here. Everything in it is alive, and none of it should be.",
+        "And I reached it by a door at the top of a staircase. A conservatory grows on the ground, against a wall, in a yard. This one grows off a landing.",
+      ] : null);
+    },
+    gbath() {
+      const first = !State.flag("visitedBathroom");
+      State.setFlag("visitedBathroom");
+      Rooms.goto("bathroom", first ? [
+        "A bathroom. Small, tiled, scrubbed. Off an upstairs corridor in a house with no plumbing that runs.",
+        "The bath is full. The water is still, and it is warm. I know it is warm before I touch it, the way you know a kettle has just boiled.",
+        "And the window over the tub is looking out at the sea. Moonlight on open water, moving. This house stands twenty miles from any coast.",
+      ] : null);
+    },
+    gphoto() {
+      State.addAware(1);
+      Dialogue.say(Dialogue.pick("gphoto", [
+        "A photograph of House 17, taken from the path. Small. Two windows over a door, a gable, a chimney. A house you could hold in both hands.",
+        "I have been inside it for an hour and I have not yet found the wall that photograph is showing me the other side of.",
+        "Whoever took this stood where I stood and saw a small house. One of us is wrong, and I am the one inside it.",
+      ]));
+    },
+    gwin() {
+      State.addAware(1);
+      Dialogue.say(Dialogue.pick("gwin", [
+        "Treetops, level with the sill. The porch roof, close enough to touch. This window is three floors above a path that is directly beneath my feet.",
+        "Both things are true at once. The house has simply declined to choose between them.",
+      ]));
+    },
+    gchair() {
+      Dialogue.say(Dialogue.pick("gchair", [
+        "A chair in a corridor, facing the wall. Not pushed in anywhere. Not for sitting. For waiting.",
+        "I turn it to face the room. When I look back from the door it is facing the wall again, and the seat is still warm.",
+      ]));
+      State.addAware(2);
     },
   },
 

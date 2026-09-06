@@ -6,10 +6,13 @@
   "scripts": {
     "start": "npx serve -l 3000 .",
     "qa": "node scripts/qa/shoot.js",
-    "check": "node scripts/qa/jsdom_check.js"
+    "check": "node scripts/qa/jsdom_check.js",
+    "render": "node scripts/qa/render.mjs"
   },
   "devDependencies": {
     "jsdom": "^24.1.0",
-    "playwright-core": "^1.49.0"
+    "playwright-core": "^1.49.0",
+    "@resvg/resvg-js": "^2.6.2",
+    "sharp": "^0.33.0"
   }
 }
