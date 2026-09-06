@@ -192,10 +192,52 @@
      6. sky lanes and the session sky state
   ------------------------------------------------------------------ */
   const LANES = [
-    { y0: 62, y1: 128, scale: [0.34, 0.5], speed: [26, 48] },   // high, far
-    { y0: 132, y1: 236, scale: [0.5, 0.8], speed: [38, 70] },   // middle
-    { y0: 240, y1: 352, scale: [0.85, 1.35], speed: [60, 105] },// low, near lens
+    { y0: 46, y1: 112, scale: [0.34, 0.5], speed: [26, 48] },   // up in the sky, far
+    { y0: 118, y1: 220, scale: [0.5, 0.8], speed: [38, 70] },   // middle
+    { y0: 232, y1: 348, scale: [0.85, 1.35], speed: [60, 105] },// low, near lens
   ];
+
+  /* ------------------------------------------------------------------
+     9b. species: each group is one species, and the species decides how
+     big the birds read, how fast they go and how they use their wings.
+     Swifts tear about up high; starlings murmur; sparrows hop and flap;
+     crows row along deliberately; an owl, rarely, sails the low lane.
+  ------------------------------------------------------------------ */
+  const SPECIES = {
+    swift:    { s: 0.80, v: 1.35, wing: "flapper", lanes: [0, 0, 1] },
+    starling: { s: 0.88, v: 1.12, wing: "flapper", lanes: [0, 1, 1] },
+    sparrow:  { s: 0.84, v: 1.00, wing: "mixer",   lanes: [1, 2, 2] },
+    crow:     { s: 1.18, v: 0.88, wing: "mixer",   lanes: [1, 1, 2] },
+    owl:      { s: 1.42, v: 0.66, wing: "glider",  lanes: [2] },
+  };
+  const SPECIES_NAMES = ["swift", "starling", "starling", "sparrow", "sparrow", "crow", "crow"];
+  function pickSpecies(lane) {
+    if (lane === 2 && chance(0.06)) return "owl";            // a rare low glider
+    const list = SPECIES_NAMES.filter(n => SPECIES[n].lanes.indexOf(lane) >= 0);
+    return list.length ? pick(list) : "starling";
+  }
+
+  /* a murmuration: one nervous body of starlings, shared rhythm */
+  function planMurmuration() {
+    if (!chance(0.09)) return null;
+    return {
+      size: ri(18, 30),
+      dir: chance(0.5) ? 1 : -1,
+      y: rnd(54, 96),
+      speed: rnd(0.95, 1.1),
+      ph: rnd(0, 6),
+    };
+  }
+  /* yard foragers: hops and pecks down on the ground near the steps */
+  const FORAGE_Y = [598, 636];
+  function planForagers() {
+    if (!chance(0.55)) return [];
+    const n = ri(1, 3), out = [];
+    for (let i = 0; i < n; i++) {
+      out.push({ x: rnd(430, 860), y: rnd(FORAGE_Y[0], FORAGE_Y[1]), s: rnd(1.35, 1.8), face: chance(0.5) ? 1 : -1 });
+    }
+    return out;
+  }
 
   function groupSize() {
     const r = R();
@@ -216,10 +258,11 @@
     const ng = chance(0.5) ? 1 : chance(0.75) ? 2 : 3;
     for (let g = 0; g < ng; g++) {
       const size = groupSize();
-      const lane = pick([0, 0, 1, 1, 1, 2]);
+      const lane = pick([0, 0, 0, 0, 1, 1, 2]);            // the sky up top first
       plan.groups.push({
         size,
         lane,
+        species: pickSpecies(lane),
         dir: chance(0.62) ? 1 : -1,
         formation: pick(["line", "line", "vee", "column", "echelon", "scatter"]),
         speed: rnd(0.85, 1.2),
@@ -232,6 +275,8 @@
     plan.perchRoof = shuffle(PERCH_ROOF).slice(0, roofN);
     plan.perchFront = shuffle(PERCH_FRONT).slice(0, frontN);
     plan.perchBack = shuffle(PERCH_BACK).slice(0, backN);
+    plan.murm = planMurmuration();
+    plan.forage = planForagers();
     return plan;
   }
 
@@ -262,10 +307,11 @@
 
   function buildFlyer(o) {
     const lane = LANES[o.lane];
-    const scale = rnd(lane.scale[0], lane.scale[1]) * (o.scaleMul || 1);
-    const speed = rnd(lane.speed[0], lane.speed[1]) * (o.speedMul || 1);
+    const sp = (o.species && SPECIES[o.species]) || null;
+    const scale = rnd(lane.scale[0], lane.scale[1]) * (o.scaleMul || 1) * (sp ? sp.s : 1);
+    const speed = rnd(lane.speed[0], lane.speed[1]) * (o.speedMul || 1) * (sp ? sp.v : 1);
     const dir = o.dir;
-    const y0 = rnd(lane.y0, lane.y1) + (o.dy || 0);
+    const y0 = (o.forceY != null ? o.forceY + rnd(-8, 8) : rnd(lane.y0, lane.y1)) + (o.dy || 0);
     const qa = typeof window !== "undefined" && window.__QA__;
     /* QA snapshots cannot advance SMIL time, so in QA the run starts
        on-screen; live play always enters from beyond the edge */
@@ -278,7 +324,7 @@
     const dur = o.land ? Math.min(46, dist / speed) : dist / speed;
     const { filt, op, stretch } = depthAttrs(scale, speed);
     const cell = 1.15 * scale;
-    const style = o.style || pick(["flapper", "flapper", "mixer", "glider"]);
+    const style = o.style || (sp ? sp.wing : null) || pick(["flapper", "flapper", "mixer", "glider"]);
     const flapDur = rnd(0.34, 0.62) / (speed / 50 + 0.4);
 
     /* ---- the path: four to six bobbing segments, one acrobatic ---- */
@@ -406,6 +452,38 @@
   }
 
   /* ------------------------------------------------------------------
+     9c. yard foragers: a hop-stop-peck life on the ground near the steps
+  ------------------------------------------------------------------ */
+  function buildForager(site) {
+    const cell = 1.15 * site.s;
+    const { filt, op } = depthAttrs(site.s * 0.72, 40);
+    const qa = typeof window !== "undefined" && window.__QA__;
+    const hops = ri(4, 7);
+    let d = `M${f1(site.x)},${f1(site.y)}`;
+    for (let i = 0; i < hops; i++) {
+      d += ` q ${f1(rnd(7, 13) * site.face)},${f1(-rnd(6, 11))} ${f1(rnd(14, 26) * site.face)},0`;
+    }
+    const kps = ["0"], kts = ["0"];
+    for (let i = 0; i < hops; i++) {
+      kps.push(f2((i + 1) / hops), f2((i + 1) / hops));
+      kts.push(f2((i + 0.35) / hops), f2((i + 1) / hops));
+    }
+    const dur = rnd(9, 16);
+    const park = qa ? ` transform="translate(${f1(site.x)},${f1(site.y)})"` : "";
+    const motion = qa ? "" :
+      `<animateMotion path="${d}" dur="${f2(dur)}s" calcMode="linear" keyPoints="${kps.join(";")}" keyTimes="${kts.join(";")}" repeatCount="indefinite"/>`;
+    const peck = qa ? "" :
+      `<animateTransform attributeName="transform" type="rotate" additive="sum" values="0;0;24;2;0;0;28;4;0" keyTimes="0;0.3;0.38;0.44;0.5;0.72;0.8;0.86;1" dur="${f2(rnd(5, 9))}s" repeatCount="indefinite"/>`;
+    /* the porch lamp rims them: a static warm stroke, never a fade */
+    return `<g opacity="${op}"${filt}>
+      <g${park}>
+        ${motion}
+        <g stroke="#3d3322" stroke-width="${f1(0.5 * site.s)}" transform="scale(${f2(site.face * site.s)},${f2(site.s)}) translate(${f1(-PER(0).gw / 2 * cell)},${f1(-PER(0).gh * cell)})">${peck}${posePaths(PER(3), cell)}</g>
+      </g>
+    </g>`;
+  }
+
+  /* ------------------------------------------------------------------
      10. assemble the three depth parts for a room
   ------------------------------------------------------------------ */
   function part(which) {
@@ -416,7 +494,7 @@
     if (rm) {
       /* reduced motion: only the sitting birds, perfectly still */
       if (which === "mid") return `<g id="v_birds-mid">${PLAN.perchRoof.map(s => stillPerch(s)).join("")}</g>`;
-      if (which === "front") return `<g id="v_birds-front">${PLAN.perchFront.map(s => stillPerch(s)).join("")}</g>`;
+      if (which === "front") return `<g id="v_birds-front">${PLAN.perchFront.map(s => stillPerch(s)).join("")}${PLAN.forage.map(s => stillPerch(s)).join("")}</g>`;
       if (which === "back") return `<g id="v_birds-back">${PLAN.perchBack.map(s => stillPerch(s)).join("")}</g>`;
       return "";
     }
@@ -428,10 +506,21 @@
           const off = formationOffset(g.formation, i, g.size, g.dir);
           out += buildFlyer({
             lane: 0, dir: g.dir, acro: g.acro && chance(0.3), dy: off.dy, stag: -off.dx * g.dir + i * 6,
-            speedMul: g.speed * rnd(0.94, 1.06), ph: rnd(0, 6),
+            speedMul: g.speed * rnd(0.94, 1.06), ph: rnd(0, 6), species: g.species,
           });
         }
       });
+      /* a murmuration: one body of starlings breathing across the high sky */
+      if (PLAN.murm) {
+        const m = PLAN.murm;
+        for (let i = 0; i < m.size; i++) {
+          out += buildFlyer({
+            lane: 0, dir: m.dir, species: "starling", acro: false, style: "flapper",
+            forceY: m.y + Math.sin(i * 1.7 + m.ph) * 16, dy: rnd(-6, 6),
+            stag: (i % 6) * 3, speedMul: m.speed * rnd(0.985, 1.015), ph: m.ph + i * 0.35,
+          });
+        }
+      }
       out += PLAN.perchBack.map(s => buildPercher(s, "back")).join("");
       /* one group sometimes crosses far behind the house, mid lane */
       if (chance(0.5)) {
@@ -464,7 +553,7 @@
           const off = formationOffset(g.formation, i, g.size, g.dir);
           out += buildFlyer({
             lane: g.lane, dir: g.dir, acro: g.acro && chance(0.55), dy: off.dy, stag: -off.dx * g.dir + i * 8,
-            speedMul: g.speed * rnd(0.92, 1.1), ph: rnd(0, 6),
+            speedMul: g.speed * rnd(0.92, 1.1), ph: rnd(0, 6), species: g.species,
           });
         }
       });
@@ -473,6 +562,7 @@
         out += buildFlyer({ lane: 2, dir: chance(0.5) ? 1 : -1, acro: true, speedMul: rnd(1.1, 1.4), ph: rnd(0, 6) });
       }
       out += PLAN.perchFront.map(s => buildPercher(s, "front")).join("");
+      out += PLAN.forage.map(s => buildForager(s)).join("");
       if (chance(0.4)) {
         const used = new Set(PLAN.perchFront.map(s => s.x));
         const free = PERCH_FRONT.filter(s => !used.has(s.x));
@@ -498,6 +588,10 @@
       seed: SEED,
       quiet: PLAN.quiet,
       groups: PLAN.groups.map(g => g.size),
+      species: PLAN.groups.map(g => g.species),
+      lanes: PLAN.groups.map(g => g.lane),
+      murm: PLAN.murm ? PLAN.murm.size : 0,
+      forage: PLAN.forage.length,
       perchRoof: PLAN.perchRoof.length,
       perchFront: PLAN.perchFront.length,
       perchBack: PLAN.perchBack.length,

@@ -350,8 +350,8 @@ const Rooms = (() => {
      THE MOON — five phases decoded once by scripts/gen/moon.js from the AI
      phase sheet (uploads/moon-phases.png) into js/moon-data.js. Every moon in
      the house is a JS clone of the same data; a 34s cycle turns the phase,
-     cross-fading every clone at once. Pixel cells + a soft blur on the big
-     discs: no hard vector edge, no paper-white circle.
+     sweeping every clone at once. Pixel cells in three flat tones + a soft
+     blur on the big discs: no hard vector edge, no opacity fade, ever.
   ===================================================================== */
   /* the albedo grid: the AI full moon, once, as a cell matrix */
   let MOON_ALB = null;
@@ -365,13 +365,37 @@ const Rooms = (() => {
     MOON_ALB = m;
     return m;
   }
+  /* ---- v3: flat, semi-real 2D moon. Three posterised tones instead of
+     the photographic albedo ramp, craters as JS circles in unit-disc
+     space (floor one tone down, rim ring one tone up), and NO opacity
+     anywhere: the night side is a solid fill, the glow is a constant,
+     and every change is geometry - cells jumping between tone paths as
+     the terminator ellipse sweeps. Pixel method, vector calm. */
+  const MOON_BANDS = ["#e9e4d2", "#cdc7b0", "#a9a48e"];   // highland, mid, mare
+  const MOON_NIGHT = "#10161e";                          // solid earthshade disc
+  const MOON_CRATERS = [
+    { u: -0.32, v: -0.18, r: 0.20 }, { u: 0.18, v: -0.34, r: 0.13 },
+    { u: 0.34, v: 0.10, r: 0.16 }, { u: -0.05, v: 0.30, r: 0.24 },
+    { u: -0.52, v: 0.22, r: 0.11 }, { u: 0.55, v: -0.18, r: 0.09 },
+    { u: 0.02, v: -0.04, r: 0.10 },
+  ];
+  function moonBand(idx, u, v) {
+    let b = idx <= 1 ? 2 : idx <= 3 ? 1 : 0;              // albedo 0..4 -> mare..highland
+    for (const c of MOON_CRATERS) {
+      const dx = u - c.u, dy = v - c.v;
+      const q = Math.sqrt(dx * dx + dy * dy) / c.r;
+      if (q < 0.82) return Math.min(2, b + 1);            // crater floor, a tone down
+      if (q < 1.0) return Math.max(0, b - 1);             // rim ring, a tone up
+    }
+    return b;
+  }
   /* paint the disc for a phase angle alpha (0 full .. pi new) and lit side */
   function moonPaint(size, alpha, side) {
     const m = moonAlb();
     if (!m) return "";
     const g = MOON_DATA.g, cell = size / g;
     const c = Math.cos(alpha);
-    const acc = MOON_DATA.palette.map(() => "");
+    const acc = ["", "", ""];
     let dark = "";
     for (let gy = 0; gy < g; gy++) {
       const v = ((gy + 0.5) / g) * 2 - 1;
@@ -380,16 +404,17 @@ const Rooms = (() => {
         const idx = m[gy * g + gx];
         if (idx < 0) continue;
         const u = ((gx + 0.5) / g) * 2 - 1;
-        const d = side * u - term;                    // >0 lit, <0 night side
+        const d = side * u - term;                        // >0 lit, <0 night side
         const x = gx * cell, y = gy * cell, w = cell + 0.4, h = cell + 0.4;
         const rect = `M${x.toFixed(2)},${y.toFixed(2)}h${w.toFixed(2)}v${h.toFixed(2)}h${(-w).toFixed(2)}z`;
-        if (d >= 0) acc[idx] += rect;
-        else if (d > -0.12) acc[Math.max(0, idx - 2)] += rect;   // soft terminator tooth
+        const b = moonBand(idx, u, v);
+        if (d >= 0) acc[b] += rect;
+        else if (d > -0.12) acc[Math.min(2, b + 1)] += rect;  // soft terminator tooth
         else dark += rect;
       }
     }
-    let out = dark ? `<path d="${dark}" fill="#141a21" opacity="0.5"/>` : "";
-    out += acc.map((d, i) => d ? `<path d="${d}" fill="${MOON_DATA.palette[i]}"/>` : "").join("");
+    let out = dark ? `<path d="${dark}" fill="${MOON_NIGHT}"/>` : "";
+    out += acc.map((d, i) => d ? `<path d="${d}" fill="${MOON_BANDS[i]}"/>` : "").join("");
     return out;
   }
   /* the clock: holds each phase, then sweeps the terminator over 7s.
@@ -402,7 +427,7 @@ const Rooms = (() => {
   const MOON_MORPH = 7;
   let moonStop = 0, moonT0 = (typeof performance !== "undefined" ? performance.now() : 0);
   let moonState = { a: MOON_STOPS[0].a * Math.PI, s: 1 };
-  let moonRaf = 0, moonLastPaint = 0;
+  let moonRaf = 0, moonLastPaint = 0, moonPaintedKey = "";
   function moonClock(now) {
     const st = MOON_STOPS[moonStop];
     const nx = MOON_STOPS[(moonStop + 1) % MOON_STOPS.length];
@@ -424,24 +449,23 @@ const Rooms = (() => {
       moonT0 = now;
       moonState = { a: MOON_STOPS[moonStop].a * Math.PI, s: MOON_STOPS[moonStop].s };
     }
-    if (now - moonLastPaint > 80) {                  // ~12fps is plenty for moonlight
+    const key = moonState.a.toFixed(4) + "|" + moonState.s;
+    if (key !== moonPaintedKey && now - moonLastPaint > 80) {   // ~12fps while morphing
       moonLastPaint = now;
-      const litFrac = (1 + Math.cos(moonState.a)) / 2;
+      moonPaintedKey = key;
       document.querySelectorAll("[data-moon]").forEach(gEl => {
         const art = gEl.querySelector("[data-moonart]");
         if (art) art.innerHTML = moonPaint(parseFloat(gEl.dataset.r) * 2, moonState.a, moonState.s);
-        const glow = gEl.querySelector("[data-moonglow]");
-        if (glow) glow.setAttribute("opacity", (0.18 + 0.4 * litFrac).toFixed(3));
       });
     }
     moonRaf = requestAnimationFrame(moonClock);
   }
   function moonView(cx, cy, r, opt = {}) {
-    if (typeof MOON_DATA === "undefined") return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#d8dce0" opacity="0.8"/>`;
+    if (typeof MOON_DATA === "undefined") return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#d8dce0"/>`;
     const size = r * 2;
     const soft = opt.soft !== false && r >= 20;
     return `<g data-moon="1" data-r="${r}" transform="translate(${cx - r},${cy - r})">
-      <circle data-moonglow="1" cx="${r}" cy="${r}" r="${(r * 1.9).toFixed(1)}" fill="url(#moonglow)" opacity="${opt.glowOp != null ? opt.glowOp : 0.5}"/>
+      <circle data-moonglow="1" cx="${r}" cy="${r}" r="${(r * 1.9).toFixed(1)}" fill="url(#moonglow)" opacity="${opt.glowOp != null ? opt.glowOp : 0.42}"/>
       <g data-moonart="1"${soft ? ' filter="url(#fxblur2)"' : ""}>${moonPaint(size, moonState.a, moonState.s)}</g>
     </g>`;
   }

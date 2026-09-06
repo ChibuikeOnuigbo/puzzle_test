@@ -127,7 +127,7 @@ const FX = (() => {
     if (flyRoll[room] == null) {
       const r = Math.random();
       flyRoll[room] = room === "diningroom"
-        ? rnd(0.85, 1.25)                      // the rot is always here, in quantity
+        ? rnd(1.0, 1.25)                       // the rot is always here, in quantity
         : r < 0.25 ? rnd(0.08, 0.25) : r < 0.6 ? rnd(0.35, 0.7) : rnd(0.9, 1.4);
     }
     return flyRoll[room];

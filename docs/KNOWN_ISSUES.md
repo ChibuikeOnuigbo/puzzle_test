@@ -285,13 +285,22 @@ Added and verified this pass:
   land while you watch (motion freezes, sprite swaps to a perched pose), some
   take off again. Motion is SMIL so hidden tabs and reduced motion behave;
   offline snapshots park flyers mid-run because resvg has no animateMotion.
-- MOON v2 — SLOW TERMINATOR, NOT A SWAP: the AI full moon is an albedo cell
-  matrix; every frame of a phase change recomputes each cell against the
-  terminator ellipse (side*u >= -cos(alpha)*sqrt(1-v^2)) with a two-cell soft
-  tooth and an earthshine disc on the night side. The clock holds each phase
-  34s, then sweeps alpha over 7s: waning right-lit down to new, side flip at
-  the exact dark moment, waxing back left-lit to full. Repaints throttled to
-  ~12fps; glow breathes with the lit fraction; reduced motion keeps a full moon.
+- MOON v3 — SLOW TERMINATOR, NO OPACITY ANYWHERE: the AI full moon feeds a
+  cell matrix, but the disc is painted as flat semi-real 2D: three posterised
+  tones (highland/mid/mare), craters as JS circles in unit-disc space (floor a
+  tone down, rim ring a tone up), night side a SOLID earthshade fill and a
+  constant glow - no opacity attribute is ever animated or faded. Each phase
+  change recomputes every cell against the terminator ellipse
+  (side*u >= -cos(alpha)*sqrt(1-v^2)) with a soft tooth; the clock holds each
+  phase 34s then sweeps alpha over 7s: waning right-lit down to new, side flip
+  at the exact dark moment, waxing back left-lit to full. Repaints only while
+  the phase actually moves, throttled to ~12fps; reduced motion keeps a static
+  full moon.
+- BIRD ROUND 7: sky lanes ride higher and weight to the top; every group is a
+  species (swift/starling/sparrow/crow, rare low owl) that sets size, speed and
+  wing style; a rare murmuration of 18-30 starlings breathes across the high
+  sky as one body; yard foragers hop-stop-peck in the porch light pool with a
+  static warm rim stroke.
 - MOON PHASES FROM AN AI SHEET: scripts/gen/moon.js decodes uploads/moon-phases.png
   (full, gibbous, half, thick and thin crescent on black), finds each disc by
   column luminance and quantises it into a five-step cool-grey ramp with the
