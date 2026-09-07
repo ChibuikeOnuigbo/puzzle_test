@@ -80,14 +80,21 @@
 
     wingStyles: { flapper: 0.62, mixer: 0.30, glider: 0.08 },   // fewer long glides
 
-    /* perching / landing — only ~10% of birds settle on the roof; the rest fly
-       through and leave the screen. */
-    landChance: 0.10,
-    perchOnTree: 0.35,
-    perchStaySec: [0.6, 14],                     // some leave almost at once, some wait
+    /* perching / landing. A quarter-ish of flyers break off and settle: about
+       7 in 10 of those land on the FOREGROUND TREES (they bank down, become
+       front-layer birds, grip the branch and ride its sway, then leave after
+       5-7s); the rest touch down on the roof. Everyone else flies through and
+       leaves the screen. */
+    landChance: 0.30,
+    perchOnTree: 0.70,
+    perchStaySec: [0.6, 14],                     // roof: some leave almost at once, some wait
+    treeStaySec: [5, 7],                         // tree perchers stay 5-7 seconds then leave
     initialPerchedRoof: 2,
-    initialPerchedTree: 3,
+    initialPerchedTree: 4,
     foragers: 3,
+    /* per-second probability a cruising flyer commits to a landing */
+    landRateBack: 0.035,
+    landRateFront: 0.05,
 
     /* ~75% of flyers ride the BACK z-layer (behind the house); the remaining
        quarter cross in front. Small/back birds may be numerous; medium/big are
@@ -136,17 +143,19 @@
        raised FLOOR so nothing close to the lens reads too small; far birds
        are genuinely small. */
     sizeBands: {
-      far:  [0.40, 0.58],
-      mid:  [0.66, 0.92],
-      near: [0.98, 1.35],                         // lowered: birds don't get huge
+      far:  [0.38, 0.56],
+      mid:  [0.60, 0.85],
+      near: [0.85, 1.12],                         // lowered again: birds stay modest
     },
+    /* absolute hard ceiling for a near/front bird (post species flavour) */
+    maxNearScale: 1.18,
 
     species: {
-      swift:    { s: 0.80, v: 1.40, wing: "flapper", tint: "#0b0f16" },
-      starling: { s: 0.88, v: 1.20, wing: "flapper", tint: "#0a0e14" },
-      sparrow:  { s: 0.90, v: 1.10, wing: "mixer",   tint: "#0b0f16" },
-      crow:     { s: 1.16, v: 1.06, wing: "mixer",   tint: "#070a0f" },
-      owl:      { s: 1.42, v: 0.95, wing: "mixer",   tint: "#06090d" },
+      swift:    { s: 0.74, v: 1.40, wing: "flapper", tint: "#0b0f16" },
+      starling: { s: 0.82, v: 1.20, wing: "flapper", tint: "#0a0e14" },
+      sparrow:  { s: 0.84, v: 1.10, wing: "mixer",   tint: "#0b0f16" },
+      crow:     { s: 1.02, v: 1.06, wing: "mixer",   tint: "#070a0f" },
+      owl:      { s: 1.22, v: 0.95, wing: "mixer",   tint: "#06090d" },
     },
     speciesRoll: ["swift", "starling", "starling", "sparrow", "sparrow", "crow", "crow"],
     owlChance: 0.04,
@@ -233,55 +242,59 @@
       const bob = Math.sin(u * TAU) * 1.3;
       ctx.translate(0, bob * (0.4 + down * 0.6));
 
-      // ---- tail: short forked wedge ----
+      // ---- tail: short forked wedge (tapered narrow rump) ----
       const t = (1 - spread);
       ctx.beginPath();
-      ctx.moveTo(-20, 1);
-      ctx.quadraticCurveTo(-33, -2 - t * 3, -41, -7 - t * 2);
-      ctx.quadraticCurveTo(-35, 1, -40, 4 + t * 3);
-      ctx.quadraticCurveTo(-31, 7, -20, 6);
+      ctx.moveTo(-18, 1);
+      ctx.quadraticCurveTo(-29, -2 - t * 3, -37, -6 - t * 2);
+      ctx.quadraticCurveTo(-31, 1, -36, 4 + t * 3);
+      ctx.quadraticCurveTo(-28, 6, -18, 5);
       ctx.closePath(); ctx.fill();
 
-      // ---- body: narrow teardrop, pointed to the beak (triangle morph) ----
+      // ---- body: a narrow, angular fuselage — a long triangle/teardrop that
+      // tapers to a pointed head/beak and pinches to a thin rump at the tail.
+      // No fat oval abdomen: max body depth is only ~13px over a 48px length. ----
       ctx.beginPath();
-      ctx.moveTo(-26, 3);                       // tail rump (narrow)
-      ctx.quadraticCurveTo(-24, -8, -2, -9);    // back sweeping up to the neck
-      ctx.quadraticCurveTo(14, -9, 22, -5);     // crown/forehead into beak head
-      ctx.quadraticCurveTo(26, -3, 25, 0);      // face
-      ctx.quadraticCurveTo(21, 5, 8, 9);        // breast (slightly fuller low-front)
-      ctx.quadraticCurveTo(-12, 12, -24, 7);    // belly back to the rump
+      ctx.moveTo(-22, 2);                       // tail rump (pinched, thin)
+      ctx.quadraticCurveTo(-22, -7, -4, -8);    // back sweeping up to the nape
+      ctx.quadraticCurveTo(8, -9, 18, -7);      // crown over the head
+      ctx.quadraticCurveTo(24, -5, 24, -2);     // forehead into face
+      ctx.quadraticCurveTo(22, 1, 14, 4);       // throat
+      ctx.quadraticCurveTo(2, 6, -12, 6);       // shallow breast (straight-ish)
+      ctx.quadraticCurveTo(-20, 5, -22, 2);     // belly tapering back to rump
       ctx.closePath(); ctx.fill();
 
       // ---- beak (small, pointed) ----
       ctx.beginPath();
-      ctx.moveTo(24, -6); ctx.lineTo(33, -4); ctx.lineTo(24, -2);
+      ctx.moveTo(23, -5); ctx.lineTo(31, -3); ctx.lineTo(23, -1.5);
       ctx.closePath(); ctx.fill();
 
-      // ---- eye: one dot on the near/visible side of the head. Placed on the
-      // crown so it stays with the head as the bird banks; on a hard bank the
-      // far side hides it (handled by draw-time scaleY when gliding away). ----
-      const eyeX = 17, eyeY = -6, eyeR = 1.7;
+      // ---- eye: ONE dot, attached to the near/visible side of the head. It
+      // rides the head as the bird banks; the X-squash during a hard bank hides
+      // it (far side turns away = the 3D side view). Near/front birds get a
+      // clear light catch; far birds a faint dimple. ----
+      const eyeX = 15, eyeY = -5, eyeR = 2.1;
       if (eyeShine) {
-        ctx.fillStyle = "#e9edf2";
+        ctx.fillStyle = "#f2f5f9";
         ctx.beginPath(); ctx.arc(eyeX, eyeY, eyeR, 0, TAU); ctx.fill();
         ctx.fillStyle = "#0b0f16";
-        ctx.beginPath(); ctx.arc(eyeX + 0.5, eyeY + 0.4, eyeR * 0.7, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(eyeX + 0.6, eyeY + 0.5, eyeR * 0.72, 0, TAU); ctx.fill();
         ctx.fillStyle = tint;
       } else {
-        // a tiny lighter dimple so dark-plumaged birds still read an eye
-        ctx.fillStyle = "rgba(200,208,218,0.55)";
-        ctx.beginPath(); ctx.arc(eyeX, eyeY, eyeR * 0.8, 0, TAU); ctx.fill();
+        ctx.fillStyle = "rgba(206,214,224,0.6)";
+        ctx.beginPath(); ctx.arc(eyeX, eyeY, eyeR * 0.9, 0, TAU); ctx.fill();
         ctx.fillStyle = tint;
       }
 
-      const len = lerp(20, 33, spread), chord = lerp(7, 12, spread);
-      // ---- wings: shoulder mounted BACK of the neck (around x=-2), and shifted
-      // slightly to the LEFT/back per request. Far wing first, smaller & raised;
-      // near wing overlaps it. ----
-      const shX = -3, shY = -8;
-      const angFar = lerp(-1.0, 0.5, down) + 0.22;
-      ctx.save(); ctx.translate(shX - 1, shY - 2); this._wing(ctx, angFar, len * 0.86, chord * 0.9, tint, true); ctx.restore();
-      const angNear = lerp(-1.15, 0.55, down);
+      // ---- wings: SMALLER, and the shoulder is mounted further LEFT/back and
+      // slightly inward (toward the body, +y), with a touch of sweepback so big
+      // birds don't look like they have outsized wings. Far wing first, smaller
+      // & raised; near wing overlaps it. ----
+      const len = lerp(17, 27, spread), chord = lerp(6, 10, spread);
+      const shX = -8, shY = -6;
+      const angFar = lerp(-0.95, 0.42, down) + 0.18;
+      ctx.save(); ctx.translate(shX - 1.5, shY - 1); this._wing(ctx, angFar, len * 0.82, chord * 0.85, tint, true); ctx.restore();
+      const angNear = lerp(-1.05, 0.45, down);
       ctx.save(); ctx.translate(shX, shY); this._wing(ctx, angNear, len, chord, tint, false); ctx.restore();
 
       ctx.restore();
@@ -427,64 +440,87 @@
 
       /* smooth facing: ease toward the desired travel sign (banked turn, no
          instant flip). Wind-fighters hold into the wind; everything else turns
-         only when it actually needs to (landing approach). */
+         only when it actually needs to (a landing approach). */
       let landing = null;
+      let vx, vy;
       if (this.state === "landing" && this.landing) {
-        const tx = this.landing.x, ty = this.landing.y - 6;
+        const site = this.landing;
+        const tx = site.x, ty = site.y - 6;
         const dx = tx - this.x, dy = ty - this.y;
-        landing = { dx, dy, dist: Math.hypot(dx, dy) };
-        this._wantFace(dx >= 0 ? 1 : -1);
+        const dist = Math.hypot(dx, dy) + 0.0001;
+        landing = { dx, dy, dist };
+        // travel direction is LOCKED at commit time (set when the approach
+        // began); it never re-evaluates mid-approach, so the bird cannot
+        // thrash left<->right in a flip loop as it crosses the perch.
+        const appr = (this._apprDir >= 0 ? 1 : -1);
+        this.faceTarget = appr;
+
+        // close enough: settle onto the perch. Generous radius + a near-target
+        // condition so a bird that reached perch height but still has a few px of
+        // horizontal travel doesn't sit there hovering.
+        if (dist < 30 || (Math.abs(dx) < 30 && Math.abs(dy) < 14)) {
+          this.dead = true; sky.birdLanded(site, appr); return;
+        }
+
+        this._landT = (this._landT || 0) + dt;
+        // abort if it OVERSHOT the perch horizontally (now flying away from it
+        // in the locked direction) or the approach simply took too long — it
+        // keeps flying on rather than hovering/flipping in place.
+        const overshot = (appr === 1 && dx < -60) || (appr === -1 && dx > 60);
+        if (this._landT > 6 || overshot) {
+          this.state = "flight"; this.landing = null; this.canLand = false; this._landT = 0;
+          landing = null;
+        } else {
+          // HOMING with arrival braking: the commanded speed is the distance to
+          // go scaled so it vanishes smoothly at the perch (dist*gain), capped
+          // by the bird's travel speed. Because speed is proportional to the
+          // remaining distance it decelerates right onto the branch and never
+          // overshoots into a flip loop. The y term is signed by dy itself, so
+          // a bird descending from EITHER side moves DOWN (vy>0) to the perch.
+          const gain = 12.0;
+          const spd = Math.min(dist * gain, sp * 0.7);
+          vx = (dx / dist) * spd;
+          vy = (dy / dist) * spd;
+        }
       }
       this._updateFacing(dt);
       const facing = this.face;     // continuous -1..1 (used for drawing + motion)
 
-      /* heading — never a straight line; climbs/curves in open flight; a
-         landing bird may descend steeply and brake onto its perch. */
-      let aim;
-      if (landing) {
-        aim = Math.atan2(landing.dy, Math.abs(landing.dx) + 0.001) * Math.sign(landing.dx || 1);
-        const target = clamp(landing.dist * 1.6, 46, sp * 1.25);
-        sp = lerp(sp, target, 0.08);
-        if (landing.dist < 14 || (Math.abs(landing.dy) < 8 && Math.abs(landing.dx) < 22)) {
-          this.dead = true; sky.birdLanded(this.landing, this.facing); return;
+      /* open-flight heading — never a straight line; every path climbs/curves. */
+      if (!landing) {
+        let aim;
+        if (this.headingMode === "oscillate") {
+          aim = Math.sin(this.bornT / CFG.oscillatePeriod * TAU + this.tPhase) * CFG.oscillateAmplitudeDeg * Math.PI / 180
+              + Math.sin(this.bornT / CFG.wobblePeriod * TAU + this.wobPhase) * CFG.wobbleAmpDeg * Math.PI / 180;
+        } else if (this.headingMode === "fixedClimb") {
+          aim = -Math.abs(this.fixAngle) + Math.sin(this.bornT / CFG.wobblePeriod * TAU + this.wobPhase) * CFG.wobbleAmpDeg * Math.PI / 180;
+        } else {
+          aim = this.elev + Math.sin(this.bornT / CFG.wobblePeriod * TAU + this.wobPhase) * CFG.wobbleAmpDeg * Math.PI / 180;
         }
-        this._landT = (this._landT || 0) + dt;
-        if (this._landT > 5) { this.state = "flight"; this.landing = null; this.canLand = false; this._landT = 0; }
-      } else if (this.headingMode === "oscillate") {
-        aim = Math.sin(this.bornT / CFG.oscillatePeriod * TAU + this.tPhase) * CFG.oscillateAmplitudeDeg * Math.PI / 180
-            + Math.sin(this.bornT / CFG.wobblePeriod * TAU + this.wobPhase) * CFG.wobbleAmpDeg * Math.PI / 180;
-      } else if (this.headingMode === "fixedClimb") {
-        aim = -Math.abs(this.fixAngle) + Math.sin(this.bornT / CFG.wobblePeriod * TAU + this.wobPhase) * CFG.wobbleAmpDeg * Math.PI / 180;
-      } else {
-        aim = this.elev + Math.sin(this.bornT / CFG.wobblePeriod * TAU + this.wobPhase) * CFG.wobbleAmpDeg * Math.PI / 180;
+        // glide dip: when the wings fold the bird arcs gently DOWN along a curve
+        // with a small oscillation (a shallow S) — never a straight drop.
+        if (this.glideMode && this.state === "flight") {
+          this.glideDip = lerp(this.glideDip, 1, 0.04);
+        } else {
+          this.glideDip = lerp(this.glideDip, 0, 0.06);
+        }
+        aim += this.glideDip * (0.22 + 0.12 * Math.sin(this.bornT * 2.1 + this.wobPhase));
+        aim = clamp(aim, -1.05, 0.5);   // climbs/curves only; no steep dives
+        // velocity along the CONTINUOUS facing vector (eases through a turn,
+        // giving a curved path) — no teleport, just integrated vector motion.
+        vx = Math.cos(aim) * sp * facing;
+        vy = Math.sin(aim) * sp;
+        /* ambient + gust wind (gust is a brief backward shove) */
+        vx += CFG.windDir * 10 + (this.windFight ? CFG.windDir * slip * 9 : 0);
+        if (this.boundBob) vy -= this.boundBob * 0.5;
       }
-      // glide dip: when the wings fold into a glide the bird arcs gently DOWN
-      // along a curve with an oscillation (a shallow S), never a straight drop.
-      if (this.glideMode && this.state === "flight") {
-        this.glideDip = lerp(this.glideDip, 1, 0.04);
-      } else {
-        this.glideDip = lerp(this.glideDip, 0, 0.06);
-      }
-      const dip = this.glideDip * (0.22 + 0.12 * Math.sin(this.bornT * 2.1 + this.wobPhase));
-      aim += dip;
-      // open flight: climbs/curves only (no straight/steep dives); landing: free
-      aim = landing ? clamp(aim, -1.4, 1.4) : clamp(aim, -1.05, 0.5);
-
-      // velocity along the CONTINUOUS facing vector (eases through the turn,
-      // giving a curved path) — no teleport, just integrated vector motion.
-      let vx = Math.cos(aim) * sp * facing;
-      let vy = Math.sin(aim) * sp;
-
-      /* ambient + gust wind (gust is a brief backward shove) */
-      vx += CFG.windDir * 10 + (this.windFight ? CFG.windDir * slip * 9 : 0);
-      if (this.boundBob) vy -= this.boundBob * 0.5;
 
       if (this.flock) this._flockSteer(dt, vx, vy, sp);
       if (this.acro && this.state === "flight" && !this.flock) this._acrobatics(dt, sp);
 
       /* forward-progress floor: keep crossing the screen in the INTENDED travel
          direction (sign of faceTarget), not the instantaneous facing, so a bird
-         mid-turn isn't falsely kicked. Landing birds are exempt. */
+         mid-turn isn't falsely kicked. Landing birds are exempt (they home). */
       if (this.state === "flight" && !this.acroMove) {
         const dirVx = vx * this.faceTarget;
         const need = this.speed * CFG.minForward;
@@ -499,7 +535,10 @@
       /* keep the whole body above the ceiling / below the floor; a bird on
          final approach may dip lower to reach a perch, but never below ground */
       const floor = this.state === "landing" ? 432 : CFG.maxFlyY;
-      this.y = clamp(this.y, CFG.minFlyY, floor);
+      // landing birds may rise right to the roof ridge (a little above the open
+      // ceiling) to meet a roof perch; otherwise honour the flight floor.
+      const ceiling = this.state === "landing" ? 12 : CFG.minFlyY;
+      this.y = clamp(this.y, ceiling, floor);
       if (this.y >= floor - 0.5 && this.vy > 0) this.vy = 0;   // no sinking into the ground
 
       this.bank = lerp(this.bank, clamp(-this.vy / (sp + 1) * 0.8 + this.acroBank + (this._turnBank || 0), -1.0, 1.0), 0.1);
@@ -525,11 +564,20 @@
       this._px = this.x; this._py = this.y;
       if (this._stuckT > 0.8) {
         if (this.state === "landing") {
-          this.state = "flight"; this.landing = null; this.canLand = false; this._landT = 0;
+          // a landing bird brakes hard and can legitimately slow down; only give
+          // it a grace period (the real abort is the overshoot/timeout logic
+          // above, which never thrash-flipped). If it is STILL pinned after the
+          // grace, abort and fly on.
+          this._landStall = (this._landStall || 0) + dt;
+          this._stuckT = 0;
+          if (this._landStall > 1.2) {
+            this.state = "flight"; this.landing = null; this.canLand = false; this._landT = 0; this._landStall = 0;
+          }
         } else {
           this.x += this.facing * 40 * dt * 10;
         }
-        this._stuckT = 0;
+      } else {
+        this._landStall = 0;
       }
 
       /* edge recycling / landing roll */
@@ -540,9 +588,23 @@
           else sky.respawn(this);
           return;
         }
-        if (!this.flock && this.canLand && this.bornT > 3 && Math.random() < dt * (CFG.landChance * 0.12)) {
-          const site = sky.pickPerch();
-          if (site) { this.landing = site; this.state = "landing"; this.canLand = false; }
+        if (!this.flock && this.canLand && this.bornT > 3) {
+          const rate = this.depth === "back" ? CFG.landRateBack : CFG.landRateFront;
+          if (Math.random() < dt * rate) {
+            const site = sky.pickPerch(this.depth, this.x, this.facing);
+            if (site) {
+              this.landing = site; this.state = "landing"; this.canLand = false;
+              this._landT = 0;
+              // lock the travel direction we'll hold on the approach (the sign
+              // that actually points us at the perch)
+              this._apprDir = site.x >= this.x ? 1 : -1;
+              // committing to land brings the bird to the FRONT layer so it stays
+              // visible (and can be clipped by nothing) the whole approach down —
+              // whether it settles on a foreground tree or the roof.
+              this.depth = "front";
+              this._wantFace(this._apprDir);
+            }
+          }
         }
       }
     }
@@ -591,17 +653,31 @@
     constructor(site) {
       super(site.x, site.y);
       this.site = site; this.facing = site.face || 1;
-      this.size = site.s || 0.7; this.tint = "#10161e"; this.depth = "front";
+      this.size = site.s || 0.7; this.tint = "#10161e";
+      this.depth = "front";   // perched birds always render on the front canvas
+      this.onTree = !!site.tree;
       this.pose = 0; this.poseT = rand(2, 8); this.bornT = 0;
-      this.dwell = rand(CFG.perchStaySec[0], CFG.perchStaySec[1]);
+      // tree perchers stay 5-7s (they're up close on the foreground branches);
+      // roof birds may linger a while.
+      this.dwell = this.onTree
+        ? rand(CFG.treeStaySec[0], CFG.treeStaySec[1])
+        : rand(CFG.perchStaySec[0], CFG.perchStaySec[1]);
       this.leaving = false; this.leaveT = 0;
+      // a per-tree sway phase/rate so birds follow THEIR branch
+      this.swayPhase = (site.x * 0.37) % (Math.PI * 2);
+      this.swayRate = this.onTree ? 0.9 : 0;
     }
     update(dt, sky) {
       this.bornT += dt;
       if (!this.leaving) {
         this.poseT -= dt;
         if (this.poseT <= 0) { this.pose = Math.random() < 0.72 ? 0 : (Math.random() < 0.5 ? 1 : 2); this.poseT = rand(2.5, 9); }
+        // tree birds are grip-locked to the branch: they breathe-bob AND ride
+        // the branch's gentle wind sway (rotation about the feet).
         this.bob = Math.sin(this.bornT * 2.1) * 0.6;
+        if (this.onTree) {
+          this.branchSway = Math.sin(this.bornT * this.swayRate + this.swayPhase) * 2.6;
+        } else this.branchSway = 0;
         if (this.bornT > this.dwell) { this.leaving = true; this.leaveT = 0; }
       } else {
         this.leaveT += dt; this.y -= dt * 80;
@@ -703,26 +779,43 @@
     }
 
     sites() {
-      return {
-        roof: [
-          { x: 640, y: 27, s: 0.7, face: 1 }, { x: 520, y: 49, s: 0.66, face: 1 },
-          { x: 760, y: 53, s: 0.66, face: -1 }, { x: 400, y: 72, s: 0.64, face: 1 },
-          { x: 880, y: 76, s: 0.64, face: -1 }, { x: 250, y: 118, s: 0.62, face: 1 },
-          { x: 1030, y: 118, s: 0.62, face: -1 }, { x: 352, y: 35, s: 0.66, face: 1 },
-        ],
-        tree: [
-          { x: 62, y: 296, s: 1.05, face: 1, tree: true }, { x: 128, y: 254, s: 1.0, face: 1, tree: true },
-          { x: 34, y: 420, s: 1.1, face: 1, tree: true }, { x: 1178, y: 298, s: 1.05, face: -1, tree: true },
-          { x: 1236, y: 258, s: 1.0, face: -1, tree: true }, { x: 1148, y: 382, s: 1.1, face: -1, tree: true },
-        ],
-      };
+      const roof = [
+        { x: 640, y: 27, s: 0.7, face: 1 }, { x: 520, y: 49, s: 0.66, face: 1 },
+        { x: 760, y: 53, s: 0.66, face: -1 }, { x: 400, y: 72, s: 0.64, face: 1 },
+        { x: 880, y: 76, s: 0.64, face: -1 }, { x: 250, y: 118, s: 0.62, face: 1 },
+        { x: 1030, y: 118, s: 0.62, face: -1 }, { x: 352, y: 35, s: 0.66, face: 1 },
+      ].map(p => ({ ...p, id: "r" + p.x }));
+      const tree = [
+        { x: 62, y: 296, s: 1.05, face: 1, tree: true }, { x: 128, y: 254, s: 1.0, face: 1, tree: true },
+        { x: 34, y: 420, s: 1.1, face: 1, tree: true }, { x: 1178, y: 298, s: 1.05, face: -1, tree: true },
+        { x: 1236, y: 258, s: 1.0, face: -1, tree: true }, { x: 1148, y: 382, s: 1.1, face: -1, tree: true },
+      ].map(p => ({ ...p, id: "t" + p.x }));
+      return { roof, tree };
     }
-    pickPerch() {
+    /* choose a perch. wantTree picks the group; we only offer sites that are
+       roughly AHEAD of the bird's travel direction (so it homes in on a curved
+       approach rather than reversing into a flip loop) and aren't occupied.
+       Occupancy is keyed by stable site id (the returned site is a copy). */
+    pickPerch(depth, fromX, facing) {
       const s = this.sites();
-      const pool = chance(CFG.perchOnTree) ? s.tree : s.roof;
-      const used = new Set(this.birds.filter(b => b instanceof PerchedBird && !b.dead).map(b => b.site));
-      const free = pool.filter(p => !used.has(p));
-      return free.length ? pick(free) : null;
+      const used = new Set(this.birds.filter(b => b instanceof PerchedBird && !b.dead && b.site).map(b => b.site.id));
+      const wantTree = chance(CFG.perchOnTree);
+      let pool = wantTree ? s.tree : s.roof;
+      if (typeof facing === "number" && typeof fromX === "number") {
+        // only commit to a perch inside a SHORT window ahead — close enough that
+        // the arrival-braking has time to slow the bird onto the branch instead
+        // of overshooting into a flip loop. Roof perches are small/high so the
+        // window is tighter; foreground trees can be taken from a bit farther.
+        const reach = wantTree ? 300 : 170;
+        const ahead = pool.filter(p => {
+          const dd = (p.x - fromX) * facing;           // >0 means ahead
+          return dd > 30 && dd < reach;
+        });
+        if (ahead.length) pool = ahead; else return null;
+      }
+      const free = pool.filter(p => !used.has(p.id));
+      const site = free.length ? pick(free) : null;
+      return site ? { ...site } : null;
     }
     roofY(x) {
       if (x < 150 || x > 1130) return 124;
@@ -861,8 +954,9 @@
         scale = rand(CFG.sizeBands.far[0], CFG.sizeBands.far[1]) * CFG.species[species].s;
       } else {
         // near bird: big enough to read, then the medium/big cap may shrink it
-        scale = Math.max(this._bandFor(2) * CFG.species[species].s, 0.98);
+        scale = Math.max(this._bandFor(2) * CFG.species[species].s, 0.85);
         scale = this._capBigBird(scale, dir);
+        scale = Math.min(scale, CFG.maxNearScale);   // hard ceiling on biggest bird
         // if the cap downgraded it, send it to the back instead
       }
       let effLane = lane, effDepth = depth;
@@ -956,8 +1050,9 @@
         scale0 = rand(CFG.sizeBands.far[0], CFG.sizeBands.far[1]) * CFG.species[species].s;
         b.y = clamp(this.roofY(dir === 1 ? 220 : 1060) - rand(10, 70), CFG.minFlyY, 150);
       } else {
-        scale0 = Math.max(this._bandFor(2) * CFG.species[species].s, 0.98);
+        scale0 = Math.max(this._bandFor(2) * CFG.species[species].s, 0.85);
         scale0 = this._capBigBird(scale0, dir);
+        scale0 = Math.min(scale0, CFG.maxNearScale);
         b.y = rand(150, CFG.maxFlyY - 30);
       }
       let effLane = lane, effDepth = depth;
@@ -1082,26 +1177,53 @@
     }
 
     _drawPerchSprite(ctx, spr, b, extraY = 0) {
+      const u = 3;
       const k = (30 * b.size) / spr.height;
       const bob = b.bob || 0, peck = b.peck > 0 ? 4 * b.size : 0;
+      const feetY = 0; // sprite bottom sits on the perch (after -height translate)
       ctx.save();
       ctx.translate(b.x + (b.zig || 0), b.y + bob + extraY);
+      // a tree-perched bird is grip-locked to the limb: rotate about its FEET so
+      // it follows the branch's wind sway.
+      if (b.branchSway) ctx.rotate((b.branchSway / 40) * b.facing);
       ctx.scale(b.facing * k, k);
       ctx.drawImage(spr, -spr.width / 2, -spr.height + peck);
+      // eye: in sprite-local units (the scaleX flip handles facing; the bird is
+      // baked facing +x so the head/eye sit on the local right ~0.64 width).
+      // near/front TREE birds get a clear warm catch-light (the lantern catches
+      // them up close); roof/ground birds get a faint dimple.
+      const ex = spr.width * 0.64;
+      const ey = spr.height * 0.16 - peck / k;
+      const bright = b.onTree;
+      if (bright) {
+        ctx.fillStyle = "rgba(255,240,205,0.95)";
+        ctx.beginPath(); ctx.arc(ex, ey, 3.4, 0, TAU); ctx.fill();
+        ctx.fillStyle = "#0a0e14";
+        ctx.beginPath(); ctx.arc(ex - 1.0, ey + 0.9, 2.3, 0, TAU); ctx.fill();
+      } else {
+        ctx.fillStyle = "rgba(200,210,222,0.5)";
+        ctx.beginPath(); ctx.arc(ex, ey, 2.6, 0, TAU); ctx.fill();
+      }
       ctx.restore();
     }
 
     _drawPerched(ctx, b) {
       const spr = this.baker.perchSprite(b.pose);
       if (!spr) return;
-      this._drawPerchSprite(ctx, spr, b);
-      if (b.site.tree && !b.leaving) {
-        ctx.save(); ctx.strokeStyle = "#070a0e"; ctx.lineWidth = 5 * b.size + 2; ctx.lineCap = "round";
+      if (b.onTree && !b.leaving) {
+        // the foreground limb the feet grip
+        ctx.save(); ctx.strokeStyle = "#05080c"; ctx.lineWidth = 6 * b.size + 2; ctx.lineCap = "round";
         ctx.beginPath();
-        ctx.moveTo(b.x - 26 * b.size, b.y + 2);
-        ctx.quadraticCurveTo(b.x, b.y + 5, b.x + 26 * b.size, b.y + 1);
+        ctx.moveTo(b.x - 30 * b.size, b.y + 3);
+        ctx.quadraticCurveTo(b.x, b.y + 6, b.x + 30 * b.size, b.y + 2);
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(40,52,40,0.5)"; ctx.lineWidth = 2 * b.size;
+        ctx.beginPath();
+        ctx.moveTo(b.x - 30 * b.size, b.y + 1);
+        ctx.quadraticCurveTo(b.x, b.y + 4, b.x + 30 * b.size, b.y + 0);
         ctx.stroke(); ctx.restore();
       }
+      this._drawPerchSprite(ctx, spr, b);
     }
 
     _drawForager(ctx, b) {
