@@ -1,2 +1,5 @@
 node_modules/
 artifacts/
+
+# AI image-search reference downloads (not game assets; birds are procedural)
+image-search/

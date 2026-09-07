@@ -263,7 +263,7 @@
       ctx.quadraticCurveTo(8, -10, 18, -7);     // crown over the head
       ctx.quadraticCurveTo(24, -5, 24, -2);     // forehead into face
       ctx.lineTo(14, 3);                        // throat (angular)
-      ctx.lineTo(-8, big ? 6 : 4);              // breast
+      ctx.lineTo(-8, big ? 4.4 : 4);            // breast (slimmer on big birds)
       ctx.lineTo(-22, 1);                       // belly tapering back to rump
       ctx.closePath(); ctx.fill();
 
@@ -272,10 +272,10 @@
         // edge itself (breast -> rump), plus faint internal facet lines. They
         // tuck flush to the belly so the silhouette stays a narrow wedge — the
         // layers read as stacked plumage, never a fat oval or dangling blocks.
-        const feats = [ { x: 10, y: 4.4 }, { x: 1, y: 5.6 }, { x: -8, y: 5.4 }, { x: -16, y: 3.4 } ];
+        const feats = [ { x: 10, y: 3.4 }, { x: 1, y: 4.3 }, { x: -8, y: 4.1 }, { x: -16, y: 2.7 } ];
         ctx.fillStyle = tint;
         for (let i = 0; i < feats.length; i++) {
-          const f = feats[i], w = 7.5, tip = 2.4;
+          const f = feats[i], w = 6.4, tip = 1.5;
           // a small downward-pointing feather triangle whose base sits on the
           // belly line and whose point just kisses below it (scalloped edge).
           ctx.beginPath();
@@ -570,7 +570,10 @@
       // landing birds may rise to the roof ridge (a little above the open
       // ceiling) for a roof perch, or drop to the low foreground branches for a
       // tree perch; open flight honours the normal band.
-      const floor = this.state === "landing" ? 505 : CFG.maxFlyY;
+      // back/high birds stay above the roofline band; FRONT low-small birds are
+      // allowed to cruise down in front of the wall & by the porch.
+      const lowFloor = this.depth === "front" ? 440 : CFG.maxFlyY;
+      const floor = this.state === "landing" ? 505 : lowFloor;
       const ceiling = this.state === "landing" ? 12 : CFG.minFlyY;
       this.y = clamp(this.y, ceiling, floor);
       if (this.y >= floor - 0.5 && this.vy > 0) this.vy = 0;   // no sinking into the ground
@@ -991,36 +994,52 @@
        edge; initial spawns may already be mid-screen (birds present on load). */
     _spawnFlyer(initial, opts = {}) {
       const dir = opts.dir || (chance(0.62) ? 1 : -1);
-      // depth FIRST: ~75% ride the BACK layer (small, high, behind the house);
-      // the rest cross in FRONT (near, big). Flocks/small birds ignore the cap.
-      const depth = opts.depth || (chance(0.62) ? "back" : "front");
-      const lane = opts.lane != null ? opts.lane : (depth === "back" ? 0 : 2);
       const xEdge = dir === 1 ? -60 : CFG.world.w + 60;
       const x = initial ? (chance(0.6) ? (dir === 1 ? rand(120, 600) : rand(680, 1160)) : xEdge) : xEdge;
-      let y;
-      if (depth === "back") {
+
+      // Altitude/size split. The SMALL birds divide two ways:
+      //   highSmall (~70%) -> BACK layer, skimming the roof/eaves skyline;
+      //   lowSmall  (~30%) -> FRONT layer but still small, crossing LOW in front
+      //                       of the wall and down by/under the house & porch.
+      // A third roll asks for a near BIG bird; the medium/big cap may shrink it,
+      // in which case it folds into the low-small group.
+      let effDepth, effLane, scale, y, species;
+      const roofHigh = () => {
         const atX = (x < 0 || x > CFG.world.w) ? (dir === 1 ? 220 : 1060) : x;
-        y = clamp(this.roofY(atX) - rand(10, 70), CFG.minFlyY, 150);
-      } else {
-        y = rand(150, CFG.maxFlyY - 30);
-      }
-      const species = lane === 2 && chance(CFG.owlChance) ? "owl" : pick(CFG.speciesRoll);
-      let scale;
-      if (depth === "back") {
-        // small far bird
+        return clamp(this.roofY(atX) - rand(6, 46), CFG.minFlyY, 150);
+      };
+      if (opts.depth === "back" || opts.lane === 0) {
+        // forced back (e.g. the spawner when the big quota is full): high small
+        species = pick(CFG.speciesRoll);
+        effDepth = "back"; effLane = 0;
         scale = rand(CFG.sizeBands.far[0], CFG.sizeBands.far[1]) * CFG.species[species].s;
+        y = roofHigh();
       } else {
-        // near bird: big enough to read, then the medium/big cap may shrink it
-        scale = this._bandFor(2) * CFG.species[species].s;
-        scale = this._capBigBird(scale, dir);
-        scale = Math.min(scale, CFG.maxNearScale);   // hard ceiling on biggest bird
-        // if the cap downgraded it, send it to the back instead
+        const r = Math.random();
+        if (r < 0.70) {
+          // HIGH small bird at roof/eaves height (the majority)
+          species = pick(CFG.speciesRoll);
+          effDepth = "back"; effLane = 0;
+          scale = rand(CFG.sizeBands.far[0], CFG.sizeBands.far[1]) * CFG.species[species].s;
+          y = roofHigh();
+        } else if (r < 0.97) {
+          // LOW small bird: FRONT layer, small, crossing down by the house
+          species = pick(CFG.speciesRoll);
+          effDepth = "front"; effLane = 1;
+          scale = rand(CFG.sizeBands.mid[0], CFG.sizeBands.mid[1] * 0.92) * CFG.species[species].s;
+          y = rand(300, 430);
+        } else {
+          // BIG/near candidate crossing in front; cap may shrink it to low-small
+          species = chance(CFG.owlChance) ? "owl" : pick(CFG.speciesRoll);
+          effDepth = "front"; effLane = 2;
+          scale = this._bandFor(2) * CFG.species[species].s;
+          scale = this._capBigBird(scale, dir);
+          scale = Math.min(scale, CFG.maxNearScale);   // hard ceiling on biggest bird
+          if (scale < CFG.bigBirdScale) { effLane = 1; y = rand(300, 430); }
+          else { y = rand(150, 260); }
+        }
       }
-      let effLane = lane, effDepth = depth;
-      if (effDepth === "front" && scale < CFG.bigBirdScale) { effDepth = "back"; effLane = 0;
-        y = clamp(Math.min(y, this.roofY(dir === 1 ? 220 : 1060) - 20), CFG.minFlyY, 150);
-      }
-      const anchor = effLane === 0 ? CFG.baseSpeed.far : CFG.baseSpeed.near;
+      const anchor = effLane === 0 ? CFG.baseSpeed.far : effLane === 1 ? CFG.baseSpeed.mid : CFG.baseSpeed.near;
       const b = new FlyingBird({
         x, y, dir, lane: effLane, species, scale, speedAnchor: anchor,
         depth: effDepth,
@@ -1099,26 +1118,34 @@
       b.bornT = 0; b.state = "flight"; b.landing = null; b.canLand = true;
       b.facing = dir; b.faceTarget = dir; b.face = dir; b.faceScale = dir; b._turnBank = 0;
       b.x = dir === 1 ? -60 : 1340;                 // always from a side edge
-      const depth = chance(0.62) ? "back" : "front";
-      const lane = depth === "back" ? 0 : 2;
-      const species = lane === 2 && chance(CFG.owlChance) ? "owl" : b.speciesKey;
-      let scale0;
-      if (depth === "back") {
+      // same altitude split as the spawner: most small birds HIGH at the roof,
+      // ~30% LOW in front of the house, plus an occasional big near bird.
+      const roofHighY = () => clamp(this.roofY(dir === 1 ? 220 : 1060) - rand(6, 46), CFG.minFlyY, 150);
+      let effDepth, effLane, scale0, species;
+      const r = Math.random();
+      if (r < 0.70) {
+        species = b.speciesKey;
+        effDepth = "back"; effLane = 0;
         scale0 = rand(CFG.sizeBands.far[0], CFG.sizeBands.far[1]) * CFG.species[species].s;
-        b.y = clamp(this.roofY(dir === 1 ? 220 : 1060) - rand(10, 70), CFG.minFlyY, 150);
+        b.y = roofHighY();
+      } else if (r < 0.97) {
+        species = b.speciesKey;
+        effDepth = "front"; effLane = 1;
+        scale0 = rand(CFG.sizeBands.mid[0], CFG.sizeBands.mid[1] * 0.92) * CFG.species[species].s;
+        b.y = rand(300, 430);
       } else {
+        species = (chance(CFG.owlChance) ? "owl" : b.speciesKey);
+        effDepth = "front"; effLane = 2;
         scale0 = this._bandFor(2) * CFG.species[species].s;
         scale0 = this._capBigBird(scale0, dir);
         scale0 = Math.min(scale0, CFG.maxNearScale);
-        b.y = rand(150, CFG.maxFlyY - 30);
+        if (scale0 < CFG.bigBirdScale) { effLane = 1; b.y = rand(300, 430); }
+        else { b.y = rand(150, 260); }
       }
-      let effLane = lane, effDepth = depth;
-      if (effDepth === "front" && scale0 < CFG.bigBirdScale) { effDepth = "back"; effLane = 0;
-        b.y = clamp(this.roofY(dir === 1 ? 220 : 1060) - 20, CFG.minFlyY, 150);
-      }
+      b.speciesKey = species;
       b.scale0 = scale0; b.size = scale0;
       b.depth = effDepth; b.lane = effLane;
-      b.speedAnchor = effLane === 0 ? CFG.baseSpeed.far : CFG.baseSpeed.near;
+      b.speedAnchor = effLane === 0 ? CFG.baseSpeed.far : effLane === 1 ? CFG.baseSpeed.mid : CFG.baseSpeed.near;
       b.speed = b.speedAnchor * b.speedMul * CFG.species[species].v;
       b.headingMode = roll(CFG.heading);
       b.fixAngle = pick(CFG.fixedAnglesDeg) * Math.PI / 180;

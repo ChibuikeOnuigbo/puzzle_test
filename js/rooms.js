@@ -243,6 +243,69 @@ const Rooms = (() => {
     return `<g>${patch}${blades}</g>`;
   }
 
+  /* the shadow the eaves throw across the wall: a large band whose TOP is a
+     straight line under the eave but whose LOWER edge is a random wavy/curved
+     scalloped line, deeper on one side than the other (the left hangs lower
+     than the right, so the two sides differ). Two such layers drift left-right
+     at different slow periods, so the wavy edge morphs/creeps rather than
+     sliding as one rigid rectangle. No fog, no blur — just a dark, graded
+     shadow with a living edge. */
+  function _shadowRng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+  function _wavyShadowBand(seed, depthLeft, depthRight, amp, scallops) {
+    const R = _shadowRng(seed);
+    const x0 = 150, x1 = 1130, topY = 124;
+    // lower-edge depth at a horizontal parameter t (0=left .. 1=right): a
+    // straight LEFT->RIGHT tilt (left hangs much deeper) PLUS two rolling waves
+    // of unrelated wavelengths plus per-scallop jitter, so the boundary is a
+    // random wavy/curved line — never a straight horizontal edge.
+    const depthAt = (t) => {
+      const tilt = depthLeft + (depthRight - depthLeft) * t;
+      const roll = Math.sin(t * Math.PI * 2.2 + seed) * amp * 0.7
+                 + Math.sin(t * Math.PI * 5.1 + seed * 1.7) * amp * 0.4
+                 + (R() - 0.5) * amp * 0.7;
+      return Math.max(8, tilt + roll);
+    };
+    const n = scallops;
+    const pt = [];
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const x = x1 - (x1 - x0) * t;          // walk right -> left
+      pt.push({ x, y: topY + depthAt(1 - t) });
+    }
+    let edge = "";
+    for (let i = 0; i < n; i++) {
+      const a = pt[i], b = pt[i + 1];
+      const xm = (a.x + b.x) / 2;
+      const ym = (a.y + b.y) / 2 + (R() - 0.5) * amp * 0.6;
+      edge += `Q${xm.toFixed(1)},${ym.toFixed(1)} ${b.x.toFixed(1)},${b.y.toFixed(1)} `;
+    }
+    return `M${x0},${topY} L${x1},${topY} L${x1},${pt[0].y.toFixed(1)} ${edge} L${x0},${pt[n].y.toFixed(1)} Z`;
+  }
+  function eaveShadow() {
+    const on = animOn("roofShade");
+    // A shadow DARKENS, so each layer is a near-opaque dark slab whose only soft
+    // part is a faint edge fade; a small gaussian penumbra blurs the wavy lower
+    // boundary into the siding (this is a cast-shadow edge, NOT mist — mist is
+    // light and additive, this is dark and multiplicative-looking). Two layers
+    // drift at different slow speeds/directions so the scalloped edge morphs.
+    const layer = (seed, dL, dR, amp, sc, op, dur, dx, blur) => {
+      const d = _wavyShadowBand(seed, dL, dR, amp, sc);
+      const drift = on ? `<animateTransform attributeName="transform" type="translate" values="${-dx},0;${dx},0;${-dx},0" dur="${dur}s" repeatCount="indefinite"/>` : "";
+      const filt = blur ? ` filter="url(#eavepenumbra)"` : "";
+      return `<g opacity="${op}"${filt}>${drift}<path d="${d}" fill="url(#eaveshadow)"/></g>`;
+    };
+    // Three dark wavy layers with VERY different left vs right depths and
+    // unrelated scallop counts, amplitudes and slow drift periods — so the
+    // scalloped boundary visibly morphs and the left reads nothing like the
+    // right. The top layer is crisp (sharp cast edge); the lower two add a
+    // soft, creeping penumbra below it.
+    return `<g id="v_eaveshadow">
+      ${layer(47, 92, 40, 16, 11, 0.95, 90, 26, false)}
+      ${layer(11, 66, 26, 26, 8,  0.5,  63, 22, true)}
+      ${layer(29, 44, 15, 15, 14, 0.4,  37, -17, true)}
+    </g>`;
+  }
+
   /* a fallen leaf, small and dull */
   const leaf = (x, y, r, rot, c) => `
     <ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 0.6}" fill="${c || "#2a231a"}" opacity="0.75" transform="rotate(${rot} ${x} ${y})"/>`;
@@ -1407,9 +1470,13 @@ const Rooms = (() => {
     ${DEFS}
     <defs>
       <filter id="blurf"><feGaussianBlur stdDeviation="3"/></filter>
+      <filter id="eavepenumbra" x="-5%" y="-30%" width="110%" height="200%">
+        <feGaussianBlur stdDeviation="3"/>
+      </filter>
       <linearGradient id="eaveshadow" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#060505" stop-opacity="0.5"/>
-        <stop offset="1" stop-color="#060505" stop-opacity="0"/>
+        <stop offset="0" stop-color="#05070b" stop-opacity="0.82"/>
+        <stop offset="0.7" stop-color="#05070b" stop-opacity="0.72"/>
+        <stop offset="1" stop-color="#05070b" stop-opacity="0"/>
       </linearGradient>
       <clipPath id="roofclip"><polygon points="150,124 640,30 1130,124"/></clipPath>
       <clipPath id="mistclip"><path clip-rule="evenodd" d="M0,540 H1280 V720 H0 Z M600,574 L680,574 L830,720 L452,720 Z"/></clipPath>
@@ -1577,20 +1644,11 @@ const Rooms = (() => {
         ${typeof Birds !== "undefined" ? Birds.part("mid") : ""}
         <polygon points="150,124 640,30 1130,124" fill="none" stroke="#171310" stroke-width="5"/>
         <polygon points="150,124 640,30 1130,124" fill="none" stroke="#241d16" stroke-width="2" opacity="0.8"/>
-        <!-- the shadow the eaves cast across the wall: a soft band with a
-             WAVY random lower edge (not a straight line / rectangle), drifting
-             very slowly left-right like branch shadow across the siding. -->
-        <g id="v_eaveshadow">
-          <path fill="url(#eaveshadow)" d="
-            M150,124 L1130,124
-            L1130,132
-            q-22,10 -46,4 q-26,12 -52,3 q-30,11 -60,2 q-34,12 -68,3
-            q-30,11 -60,2 q-34,12 -68,3 q-30,10 -60,2 q-34,12 -68,3
-            q-30,10 -60,2 q-34,12 -68,3 q-30,9 -56,3 q-34,11 -60,3
-            L150,132 Z">
-            ${animOn("roofShade") ? '<animateTransform attributeName="transform" type="translate" values="-14,0;14,0;-14,0" dur="55s" repeatCount="indefinite"/>' : ""}
-          </path>
-        </g>
+        <!-- the shadow the eaves cast across the wall: a large graded band whose
+             lower edge is a random wavy/curved scalloped line, deeper on the
+             left than the right, with two layers drifting at different slow
+             periods so the edge morphs (never a flat rectangle, no fog). -->
+        ${eaveShadow()}
         <!-- chimney, its moonward face picked out -->
         <g id="v_chimney">
           <rect x="336" y="42" width="32" height="46" fill="#191512"/>
@@ -1653,41 +1711,47 @@ const Rooms = (() => {
         <line x1="602" y1="335" x2="628" y2="333" stroke="#6b5b45" stroke-width="2"/>
         <circle cx="619" cy="303" r="3" fill="#8a4a3a"/>
       </g>
-      <!-- porch light: a cast-iron Dutch wall lantern (muurlantaarn) drawn as
-           a FRONT ELEVATION facing the camera (symmetric). A short curved arm
-           hooks it off the wall, but the body itself is head-on: peaked cap,
-           cast-iron frame with vertical bars, warm glass, a crossbar, base and
-           finial all flat to view. Only the warm glass flickers. -->
+      <!-- porch light: a cast-iron Dutch wall lantern (muurlantaarn) drawn as a
+           strictly FRONT ELEVATION facing the camera: perfectly symmetric about
+           x=480. The wall bracket is a flat vertical backplate + centered drop
+           ring seen head-on (NOT a sideways hook, which read as a 45 degree
+           view); the cage is a symmetric peaked-cap lantern with vertical mullions,
+           warm glass, a crossbar, base and finial all flat to view. -->
       <g id="v_plight">
-        <!-- small wall rosette -->
-        <rect x="450" y="262" width="12" height="18" rx="2" fill="#171310"/>
-        <circle cx="456" cy="271" r="3" fill="#2a231c"/>
-        <!-- short hooked arm reaching out and down to the lantern crown -->
-        <path d="M456,276 q0,14 14,16 q6,1 10,-2" stroke="#171310" stroke-width="4.5" fill="none" stroke-linecap="round"/>
-        <!-- crown ring -->
-        <circle cx="480" cy="292" r="3.2" fill="#171310"/>
-        <!-- body is centred at x=480, head-on -->
-        <!-- top finial + peaked cap (symmetric) -->
-        <path d="M480,292 l-2.2,5 h4.4 z" fill="#171310"/>
-        <path d="M460,300 L500,300 L494,290 L466,290 Z" fill="#1b1713"/>
-        <rect x="459" y="300" width="42" height="5" rx="1.5" fill="#100d0a"/>
-        <!-- glass body frame (rectangular head-on) -->
-        <rect x="465" y="305" width="30" height="40" rx="2" fill="#241d17"/>
-        <!-- warm glass pane -->
-        <rect x="469" y="309" width="22" height="32" rx="1" fill="#f4cb7e" opacity="0.96" ${animOn("lampFlicker") ? 'filter="url(#fxblur2)"' : ""}>
-          ${animOn("lampFlicker") ? '<animate attributeName="opacity" values="0.96;0.84;0.93;0.72;0.96" dur="5s" repeatCount="indefinite"/>' : ""}
+        <!-- flat wall backplate (head-on): a small vertical strap on the siding -->
+        <rect x="474" y="250" width="12" height="46" rx="3" fill="#15110d"/>
+        <rect x="476" y="252" width="3" height="42" rx="1.5" fill="#2a231c" opacity="0.7"/>
+        <!-- mounting rosette centred on the strap -->
+        <circle cx="480" cy="262" r="6.5" fill="#1b1712"/>
+        <circle cx="480" cy="262" r="3.2" fill="#2e2620"/>
+        <!-- centered drop ring (the bracket seen head-on, foreshortened) -->
+        <rect x="478.6" y="268" width="2.8" height="12" rx="1.4" fill="#15110d"/>
+        <circle cx="480" cy="283" r="4.2" fill="none" stroke="#15110d" stroke-width="2.6"/>
+        <!-- crown finial + peaked cap (symmetric) -->
+        <path d="M480,284 l-2.4,6 h4.8 z" fill="#15110d"/>
+        <path d="M458,298 L502,298 L494,288 L466,288 Z" fill="#1b1713"/>
+        <path d="M466,288 L494,288 L480,284 Z" fill="#241d17"/>
+        <rect x="457" y="298" width="46" height="5" rx="1.6" fill="#0f0c09"/>
+        <!-- cage frame (head-on rectangle) -->
+        <rect x="463" y="303" width="34" height="42" rx="2.5" fill="#221b15"/>
+        <!-- warm glass pane, symmetric -->
+        <rect x="467" y="307" width="26" height="34" rx="1.5" fill="#f6cf82" opacity="0.97"${" "}
+        ${animOn("lampFlicker") ? ' filter="url(#fxblur2)"' : ""}>
+          ${animOn("lampFlicker") ? '<animate attributeName="opacity" values="0.97;0.85;0.94;0.74;0.97" dur="5s" repeatCount="indefinite"/>' : ""}
         </rect>
-        <!-- inner candle core -->
-        <ellipse cx="480" cy="328" rx="3.4" ry="9" fill="#fff2cf" opacity="0.85"/>
-        <!-- cast-iron vertical bars (head-on mullions) -->
-        <rect x="467.6" y="307" width="2.8" height="36" fill="#14100d"/>
-        <rect x="478.6" y="307" width="2.8" height="36" fill="#14100d"/>
-        <rect x="489.6" y="307" width="2.8" height="36" fill="#14100d"/>
+        <!-- inner candle flame core, centred -->
+        <ellipse cx="480" cy="328" rx="3.6" ry="10" fill="#fff3d2" opacity="0.88"/>
+        <ellipse cx="480" cy="330" rx="1.7" ry="5" fill="#fffaf0" opacity="0.9"/>
+        <!-- cast-iron vertical mullions (head-on bars), symmetric -->
+        <rect x="465.4" y="305" width="3" height="38" rx="1" fill="#120f0c"/>
+        <rect x="478.5" y="305" width="3" height="38" rx="1" fill="#120f0c"/>
+        <rect x="491.6" y="305" width="3" height="38" rx="1" fill="#120f0c"/>
         <!-- crossbar -->
-        <rect x="465" y="325.6" width="30" height="2.8" fill="#14100d"/>
-        <!-- base ring + drip finial -->
-        <rect x="463" y="345" width="34" height="5" rx="2" fill="#171310"/>
-        <path d="M480,350 l-3.4,7 h6.8 z" fill="#171310"/>
+        <rect x="463" y="324" width="34" height="3" rx="1.2" fill="#120f0c"/>
+        <!-- base ring + drip finial (symmetric) -->
+        <rect x="461" y="345" width="38" height="5.5" rx="2" fill="#15110d"/>
+        <path d="M480,350.5 l-4,8 h8 z" fill="#15110d"/>
+        <circle cx="480" cy="360" r="2.4" fill="#15110d"/>
       </g>
       <!-- porch floor -->
       <rect x="180" y="548" width="920" height="26" fill="#2b211a"/>
@@ -1823,7 +1887,7 @@ const Rooms = (() => {
       ${hs("pot1", 424, 490, 70, 76, "A flowerpot in the lamplight", "v_pot1")}
       ${hs("pot2", 846, 492, 70, 74, "A flowerpot in the dark", "v_pot2")}
       ${hs("mat", 566, 548, 148, 36, "The doormat", "v_mat")}
-      ${hs("plight", 420, 258, 52, 76, "The porch light", "v_plight")}
+      ${hs("plight", 450, 244, 64, 126, "The porch light", "v_plight")}
       ${hs("plate", 606, 208, 68, 40, "The number plate", "v_door")}
       ${hs("win", 890, 200, 140, 168, "An upstairs window", "v_win2")}
     </g>
