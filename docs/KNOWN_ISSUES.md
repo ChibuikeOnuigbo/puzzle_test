@@ -21,6 +21,19 @@ Honest list, ranked by impact. None are blockers; all have workarounds.
 7. **No mid-dialogue save granularity** — a refresh during a fade transition restores the
    destination room but drops any unspoken narration lines. State is never lost.
 
+## Update: birds v4, tree map, eave shadow & lantern (Sep 2026)
+
+**Birds (js/birds.js v4)**
+- Landing is decided ONCE at spawn: 35% of solo flyers go to a foreground tree, 8% to the roof. A committed bird flies a curved (bezier) arc onto a FREE OUTER branch; progress is time-based so it cannot stall, overshoot, or thrash left/right. It zooms smoothly to its perched size on the way in.
+- Perched birds are ATTACHED: the anchor is pushed through the same wind rotation chain the SVG applies to the painted limb (whole tree -> stem -> main branch; `TreePerches.swayAngleAt`), so the bird rides the branch. Uniform scaling only, so no thin-stick squash on landing. Tree birds leave after 4-7s from exactly where they sat.
+- Descent glitch fixed: the "loop" (360 spin) and "zig" (six bank reversals/s) acrobatics were removed; `acroBank` was being applied twice (update + draw); the 3px/frame stuck watchdog kicked nearly every bird every 0.8s; the floor/ceiling clamp pinned birds on a line (now soft steering). Sim harness (`artifacts/sim/*.mjs`, real canvases via @napi-rs/canvas) shows 0 flip loops, 0 thin frames, 0 jumps over 240s.
+- 70% of small birds fly HIGH at roof height (behind the house); 30% fly LOW by the house in front of the wall (still small). Biggest bird reduced (near band 0.60-0.78, ceiling 0.80; crow 0.90 / owl 0.94); big-bird body slimmer with a faceted abdomen (layered triangles / squares / rhombs, low-poly reference), wings 15% shorter and mounted further back and inward. Eyes are larger with a pupil + catch-light; closest (tree) birds are clearest.
+- Tree structure map: `TreePerches.describe()` labels every section (stem / main branch / branch / OUTER FREE branch with its free end, sway pivots, perch anchors). `Birds.treeMap(true)` paints it over the porch (colour-coded) for inspection.
+
+**Porch**
+- Eave shadow on the house body: no longer a drifting rectangle. Lower edge is a random wavy/curved scalloped line, much deeper on the left than the right (different wavelengths per side), and it MORPHS via SMIL `d` tweening between keyframe shapes over 29-53s plus a slow creep. No blur, fog or mist.
+- Porch lantern redrawn as a strict head-on front elevation (0 deg): rectangular backplate, symmetric scroll bracket with centred ring, peaked cap, flaring cage with mullions and crossbar, centred candle.
+
 ## Update: birds v3, smooth moon, settings & porch art pass (Sep 2026)
 
 **Birds (js/birds.js v3 canvas engine)**

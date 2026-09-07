@@ -243,66 +243,77 @@ const Rooms = (() => {
     return `<g>${patch}${blades}</g>`;
   }
 
-  /* the shadow the eaves throw across the wall: a large band whose TOP is a
-     straight line under the eave but whose LOWER edge is a random wavy/curved
-     scalloped line, deeper on one side than the other (the left hangs lower
-     than the right, so the two sides differ). Two such layers drift left-right
-     at different slow periods, so the wavy edge morphs/creeps rather than
-     sliding as one rigid rectangle. No fog, no blur — just a dark, graded
-     shadow with a living edge. */
+  /* the shadow the eaves throw across the wall.
+     Its TOP is the straight line under the gutter (that IS where the eave
+     is), but its LOWER EDGE is a random wavy/curved line: the left half hangs
+     much deeper than the right and the two halves use different wave counts
+     and amplitudes, so left never mirrors right. The edge is not a texture
+     that slides: it MORPHS. Several keyframe shapes of the same band (same
+     seed family, different phase) are tweened through a very slow <animate
+     attributeName="d"> so the scallops swell, shrink and creep - a living
+     cast shadow. No blur, no fog, no mist: a dark, crisp, graded shadow. */
+  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   function _shadowRng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
-  function _wavyShadowBand(seed, depthLeft, depthRight, amp, scallops) {
+  /* one band shape. `phase` shifts the waves (0..1 = one full creep) and
+     `breath` (-1..1) swells/shrinks the scallops, so successive keyframes
+     morph rather than translate. Point COUNT and ORDER are fixed for a given
+     (scallops) so SMIL can interpolate d -> d. */
+  function _wavyShadowBand(seed, depthLeft, depthRight, amp, scallops, phase = 0, breath = 0) {
     const R = _shadowRng(seed);
     const x0 = 150, x1 = 1130, topY = 124;
-    // lower-edge depth at a horizontal parameter t (0=left .. 1=right): a
-    // straight LEFT->RIGHT tilt (left hangs much deeper) PLUS two rolling waves
-    // of unrelated wavelengths plus per-scallop jitter, so the boundary is a
-    // random wavy/curved line — never a straight horizontal edge.
+    const jit = []; for (let i = 0; i <= scallops * 2 + 2; i++) jit.push(R() - 0.5);   // fixed per seed
+    const ph = phase * Math.PI * 2;
     const depthAt = (t) => {
-      const tilt = depthLeft + (depthRight - depthLeft) * t;
-      const roll = Math.sin(t * Math.PI * 2.2 + seed) * amp * 0.7
-                 + Math.sin(t * Math.PI * 5.1 + seed * 1.7) * amp * 0.4
-                 + (R() - 0.5) * amp * 0.7;
-      return Math.max(8, tilt + roll);
+      // asymmetric base: left hangs deep and falls off with an ease, right is shallow
+      const tilt = depthLeft + (depthRight - depthLeft) * Math.pow(t, 0.8);
+      // the LEFT half rolls with long slow waves, the RIGHT half with short
+      // quick ones (different wavelengths per side -> the sides look different)
+      const wl = Math.sin(t * Math.PI * 1.7 + ph + seed) * amp * 0.9
+               + Math.sin(t * Math.PI * 3.3 - ph * 0.6 + seed * 1.7) * amp * 0.45;
+      const wr = Math.sin(t * Math.PI * 6.2 + ph * 1.3 + seed * 0.4) * amp * 0.55
+               + Math.sin(t * Math.PI * 9.1 - ph + seed * 2.3) * amp * 0.3;
+      const mix = t * t;                              // 0 on the left .. 1 on the right
+      const wave = (wl * (1 - mix) + wr * mix) * (1 + breath * 0.35);
+      return clamp(tilt + wave, 8, 92);              // never deeper than the window heads
     };
     const n = scallops;
     const pt = [];
     for (let i = 0; i <= n; i++) {
       const t = i / n;
-      const x = x1 - (x1 - x0) * t;          // walk right -> left
-      pt.push({ x, y: topY + depthAt(1 - t) });
+      const x = x1 - (x1 - x0) * t;                   // walk right -> left
+      pt.push({ x, y: topY + depthAt(1 - t) + jit[i] * amp * 0.5 });
     }
     let edge = "";
     for (let i = 0; i < n; i++) {
       const a = pt[i], b = pt[i + 1];
-      const xm = (a.x + b.x) / 2;
-      const ym = (a.y + b.y) / 2 + (R() - 0.5) * amp * 0.6;
+      const xm = (a.x + b.x) / 2 + jit[n + 1 + i] * 18;
+      // alternate the bulge so the boundary scallops (curves), not zig-zags
+      const bulge = (i % 2 ? 1 : -1) * amp * (0.45 + 0.35 * Math.sin(ph + i * 1.3)) * (1 + breath * 0.5);
+      const ym = (a.y + b.y) / 2 + bulge;
       edge += `Q${xm.toFixed(1)},${ym.toFixed(1)} ${b.x.toFixed(1)},${b.y.toFixed(1)} `;
     }
     return `M${x0},${topY} L${x1},${topY} L${x1},${pt[0].y.toFixed(1)} ${edge} L${x0},${pt[n].y.toFixed(1)} Z`;
   }
   function eaveShadow() {
     const on = animOn("roofShade");
-    // A shadow DARKENS, so each layer is a near-opaque dark slab whose only soft
-    // part is a faint edge fade; a small gaussian penumbra blurs the wavy lower
-    // boundary into the siding (this is a cast-shadow edge, NOT mist — mist is
-    // light and additive, this is dark and multiplicative-looking). Two layers
-    // drift at different slow speeds/directions so the scalloped edge morphs.
-    const layer = (seed, dL, dR, amp, sc, op, dur, dx, blur) => {
-      const d = _wavyShadowBand(seed, dL, dR, amp, sc);
-      const drift = on ? `<animateTransform attributeName="transform" type="translate" values="${-dx},0;${dx},0;${-dx},0" dur="${dur}s" repeatCount="indefinite"/>` : "";
-      const filt = blur ? ` filter="url(#eavepenumbra)"` : "";
-      return `<g opacity="${op}"${filt}>${drift}<path d="${d}" fill="url(#eaveshadow)"/></g>`;
+    // each layer: a closed loop of 5 keyframe shapes (the last = the first)
+    // tweened by SMIL over a long period; a second, slower creep of the whole
+    // layer a few px sideways. Crisp edges only (a cast shadow, not mist).
+    const layer = (seed, dL, dR, amp, sc, op, dur, dx, driftDur) => {
+      const frames = [];
+      for (let k = 0; k < 4; k++) frames.push(_wavyShadowBand(seed, dL, dR, amp, sc, k / 4, Math.sin(k * 1.9 + seed)));
+      frames.push(frames[0]);
+      const morph = on ? `<animate attributeName="d" values="${frames.join(";")}" dur="${dur}s" calcMode="spline" keySplines="0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1" repeatCount="indefinite"/>` : "";
+      const drift = on ? `<animateTransform attributeName="transform" type="translate" values="${-dx},0;${dx},0;${-dx},0" dur="${driftDur}s" repeatCount="indefinite"/>` : "";
+      return `<g opacity="${op}">${drift}<path d="${frames[0]}" fill="url(#eaveshadow)">${morph}</path></g>`;
     };
-    // Three dark wavy layers with VERY different left vs right depths and
-    // unrelated scallop counts, amplitudes and slow drift periods — so the
-    // scalloped boundary visibly morphs and the left reads nothing like the
-    // right. The top layer is crisp (sharp cast edge); the lower two add a
-    // soft, creeping penumbra below it.
+    // three dark bands with very different left/right depths, wave counts
+    // and periods: the union has a deep, rolling left and a shallow, finer
+    // right, and no two layers ever line up.
     return `<g id="v_eaveshadow">
-      ${layer(47, 92, 40, 16, 11, 0.95, 90, 26, false)}
-      ${layer(11, 66, 26, 26, 8,  0.5,  63, 22, true)}
-      ${layer(29, 44, 15, 15, 14, 0.4,  37, -17, true)}
+      ${layer(47, 74, 30, 14, 13, 0.92, 38, 14, 90)}
+      ${layer(11, 58, 20, 18,  9, 0.55, 53, 10, 63)}
+      ${layer(29, 42, 12, 12, 17, 0.42, 29,  8, 41)}
     </g>`;
   }
 
@@ -1470,13 +1481,10 @@ const Rooms = (() => {
     ${DEFS}
     <defs>
       <filter id="blurf"><feGaussianBlur stdDeviation="3"/></filter>
-      <filter id="eavepenumbra" x="-5%" y="-30%" width="110%" height="200%">
-        <feGaussianBlur stdDeviation="3"/>
-      </filter>
       <linearGradient id="eaveshadow" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#05070b" stop-opacity="0.82"/>
-        <stop offset="0.7" stop-color="#05070b" stop-opacity="0.72"/>
-        <stop offset="1" stop-color="#05070b" stop-opacity="0"/>
+        <stop offset="0" stop-color="#05070b" stop-opacity="0.84"/>
+        <stop offset="0.75" stop-color="#05070b" stop-opacity="0.74"/>
+        <stop offset="1" stop-color="#05070b" stop-opacity="0.5"/>
       </linearGradient>
       <clipPath id="roofclip"><polygon points="150,124 640,30 1130,124"/></clipPath>
       <clipPath id="mistclip"><path clip-rule="evenodd" d="M0,540 H1280 V720 H0 Z M600,574 L680,574 L830,720 L452,720 Z"/></clipPath>
@@ -1711,47 +1719,58 @@ const Rooms = (() => {
         <line x1="602" y1="335" x2="628" y2="333" stroke="#6b5b45" stroke-width="2"/>
         <circle cx="619" cy="303" r="3" fill="#8a4a3a"/>
       </g>
-      <!-- porch light: a cast-iron Dutch wall lantern (muurlantaarn) drawn as a
-           strictly FRONT ELEVATION facing the camera: perfectly symmetric about
-           x=480. The wall bracket is a flat vertical backplate + centered drop
-           ring seen head-on (NOT a sideways hook, which read as a 45 degree
-           view); the cage is a symmetric peaked-cap lantern with vertical mullions,
-           warm glass, a crossbar, base and finial all flat to view. -->
+      <!-- porch light: a cast-iron wall lantern drawn as a strict FRONT
+           ELEVATION (camera square-on to the wall, 0 deg): everything is
+           mirror-symmetric about x=480. Following the head-on reference: a
+           rectangular wall BACKPLATE sits flat on the siding behind the top of
+           the lantern, a symmetric pair of iron SCROLLS holds a centred ring,
+           and the coach lantern hangs from it - peaked cap, finial, a cage
+           that flares slightly toward the base, two vertical mullions + a
+           crossbar over warm glass, and a flat base rail. No side view, no
+           hook seen from the side. -->
       <g id="v_plight">
-        <!-- flat wall backplate (head-on): a small vertical strap on the siding -->
-        <rect x="474" y="250" width="12" height="46" rx="3" fill="#15110d"/>
-        <rect x="476" y="252" width="3" height="42" rx="1.5" fill="#2a231c" opacity="0.7"/>
-        <!-- mounting rosette centred on the strap -->
-        <circle cx="480" cy="262" r="6.5" fill="#1b1712"/>
-        <circle cx="480" cy="262" r="3.2" fill="#2e2620"/>
-        <!-- centered drop ring (the bracket seen head-on, foreshortened) -->
-        <rect x="478.6" y="268" width="2.8" height="12" rx="1.4" fill="#15110d"/>
-        <circle cx="480" cy="283" r="4.2" fill="none" stroke="#15110d" stroke-width="2.6"/>
-        <!-- crown finial + peaked cap (symmetric) -->
-        <path d="M480,284 l-2.4,6 h4.8 z" fill="#15110d"/>
-        <path d="M458,298 L502,298 L494,288 L466,288 Z" fill="#1b1713"/>
-        <path d="M466,288 L494,288 L480,284 Z" fill="#241d17"/>
-        <rect x="457" y="298" width="46" height="5" rx="1.6" fill="#0f0c09"/>
-        <!-- cage frame (head-on rectangle) -->
-        <rect x="463" y="303" width="34" height="42" rx="2.5" fill="#221b15"/>
-        <!-- warm glass pane, symmetric -->
-        <rect x="467" y="307" width="26" height="34" rx="1.5" fill="#f6cf82" opacity="0.97"${" "}
+        <!-- rectangular wall backplate (flat to the wall) -->
+        <rect x="458" y="270" width="44" height="52" rx="2" fill="#15110d"/>
+        <rect x="461" y="273" width="38" height="46" rx="1.5" fill="none" stroke="#2a231c" stroke-width="1"/>
+        <circle cx="464" cy="276" r="1.1" fill="#3a3128"/><circle cx="496" cy="276" r="1.1" fill="#3a3128"/>
+        <circle cx="464" cy="316" r="1.1" fill="#3a3128"/><circle cx="496" cy="316" r="1.1" fill="#3a3128"/>
+        <!-- top stem + symmetric scroll bracket, centred -->
+        <rect x="477.5" y="248" width="5" height="26" rx="2" fill="#15110d"/>
+        <path d="M480,256 c-9,0 -13,-2 -13,-6 c0,-3 3,-4 5,-2 c2,2 0,5 -3,4" fill="none" stroke="#15110d" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M480,256 c9,0 13,-2 13,-6 c0,-3 -3,-4 -5,-2 c-2,2 0,5 3,4" fill="none" stroke="#15110d" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M480,266 c-11,0 -16,-3 -16,-8 c0,-3 3,-4 5,-2 c2,2 0,5 -3,4" fill="none" stroke="#15110d" stroke-width="2.4" stroke-linecap="round"/>
+        <path d="M480,266 c11,0 16,-3 16,-8 c0,-3 -3,-4 -5,-2 c-2,2 0,5 3,4" fill="none" stroke="#15110d" stroke-width="2.4" stroke-linecap="round"/>
+        <!-- centred hanging ring + finial -->
+        <circle cx="480" cy="277" r="3.6" fill="none" stroke="#15110d" stroke-width="2.4"/>
+        <circle cx="480" cy="277" r="3.6" fill="none" stroke="#3a3128" stroke-width="0.8" opacity="0.6"/>
+        <path d="M480,280 l-2.4,5 h4.8 z" fill="#15110d"/>
+        <!-- peaked cap (a symmetric trapezoid seen head-on) + its brim -->
+        <path d="M480,284 L500,299 L460,299 Z" fill="#1d1813"/>
+        <path d="M480,284 L500,299 L480,299 Z" fill="#161210"/>
+        <rect x="455" y="298" width="50" height="4.5" rx="1.5" fill="#0f0c09"/>
+        <rect x="455" y="298" width="50" height="1.4" fill="#3a3128" opacity="0.5"/>
+        <!-- cage body: flares a little toward the base, symmetric -->
+        <path d="M462,303 L498,303 L500,347 L460,347 Z" fill="#221b15"/>
+        <!-- warm glass, symmetric inside the frame -->
+        <path d="M466,307 L494,307 L495.6,343 L464.4,343 Z" fill="#f6cf82" opacity="0.97"${" "}
         ${animOn("lampFlicker") ? ' filter="url(#fxblur2)"' : ""}>
           ${animOn("lampFlicker") ? '<animate attributeName="opacity" values="0.97;0.85;0.94;0.74;0.97" dur="5s" repeatCount="indefinite"/>' : ""}
-        </rect>
-        <!-- inner candle flame core, centred -->
-        <ellipse cx="480" cy="328" rx="3.6" ry="10" fill="#fff3d2" opacity="0.88"/>
-        <ellipse cx="480" cy="330" rx="1.7" ry="5" fill="#fffaf0" opacity="0.9"/>
-        <!-- cast-iron vertical mullions (head-on bars), symmetric -->
-        <rect x="465.4" y="305" width="3" height="38" rx="1" fill="#120f0c"/>
-        <rect x="478.5" y="305" width="3" height="38" rx="1" fill="#120f0c"/>
-        <rect x="491.6" y="305" width="3" height="38" rx="1" fill="#120f0c"/>
-        <!-- crossbar -->
-        <rect x="463" y="324" width="34" height="3" rx="1.2" fill="#120f0c"/>
-        <!-- base ring + drip finial (symmetric) -->
-        <rect x="461" y="345" width="38" height="5.5" rx="2" fill="#15110d"/>
-        <path d="M480,350.5 l-4,8 h8 z" fill="#15110d"/>
-        <circle cx="480" cy="360" r="2.4" fill="#15110d"/>
+        </path>
+        <!-- candle, dead centre -->
+        <rect x="477" y="322" width="6" height="20" rx="1" fill="#fbe6b8" opacity="0.9"/>
+        <ellipse cx="480" cy="319" rx="2.6" ry="6" fill="#fff3d2" opacity="0.92"/>
+        <ellipse cx="480" cy="320" rx="1.2" ry="3.2" fill="#fffaf0"/>
+        <!-- iron frame: two outer uprights, two inner mullions, one crossbar -->
+        <path d="M462,303 L460,347" stroke="#120f0c" stroke-width="2.6"/>
+        <path d="M498,303 L500,347" stroke="#120f0c" stroke-width="2.6"/>
+        <path d="M472,303 L471.4,347" stroke="#120f0c" stroke-width="2"/>
+        <path d="M488,303 L488.6,347" stroke="#120f0c" stroke-width="2"/>
+        <rect x="461" y="323" width="38" height="2.6" rx="1" fill="#120f0c"/>
+        <!-- base rail + drip finial (symmetric) -->
+        <rect x="457" y="346" width="46" height="5.5" rx="2" fill="#15110d"/>
+        <rect x="457" y="346" width="46" height="1.2" fill="#3a3128" opacity="0.5"/>
+        <path d="M480,351.5 l-4,8 h8 z" fill="#15110d"/>
+        <circle cx="480" cy="361" r="2.4" fill="#15110d"/>
       </g>
       <!-- porch floor -->
       <rect x="180" y="548" width="920" height="26" fill="#2b211a"/>
