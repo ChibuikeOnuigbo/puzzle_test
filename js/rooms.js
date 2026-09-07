@@ -209,6 +209,40 @@ const Rooms = (() => {
       <path d="M${x},${y} q-3,-9 -7,-11"/>
     </g>`;
 
+  /* ---- rich yard grass: many green blades growing up against the house,
+     merging into the floor, with brown/decay patches. Each blade is a jointed
+     strand (two segments, a slight kink) so it can bend in the wind; the whole
+     clump sways a few degrees very slowly. Wind + count drop on reduced
+     motion / low quality (2D). Uses a deterministic per-clump rng. ---- */
+  function _grassRng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+  const BLADE_GREEN = ["#2b4425", "#33512b", "#26401f", "#3d5c31", "#213a1d"];
+  const BLADE_DEAD = ["#4a3d24", "#57462c", "#3a3020", "#5e4c30"];
+  function grassClump(cx, cy, w, count, seed) {
+    const R = _grassRng(seed);
+    const wind = (typeof animOn === "function") ? animOn("trees") : true;   // reuse the wind toggle
+    let blades = "";
+    for (let i = 0; i < count; i++) {
+      const bx = cx + (R() - 0.5) * w;
+      const h = 8 + R() * 22;
+      const lean = (R() - 0.5) * 12;
+      const kink = 4 + R() * 5;                      // segment joint
+      const decayed = R() < 0.22;                    // brown dead/dry blades
+      const col = decayed ? BLADE_DEAD[i % BLADE_DEAD.length] : BLADE_GREEN[i % BLADE_GREEN.length];
+      const sw = 1 + R() * 1.3;
+      const sway = wind ? (R() * 1.6 + 0.8).toFixed(2) : 0;
+      const dur = (3.4 + R() * 2.4).toFixed(1);
+      const ph = (R() * -6).toFixed(1);
+      // jointed strand: base -> knee -> tip
+      const blade = `<path d="M${bx.toFixed(1)},${cy} q${(lean * 0.25).toFixed(1)},${(-h * 0.55).toFixed(1)} ${(lean * 0.5).toFixed(1)},${(-h + kink).toFixed(1)} q${(lean * 0.4).toFixed(1)},${(-kink).toFixed(1)} ${lean.toFixed(1)},${(-h).toFixed(1)}" stroke="${col}" stroke-width="${sw.toFixed(1)}" fill="none" stroke-linecap="round" opacity="${decayed ? 0.8 : 0.92}"/>`;
+      blades += wind
+        ? `<g><animateTransform attributeName="transform" type="rotate" values="-${sway} ${bx.toFixed(1)} ${cy};${sway} ${bx.toFixed(1)} ${cy};-${sway} ${bx.toFixed(1)} ${cy}" dur="${dur}s" begin="${ph}s" repeatCount="indefinite"/>${blade}</g>`
+        : blade;
+    }
+    // decay patch: a sparse dead base under the feet of some clumps
+    const patch = `<ellipse cx="${cx}" cy="${cy + 1}" rx="${(w * 0.4).toFixed(1)}" ry="3.2" fill="#4a3d24" opacity="0.28"/>`;
+    return `<g>${patch}${blades}</g>`;
+  }
+
   /* a fallen leaf, small and dull */
   const leaf = (x, y, r, rot, c) => `
     <ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 0.6}" fill="${c || "#2a231a"}" opacity="0.75" transform="rotate(${rot} ${x} ${y})"/>`;
@@ -1336,7 +1370,10 @@ const Rooms = (() => {
     s += `<rect x="${cx - w * 0.54}" y="${top}" width="${w * 1.08}" height="${7 * scale}" rx="${2 * scale}" fill="${rim}"/>`; // rim
     s += `<rect x="${cx - w * 0.54}" y="${top}" width="${w * 1.08}" height="${2.4 * scale}" fill="#a06a4a" opacity="0.5"/>`;
     s += `<ellipse cx="${cx}" cy="${top + 3.5}" rx="${w * 0.5}" ry="${3.2 * scale}" fill="#1c130c"/>`; // soil
-    // plant: several stems with leaves
+    // plant: several stems with leaves, grouped so they sway very gently in
+    // the wind (anchored at the soil), only when motion is allowed.
+    const plantSway = (typeof animOn === "function") ? animOn("trees") : true;
+    s += `<g>${plantSway ? `<animateTransform attributeName="transform" type="rotate" values="-1.4 ${cx} ${top + 3};1.4 ${cx} ${top + 3};-1.4 ${cx} ${top + 3}" dur="${(4.5 + _rr()).toFixed(1)}s" repeatCount="indefinite"/>` : ""}`;
     const stems = 4 + Math.floor(_rr() * 2);
     for (let i = 0; i < stems; i++) {
       const lx = cx + (_rr() - 0.5) * w * 0.5;
@@ -1347,6 +1384,7 @@ const Rooms = (() => {
       s += `<ellipse cx="${(lx + bend).toFixed(1)}" cy="${my.toFixed(1)}" rx="${(4.5 * scale).toFixed(1)}" ry="${(2.6 * scale).toFixed(1)}" fill="${i % 2 ? leaf : leaf2}" transform="rotate(${(_rr() * 60 - 30).toFixed(0)} ${(lx + bend).toFixed(1)} ${my.toFixed(1)})"/>`;
       if (_rr() < 0.6) s += `<ellipse cx="${(lx + bend * 0.5).toFixed(1)}" cy="${(my + lh * 0.4).toFixed(1)}" rx="${(3.6 * scale).toFixed(1)}" ry="${(2.1 * scale).toFixed(1)}" fill="${leaf}" opacity="0.9"/>`;
     }
+    s += `</g>`;
     s += `</g>`;
     return s;
   }
@@ -1531,8 +1569,20 @@ const Rooms = (() => {
         ${typeof Birds !== "undefined" ? Birds.part("mid") : ""}
         <polygon points="150,124 640,30 1130,124" fill="none" stroke="#171310" stroke-width="5"/>
         <polygon points="150,124 640,30 1130,124" fill="none" stroke="#241d16" stroke-width="2" opacity="0.8"/>
-        <!-- the shadow the eaves cast across the wall below -->
-        <rect x="150" y="124" width="980" height="12" fill="url(#eaveshadow)"/>
+        <!-- the shadow the eaves cast across the wall: a soft band with a
+             WAVY random lower edge (not a straight line / rectangle), drifting
+             very slowly left-right like branch shadow across the siding. -->
+        <g id="v_eaveshadow">
+          <path fill="url(#eaveshadow)" d="
+            M150,124 L1130,124
+            L1130,132
+            q-22,10 -46,4 q-26,12 -52,3 q-30,11 -60,2 q-34,12 -68,3
+            q-30,11 -60,2 q-34,12 -68,3 q-30,10 -60,2 q-34,12 -68,3
+            q-30,10 -60,2 q-34,12 -68,3 q-30,9 -56,3 q-34,11 -60,3
+            L150,132 Z">
+            ${animOn("roofShade") ? '<animateTransform attributeName="transform" type="translate" values="-14,0;14,0;-14,0" dur="55s" repeatCount="indefinite"/>' : ""}
+          </path>
+        </g>
         <!-- chimney, its moonward face picked out -->
         <g id="v_chimney">
           <rect x="336" y="42" width="32" height="46" fill="#191512"/>
@@ -1595,43 +1645,55 @@ const Rooms = (() => {
         <line x1="602" y1="335" x2="628" y2="333" stroke="#6b5b45" stroke-width="2"/>
         <circle cx="619" cy="303" r="3" fill="#8a4a3a"/>
       </g>
-      <!-- porch light: a cast-iron Dutch wall lantern (muurlantaarn). Wall
-           plate, scroll bracket, framed glass body, peaked cap and finial.
-           Only the warm glass flickers; beam/pool come from the FX layer. -->
+      <!-- porch light: a cast-iron Dutch wall lantern (muurlantaarn) drawn as
+           a FRONT ELEVATION facing the camera (symmetric). A short curved arm
+           hooks it off the wall, but the body itself is head-on: peaked cap,
+           cast-iron frame with vertical bars, warm glass, a crossbar, base and
+           finial all flat to view. Only the warm glass flickers. -->
       <g id="v_plight">
-        <!-- wall plate -->
-        <rect x="437" y="262" width="16" height="30" rx="2" fill="#151210"/>
-        <rect x="439" y="264" width="12" height="26" rx="1" fill="#241f1a"/>
-        <!-- forged scroll arm reaching out from the wall -->
-        <path d="M445,274 q26,2 30,20 q2,12 -10,14" stroke="#171310" stroke-width="4" fill="none" stroke-linecap="round"/>
-        <circle cx="475" cy="308" r="3.4" fill="#171310"/>
-        <!-- hanger -->
-        <line x1="475" y1="308" x2="475" y2="316" stroke="#171310" stroke-width="3"/>
-        <!-- peaked cap / roof of the lantern -->
-        <path d="M459,320 L491,320 L484,310 L466,310 Z" fill="#1b1713"/>
-        <path d="M459,320 L491,320 L489,324 L461,324 Z" fill="#100d0a"/>
-        <!-- finial -->
-        <circle cx="475" cy="307" r="2.2" fill="#171310"/>
-        <!-- glass body in a cast-iron frame -->
-        <rect x="463" y="324" width="24" height="30" rx="1.5" fill="#2a241d"/>
-        <rect x="465" y="326" width="20" height="26" rx="1" fill="#3a3128"/>
-        <!-- the warm glass, soft and flickering -->
-        <rect x="467" y="328" width="16" height="22" rx="1" fill="#f2c878" opacity="0.95" ${reducedMotion ? "" : 'filter="url(#fxblur2)"'}>
-          ${reducedMotion ? "" : '<animate attributeName="opacity" values="0.95;0.82;0.92;0.7;0.95" dur="5s" repeatCount="indefinite"/>'}
+        <!-- small wall rosette -->
+        <rect x="450" y="262" width="12" height="18" rx="2" fill="#171310"/>
+        <circle cx="456" cy="271" r="3" fill="#2a231c"/>
+        <!-- short hooked arm reaching out and down to the lantern crown -->
+        <path d="M456,276 q0,14 14,16 q6,1 10,-2" stroke="#171310" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+        <!-- crown ring -->
+        <circle cx="480" cy="292" r="3.2" fill="#171310"/>
+        <!-- body is centred at x=480, head-on -->
+        <!-- top finial + peaked cap (symmetric) -->
+        <path d="M480,292 l-2.2,5 h4.4 z" fill="#171310"/>
+        <path d="M460,300 L500,300 L494,290 L466,290 Z" fill="#1b1713"/>
+        <rect x="459" y="300" width="42" height="5" rx="1.5" fill="#100d0a"/>
+        <!-- glass body frame (rectangular head-on) -->
+        <rect x="465" y="305" width="30" height="40" rx="2" fill="#241d17"/>
+        <!-- warm glass pane -->
+        <rect x="469" y="309" width="22" height="32" rx="1" fill="#f4cb7e" opacity="0.96" ${animOn("lampFlicker") ? 'filter="url(#fxblur2)"' : ""}>
+          ${animOn("lampFlicker") ? '<animate attributeName="opacity" values="0.96;0.84;0.93;0.72;0.96" dur="5s" repeatCount="indefinite"/>' : ""}
         </rect>
-        <!-- iron muntins (cross bars) over the glass -->
-        <line x1="475" y1="326" x2="475" y2="352" stroke="#151210" stroke-width="2"/>
-        <line x1="465" y1="339" x2="485" y2="339" stroke="#151210" stroke-width="2"/>
+        <!-- inner candle core -->
+        <ellipse cx="480" cy="328" rx="3.4" ry="9" fill="#fff2cf" opacity="0.85"/>
+        <!-- cast-iron vertical bars (head-on mullions) -->
+        <rect x="467.6" y="307" width="2.8" height="36" fill="#14100d"/>
+        <rect x="478.6" y="307" width="2.8" height="36" fill="#14100d"/>
+        <rect x="489.6" y="307" width="2.8" height="36" fill="#14100d"/>
+        <!-- crossbar -->
+        <rect x="465" y="325.6" width="30" height="2.8" fill="#14100d"/>
         <!-- base ring + drip finial -->
-        <rect x="462" y="354" width="26" height="4" rx="1.5" fill="#171310"/>
-        <path d="M475,358 l-3,6 h6 z" fill="#171310"/>
+        <rect x="463" y="345" width="34" height="5" rx="2" fill="#171310"/>
+        <path d="M480,350 l-3.4,7 h6.8 z" fill="#171310"/>
       </g>
       <!-- porch floor -->
       <rect x="180" y="548" width="920" height="26" fill="#2b211a"/>
-      <!-- the overgrown front yard: bushes flank the step, stones line the path -->
+      <!-- the overgrown front yard: bushes flank the step, stones line the path.
+           Very small, slow sway (bushes barely move). -->
       <g id="v_yard" filter="url(#blurf)">
-        <circle cx="222" cy="556" r="30" fill="#141a12"/><circle cx="250" cy="564" r="24" fill="#141a12"/><circle cx="196" cy="566" r="22" fill="#10160f"/>
-        <circle cx="1056" cy="556" r="32" fill="#141a12"/><circle cx="1026" cy="566" r="24" fill="#141a12"/><circle cx="1084" cy="564" r="22" fill="#10160f"/>
+        <g>${animOn("trees") ? '<animateTransform attributeName="transform" type="rotate" values="-0.8 230 566;0.8 230 566;-0.8 230 566" dur="13s" repeatCount="indefinite"/>' : ""}
+          <circle cx="222" cy="556" r="30" fill="#141a12"/><circle cx="250" cy="564" r="24" fill="#141a12"/><circle cx="196" cy="566" r="22" fill="#10160f"/>
+          <circle cx="238" cy="548" r="18" fill="#1a2216" opacity="0.8"/>
+        </g>
+        <g>${animOn("trees") ? '<animateTransform attributeName="transform" type="rotate" values="0.8 1050 566;-0.8 1050 566;0.8 1050 566" dur="15s" repeatCount="indefinite"/>' : ""}
+          <circle cx="1056" cy="556" r="32" fill="#141a12"/><circle cx="1026" cy="566" r="24" fill="#141a12"/><circle cx="1084" cy="564" r="22" fill="#10160f"/>
+          <circle cx="1046" cy="546" r="18" fill="#1a2216" opacity="0.8"/>
+        </g>
       </g>
       <!-- stones lining the path and half sunk in the lawn -->
       <g id="v_stones">
@@ -1647,20 +1709,22 @@ const Rooms = (() => {
         <ellipse cx="560" cy="648" rx="8" ry="3.6" fill="#262b32"/>
         <ellipse cx="726" cy="652" rx="9" ry="4" fill="#232830"/>
       </g>
-      <!-- grass tufts creeping over the lawn and path edges -->
+      <!-- rich yard grass: jointed blades growing thick against the house and
+           merging into the floor, with brown decay patches, all in a very slow
+           wind. A low layer (on the ground plane) + tall clumps by the wall. -->
       <g id="v_grass">
-        ${tuft(250, 586)}
-        ${tuft(283, 596, "#1b241d")}
-        ${tuft(1014, 582)}
-        ${tuft(1048, 592, "#1b241d")}
-        ${tuft(392, 606)}
-        ${tuft(452, 640, "#1b241d")}
-        ${tuft(828, 604)}
-        ${tuft(756, 646, "#1b241d")}
-        ${tuft(500, 666, "#162019")}
-        ${tuft(700, 668)}
-        ${tuft(560, 700, "#1b241d")}
-        ${tuft(734, 706)}
+        ${grassClump(240, 572, 150, 26, 11)}
+        ${grassClump(1040, 572, 150, 26, 23)}
+        ${grassClump(330, 560, 90, 16, 31)}
+        ${grassClump(950, 560, 90, 16, 47)}
+        ${grassClump(420, 552, 70, 12, 59)}
+        ${grassClump(860, 552, 70, 12, 71)}
+        ${grassClump(300, 610, 120, 18, 83)}
+        ${grassClump(980, 612, 120, 18, 97)}
+        ${grassClump(500, 672, 90, 14, 113)}
+        ${grassClump(780, 672, 90, 14, 131)}
+        ${grassClump(150, 690, 120, 16, 149)}
+        ${grassClump(1130, 690, 120, 16, 167)}
       </g>
       <!-- fallen leaves: a drift of them under each tree, a few blown onto the path -->
       <g id="v_leaves">

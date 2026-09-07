@@ -80,13 +80,20 @@
 
     wingStyles: { flapper: 0.62, mixer: 0.30, glider: 0.08 },   // fewer long glides
 
-    /* perching / landing */
-    landChance: 0.45,
-    perchOnTree: 0.45,
+    /* perching / landing — only ~10% of birds settle on the roof; the rest fly
+       through and leave the screen. */
+    landChance: 0.10,
+    perchOnTree: 0.35,
     perchStaySec: [0.6, 14],                     // some leave almost at once, some wait
-    initialPerchedRoof: 3,
+    initialPerchedRoof: 2,
     initialPerchedTree: 3,
     foragers: 3,
+
+    /* ~75% of flyers ride the BACK z-layer (behind the house); the remaining
+       quarter cross in front. Small/back birds may be numerous; medium/big are
+       capped separately. */
+    backBias: 0.75,
+    depthByScale: 0.95,                          // a bird is "front" only when big & near
 
     /* flocks: tiny up close, more-but-tiny far away */
     flockChance: 0.30,
@@ -129,11 +136,10 @@
        raised FLOOR so nothing close to the lens reads too small; far birds
        are genuinely small. */
     sizeBands: {
-      far:  [0.40, 0.60],
-      mid:  [0.72, 1.05],
-      near: [1.18, 1.75],
+      far:  [0.40, 0.58],
+      mid:  [0.66, 0.92],
+      near: [0.98, 1.35],                         // lowered: birds don't get huge
     },
-    depthByScale: 0.78,                         // below this size => back layer
 
     species: {
       swift:    { s: 0.80, v: 1.40, wing: "flapper", tint: "#0b0f16" },
@@ -205,8 +211,16 @@
       ctx.restore();
     }
 
-    _drawFlyer(ctx, p, style, tint) {
-      ctx.fillStyle = tint; ctx.lineJoin = "round";
+    /* Draw the bird facing +x (right). Body is a narrow teardrop / triangle-
+       morph (no fat oval), a small beak, and a single NEAR eye: a dot that
+       catches the light or stays dark per-species, attached to the head and
+       oriented so only the eye facing the camera reads (the far eye is
+       hidden behind the head = the 3D side view). Wings mount further back
+       (toward the tail) on the shoulder, not from the neck. */
+    _drawFlyer(ctx, p, style, opt) {
+      const tint = (opt && opt.tint) || "#0b0f16";
+      const eyeShine = (opt && opt.eyeShine) ? 1 : 0;   // 1 = specular catch, 0 = dark
+      ctx.fillStyle = tint; ctx.lineJoin = "round"; ctx.lineCap = "round";
       const u = p;
       const downFrac = CFG.downstrokeFraction;
       let down, spread;
@@ -216,43 +230,79 @@
 
       ctx.save();
       ctx.translate(60, 52);
-      const bob = Math.sin(u * TAU) * 1.4;
+      const bob = Math.sin(u * TAU) * 1.3;
       ctx.translate(0, bob * (0.4 + down * 0.6));
 
-      // tail
+      // ---- tail: short forked wedge ----
+      const t = (1 - spread);
       ctx.beginPath();
-      ctx.moveTo(-16, 3);
-      ctx.quadraticCurveTo(-34, (1 - spread) * 3, -40, -2 + (1 - spread) * 5);
-      ctx.quadraticCurveTo(-34, 6, -16, 8);
+      ctx.moveTo(-20, 1);
+      ctx.quadraticCurveTo(-33, -2 - t * 3, -41, -7 - t * 2);
+      ctx.quadraticCurveTo(-35, 1, -40, 4 + t * 3);
+      ctx.quadraticCurveTo(-31, 7, -20, 6);
       ctx.closePath(); ctx.fill();
-      // torso
-      ctx.beginPath(); ctx.ellipse(0, 4, 19, 13, 0, 0, TAU); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(-15, 8); ctx.quadraticCurveTo(-26, 12, -34, 9);
-      ctx.quadraticCurveTo(-24, 14, -14, 12); ctx.closePath(); ctx.fill();
-      // head + beak
-      ctx.beginPath(); ctx.arc(15, -7, 9.5, 0, TAU); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(23, -9); ctx.lineTo(33, -6.5); ctx.lineTo(23, -4); ctx.closePath(); ctx.fill();
 
-      const len = lerp(26, 42, spread), chord = lerp(9, 14, spread);
-      // FAR wing (slightly raised, smaller) drawn first so the near wing overlaps it
-      const angFar = lerp(-1.05, 0.55, down) + 0.18;
-      ctx.save(); ctx.translate(0, -8); this._wing(ctx, angFar, len, chord, tint, true); ctx.restore();
-      // NEAR wing
-      const angNear = lerp(-1.2, 0.62, down);
-      ctx.save(); ctx.translate(2, -6); this._wing(ctx, angNear, len, chord, tint, false); ctx.restore();
+      // ---- body: narrow teardrop, pointed to the beak (triangle morph) ----
+      ctx.beginPath();
+      ctx.moveTo(-26, 3);                       // tail rump (narrow)
+      ctx.quadraticCurveTo(-24, -8, -2, -9);    // back sweeping up to the neck
+      ctx.quadraticCurveTo(14, -9, 22, -5);     // crown/forehead into beak head
+      ctx.quadraticCurveTo(26, -3, 25, 0);      // face
+      ctx.quadraticCurveTo(21, 5, 8, 9);        // breast (slightly fuller low-front)
+      ctx.quadraticCurveTo(-12, 12, -24, 7);    // belly back to the rump
+      ctx.closePath(); ctx.fill();
+
+      // ---- beak (small, pointed) ----
+      ctx.beginPath();
+      ctx.moveTo(24, -6); ctx.lineTo(33, -4); ctx.lineTo(24, -2);
+      ctx.closePath(); ctx.fill();
+
+      // ---- eye: one dot on the near/visible side of the head. Placed on the
+      // crown so it stays with the head as the bird banks; on a hard bank the
+      // far side hides it (handled by draw-time scaleY when gliding away). ----
+      const eyeX = 17, eyeY = -6, eyeR = 1.7;
+      if (eyeShine) {
+        ctx.fillStyle = "#e9edf2";
+        ctx.beginPath(); ctx.arc(eyeX, eyeY, eyeR, 0, TAU); ctx.fill();
+        ctx.fillStyle = "#0b0f16";
+        ctx.beginPath(); ctx.arc(eyeX + 0.5, eyeY + 0.4, eyeR * 0.7, 0, TAU); ctx.fill();
+        ctx.fillStyle = tint;
+      } else {
+        // a tiny lighter dimple so dark-plumaged birds still read an eye
+        ctx.fillStyle = "rgba(200,208,218,0.55)";
+        ctx.beginPath(); ctx.arc(eyeX, eyeY, eyeR * 0.8, 0, TAU); ctx.fill();
+        ctx.fillStyle = tint;
+      }
+
+      const len = lerp(20, 33, spread), chord = lerp(7, 12, spread);
+      // ---- wings: shoulder mounted BACK of the neck (around x=-2), and shifted
+      // slightly to the LEFT/back per request. Far wing first, smaller & raised;
+      // near wing overlaps it. ----
+      const shX = -3, shY = -8;
+      const angFar = lerp(-1.0, 0.5, down) + 0.22;
+      ctx.save(); ctx.translate(shX - 1, shY - 2); this._wing(ctx, angFar, len * 0.86, chord * 0.9, tint, true); ctx.restore();
+      const angNear = lerp(-1.15, 0.55, down);
+      ctx.save(); ctx.translate(shX, shY); this._wing(ctx, angNear, len, chord, tint, false); ctx.restore();
 
       ctx.restore();
     }
 
     _buildFlyer() {
-      const tint = CFG.species.sparrow.tint;
-      for (let f = 0; f < CFG.flapFrames; f++) {
-        const { c, ctx } = this._flyerCanvas();
-        this._drawFlyer(ctx, f / CFG.flapFrames, "flapper", tint);
-        this.flyFrames.push(c);
-      }
+      // baked silhouettes are near-black; a couple of frame sets carry an
+      // eye catch-light for the lighter-plumaged (near) birds.
+      const set = (style, shine) => {
+        const frames = [];
+        for (let f = 0; f < CFG.flapFrames; f++) {
+          const { c, ctx } = this._flyerCanvas();
+          this._drawFlyer(ctx, f / CFG.flapFrames, style, { tint: "#0b0f16", eyeShine: shine });
+          frames.push(c);
+        }
+        return frames;
+      };
+      this.flyFrames = set("flapper", false);
+      this.flyFramesShine = set("flapper", true);
       const g = this._flyerCanvas();
-      this._drawFlyer(g.ctx, 0.5, "glider", tint);
+      this._drawFlyer(g.ctx, 0.5, "glider", { tint: "#0b0f16", eyeShine: true });
       this.glideFrame = g.c;
     }
 
@@ -327,6 +377,24 @@
       this._stuckT = 0; this._px = o.x; this._py = o.y;
       this._acrodx = 0; this._acrody = 0;
       this.depth = o.depth || (this.scale0 < CFG.depthByScale ? "back" : "front");
+      // smooth heading: facing is a continuous value (-1..1) eased toward its
+      // target sign, so a bird that changes direction BANKS round in a curved
+      // turn over ~0.6s instead of snapping/flipping instantly.
+      this.face = this.facing;
+      this.faceTarget = this.facing;
+      // a gliding dip: after a burst the bird arcs down (curved, oscillating)
+      this.glideDip = 0;
+    }
+    /* ask the bird to turn to a new travel sign; it banks round in time */
+    _wantFace(sign) { const s = sign >= 0 ? 1 : -1; if (s !== this.faceTarget) this.faceTarget = s; }
+    _updateFacing(dt) {
+      const rate = 3.2;                            // ~0.6s to reverse
+      const step = rate * dt;
+      this.face += clamp(this.faceTarget - this.face, -step, step);
+      if (Math.abs(this.face) < 0.05) this.face += this.faceTarget * 0.02;  // carry through the pivot
+      this.facing = this.face >= 0 ? 1 : -1;
+      // bank angle while turning: the body rolls into the turn
+      this._turnBank = clamp((this.faceTarget - this.face) * -0.9, -0.7, 0.7);
     }
 
     update(dt, sky) {
@@ -357,23 +425,29 @@
         sp *= 0.8;   // fight, but never stall
       }
 
-      /* heading — never a straight line; climbs only in open flight, but a
-         landing bird is allowed to descend steeply and brake onto its perch */
-      let aim;
+      /* smooth facing: ease toward the desired travel sign (banked turn, no
+         instant flip). Wind-fighters hold into the wind; everything else turns
+         only when it actually needs to (landing approach). */
+      let landing = null;
       if (this.state === "landing" && this.landing) {
         const tx = this.landing.x, ty = this.landing.y - 6;
         const dx = tx - this.x, dy = ty - this.y;
-        const dist = Math.hypot(dx, dy);
-        aim = Math.atan2(dy, Math.abs(dx) + 0.001) * Math.sign(dx || 1);
-        // brake close in, keep a minimum approach speed so it always closes
-        const target = clamp(dist * 1.6, 46, sp * 1.25);
+        landing = { dx, dy, dist: Math.hypot(dx, dy) };
+        this._wantFace(dx >= 0 ? 1 : -1);
+      }
+      this._updateFacing(dt);
+      const facing = this.face;     // continuous -1..1 (used for drawing + motion)
+
+      /* heading — never a straight line; climbs/curves in open flight; a
+         landing bird may descend steeply and brake onto its perch. */
+      let aim;
+      if (landing) {
+        aim = Math.atan2(landing.dy, Math.abs(landing.dx) + 0.001) * Math.sign(landing.dx || 1);
+        const target = clamp(landing.dist * 1.6, 46, sp * 1.25);
         sp = lerp(sp, target, 0.08);
-        this.facing = dx >= 0 ? 1 : -1;
-        // landed?
-        if (dist < 14 || (Math.abs(dy) < 8 && Math.abs(dx) < 22)) {
+        if (landing.dist < 14 || (Math.abs(landing.dy) < 8 && Math.abs(landing.dx) < 22)) {
           this.dead = true; sky.birdLanded(this.landing, this.facing); return;
         }
-        // give up / lost the perch -> break off and fly on
         this._landT = (this._landT || 0) + dt;
         if (this._landT > 5) { this.state = "flight"; this.landing = null; this.canLand = false; this._landT = 0; }
       } else if (this.headingMode === "oscillate") {
@@ -382,13 +456,23 @@
       } else if (this.headingMode === "fixedClimb") {
         aim = -Math.abs(this.fixAngle) + Math.sin(this.bornT / CFG.wobblePeriod * TAU + this.wobPhase) * CFG.wobbleAmpDeg * Math.PI / 180;
       } else {
-        // wobble: a gentle continuous curved rumble, biased slightly upward
         aim = this.elev + Math.sin(this.bornT / CFG.wobblePeriod * TAU + this.wobPhase) * CFG.wobbleAmpDeg * Math.PI / 180;
       }
+      // glide dip: when the wings fold into a glide the bird arcs gently DOWN
+      // along a curve with an oscillation (a shallow S), never a straight drop.
+      if (this.glideMode && this.state === "flight") {
+        this.glideDip = lerp(this.glideDip, 1, 0.04);
+      } else {
+        this.glideDip = lerp(this.glideDip, 0, 0.06);
+      }
+      const dip = this.glideDip * (0.22 + 0.12 * Math.sin(this.bornT * 2.1 + this.wobPhase));
+      aim += dip;
       // open flight: climbs/curves only (no straight/steep dives); landing: free
-      aim = this.state === "landing" ? clamp(aim, -1.4, 1.4) : clamp(aim, -1.05, 0.5);
+      aim = landing ? clamp(aim, -1.4, 1.4) : clamp(aim, -1.05, 0.5);
 
-      let vx = Math.cos(aim) * sp * this.facing;
+      // velocity along the CONTINUOUS facing vector (eases through the turn,
+      // giving a curved path) — no teleport, just integrated vector motion.
+      let vx = Math.cos(aim) * sp * facing;
       let vy = Math.sin(aim) * sp;
 
       /* ambient + gust wind (gust is a brief backward shove) */
@@ -398,13 +482,13 @@
       if (this.flock) this._flockSteer(dt, vx, vy, sp);
       if (this.acro && this.state === "flight" && !this.flock) this._acrobatics(dt, sp);
 
-      /* forward-progress floor: a flyer in open flight must keep crossing the
-         screen in its facing direction (no hovering against the wind). A
-         landing bird keeps closing on the perch but may slow / turn in. */
-      const dirVx = vx * this.facing;
+      /* forward-progress floor: keep crossing the screen in the INTENDED travel
+         direction (sign of faceTarget), not the instantaneous facing, so a bird
+         mid-turn isn't falsely kicked. Landing birds are exempt. */
       if (this.state === "flight" && !this.acroMove) {
+        const dirVx = vx * this.faceTarget;
         const need = this.speed * CFG.minForward;
-        if (dirVx < need) vx = this.facing * need;
+        if (dirVx < need) vx = this.faceTarget * need;
       }
 
       this.vx = vx; this.vy = vy;
@@ -418,8 +502,11 @@
       this.y = clamp(this.y, CFG.minFlyY, floor);
       if (this.y >= floor - 0.5 && this.vy > 0) this.vy = 0;   // no sinking into the ground
 
-      this.bank = lerp(this.bank, clamp(-this.vy / (sp + 1) * 0.8 + this.acroBank, -1.0, 1.0), 0.1);
+      this.bank = lerp(this.bank, clamp(-this.vy / (sp + 1) * 0.8 + this.acroBank + (this._turnBank || 0), -1.0, 1.0), 0.1);
       this.rot = clamp(Math.atan2(this.vy, Math.abs(this.vx) + 0.001) * 0.55, -0.6, 0.6) + this.acroBank;
+      // scale the silhouette by the continuous facing so a turn BANKS the body
+      // (squash through the pivot) instead of flipping frame-to-frame.
+      this.faceScale = Math.max(0.35, Math.abs(this.face)) * (this.facing >= 0 ? 1 : -1);
 
       /* flaps — every bird flaps; mixers/gliders only briefly fold */
       this.flapT = (this.flapT + dt / this.flapDur) % 1;
@@ -427,6 +514,7 @@
       else if (this.wingStyle === "glider") { const c = (this.bornT % 5) / 5; this.glideMode = c > 0.55; }
       this.frame = Math.floor(this.flapT * CFG.flapFrames) % CFG.flapFrames;
       this.pushHistory();
+      if (this.history.length) { const last = this.history[this.history.length - 1]; last.fs = this.faceScale; last.facing = this.facing; }
 
       /* stuck watchdog: a bird that barely moves is a bug regardless of state.
          In open flight give a forward kick; if it is stuck on a landing
@@ -732,61 +820,59 @@
       }
       return scale;
     }
-    /* Hard post-spawn balance: a medium/big solo bird may flip facing while
-       flying (wind-fighters, landing turns). Every few frames re-check, and if
-       one side is over its 3 (or total over 5), send the newest over-quota bird
-       back in from the under-used side so the split always reads 3/2 (or 2/3). */
-    _balanceBigBirds() {
+    /* Post-spawn balance WITHOUT teleporting: if too many medium/big birds are
+       on screen (or all heading one way), the next spawn should come from the
+       under-used side. We only set a HINT read by the spawner — no bird is ever
+       repositioned mid-flight, so there is no lag/teleport (all movement is the
+       per-frame vector tween). */
+    _bigBalanceHint() {
       const big = this.birds.filter(b => b instanceof FlyingBird && !b.dead && !b.flock
         && b.state === "flight" && b.size >= CFG.bigBirdScale);
-      const right = big.filter(b => b.facing >= 0), left = big.filter(b => b.facing < 0);
-      // total over the cap: shrink the newest big bird into a small far/back one
-      if (big.length > CFG.bigBirdMax) {
-        const victim = big[big.length - 1];
-        victim.size = victim.scale0 = rand(CFG.sizeBands.far[0], CFG.sizeBands.far[1]);
-        victim.depth = "back"; victim.lane = 0; victim.speedAnchor = CFG.baseSpeed.far;
-        victim.speed = victim.speedAnchor * victim.speedMul;
-      }
-      // a side over its 3: turn the newest offender around so the split rebalances
-      const overSide = right.length > CFG.bigBirdPerSide ? right : (left.length > CFG.bigBirdPerSide ? left : null);
-      if (overSide) {
-        const t = overSide[overSide.length - 1];
-        if (t && t.bornT > 0.5) {
-          const dir = t.facing >= 0 ? -1 : 1;
-          t.facing = dir;
-          t.x = dir === 1 ? -60 : CFG.world.w + 60;
-          t.vx = dir * Math.abs(t.vx || t.speed);
-          t.bornT = 0; t.history = []; t._stuckT = 0;
-        }
-      }
+      const right = big.filter(b => b.facing >= 0).length;
+      const left = big.length - right;
+      if (big.length >= CFG.bigBirdMax) return { full: true };
+      // ask for the under-used direction (keeps a ~3/2 split)
+      if (right >= CFG.bigBirdPerSide) return { dir: -1 };
+      if (left >= CFG.bigBirdPerSide) return { dir: 1 };
+      return null;
     }
 
     /* a flyer route. dynamic spawns (initial=false) ALWAYS enter from a side
        edge; initial spawns may already be mid-screen (birds present on load). */
     _spawnFlyer(initial, opts = {}) {
       const dir = opts.dir || (chance(0.62) ? 1 : -1);
-      const lane = opts.lane != null ? opts.lane : (Math.random() < 0.5 ? 0 : Math.random() < 0.6 ? 1 : 2);
-      const aboveRoof = opts.above != null ? opts.above : chance(CFG.aboveRoof);
+      // depth FIRST: ~75% ride the BACK layer (small, high, behind the house);
+      // the rest cross in FRONT (near, big). Flocks/small birds ignore the cap.
+      const depth = opts.depth || (chance(0.62) ? "back" : "front");
+      const lane = opts.lane != null ? opts.lane : (depth === "back" ? 0 : 2);
       const xEdge = dir === 1 ? -60 : CFG.world.w + 60;
       const x = initial ? (chance(0.6) ? (dir === 1 ? rand(120, 600) : rand(680, 1160)) : xEdge) : xEdge;
       let y;
-      if (aboveRoof) {
-        const atX = (x < 0 || x > CFG.world.w) ? (dir === 1 ? 200 : 1080) : x;
-        y = clamp(this.roofY(atX) - rand(14, 90), CFG.minFlyY, CFG.maxFlyY - 40);
+      if (depth === "back") {
+        const atX = (x < 0 || x > CFG.world.w) ? (dir === 1 ? 220 : 1060) : x;
+        y = clamp(this.roofY(atX) - rand(10, 70), CFG.minFlyY, 150);
       } else {
-        y = lane === 0 ? rand(50, 108) : lane === 1 ? rand(120, 190) : rand(210, CFG.maxFlyY - 30);
+        y = rand(150, CFG.maxFlyY - 30);
       }
       const species = lane === 2 && chance(CFG.owlChance) ? "owl" : pick(CFG.speciesRoll);
-      let scale = this._bandFor(lane) * CFG.species[species].s;
-      if (lane === 2) scale = Math.max(scale, 1.16);   // near birds never read tiny
-      // enforce the medium/big cap; a downgraded bird becomes a small far/back bird
-      scale = this._capBigBird(scale, dir);
-      let effLane = lane, depth = this._depthFor(scale, opts.depth);
-      if (scale < CFG.bigBirdScale && lane === 2 && !opts.depth) { effLane = 0; depth = "back"; }
-      const anchor = effLane === 0 ? CFG.baseSpeed.far : effLane === 1 ? CFG.baseSpeed.mid : CFG.baseSpeed.near;
+      let scale;
+      if (depth === "back") {
+        // small far bird
+        scale = rand(CFG.sizeBands.far[0], CFG.sizeBands.far[1]) * CFG.species[species].s;
+      } else {
+        // near bird: big enough to read, then the medium/big cap may shrink it
+        scale = Math.max(this._bandFor(2) * CFG.species[species].s, 0.98);
+        scale = this._capBigBird(scale, dir);
+        // if the cap downgraded it, send it to the back instead
+      }
+      let effLane = lane, effDepth = depth;
+      if (effDepth === "front" && scale < CFG.bigBirdScale) { effDepth = "back"; effLane = 0;
+        y = clamp(Math.min(y, this.roofY(dir === 1 ? 220 : 1060) - 20), CFG.minFlyY, 150);
+      }
+      const anchor = effLane === 0 ? CFG.baseSpeed.far : CFG.baseSpeed.near;
       const b = new FlyingBird({
         x, y, dir, lane: effLane, species, scale, speedAnchor: anchor,
-        depth,
+        depth: effDepth,
         headingMode: opts.heading, wing: opts.wing, speedMul: opts.speedMul, canLand: opts.canLand,
       });
       this.birds.push(b);
@@ -856,26 +942,31 @@
     birdLanded(site, facing) { this.birds.push(new PerchedBird({ ...site, face: facing })); }
 
     respawn(b) {
+      const hint = this._bigBalanceHint();
       const windFight = chance(CFG.fightWind);
-      const dir = windFight ? -CFG.windDir : (chance(0.62) ? 1 : -1);
+      const dir = hint && hint.dir ? hint.dir : (windFight ? -CFG.windDir : (chance(0.62) ? 1 : -1));
       b.bornT = 0; b.state = "flight"; b.landing = null; b.canLand = true;
-      b.facing = dir;
+      b.facing = dir; b.faceTarget = dir; b.face = dir; b.faceScale = dir; b._turnBank = 0;
       b.x = dir === 1 ? -60 : 1340;                 // always from a side edge
-      const lane = Math.random() < 0.5 ? 0 : Math.random() < 0.6 ? 1 : 2;
-      const above = chance(CFG.aboveRoof);
-      b.y = above ? clamp(this.roofY(dir === 1 ? 220 : 1060) - rand(14, 90), CFG.minFlyY, CFG.maxFlyY - 40)
-                  : (lane === 0 ? rand(50, 108) : lane === 1 ? rand(120, 190) : rand(210, CFG.maxFlyY - 30));
+      const depth = chance(0.62) ? "back" : "front";
+      const lane = depth === "back" ? 0 : 2;
       const species = lane === 2 && chance(CFG.owlChance) ? "owl" : b.speciesKey;
-      let scale0 = this._bandFor(lane) * CFG.species[species].s;
-      if (lane === 2) scale0 = Math.max(scale0, 1.16);
-      scale0 = this._capBigBird(scale0, dir);   // enforce medium/big cap
-      let effLane = lane;
-      if (scale0 < CFG.bigBirdScale && lane === 2) effLane = 0;
-      b.scale0 = scale0;
-      b.size = scale0;
-      b.depth = scale0 < CFG.depthByScale ? "back" : "front";
-      b.lane = effLane;
-      b.speedAnchor = effLane === 0 ? CFG.baseSpeed.far : effLane === 1 ? CFG.baseSpeed.mid : CFG.baseSpeed.near;
+      let scale0;
+      if (depth === "back") {
+        scale0 = rand(CFG.sizeBands.far[0], CFG.sizeBands.far[1]) * CFG.species[species].s;
+        b.y = clamp(this.roofY(dir === 1 ? 220 : 1060) - rand(10, 70), CFG.minFlyY, 150);
+      } else {
+        scale0 = Math.max(this._bandFor(2) * CFG.species[species].s, 0.98);
+        scale0 = this._capBigBird(scale0, dir);
+        b.y = rand(150, CFG.maxFlyY - 30);
+      }
+      let effLane = lane, effDepth = depth;
+      if (effDepth === "front" && scale0 < CFG.bigBirdScale) { effDepth = "back"; effLane = 0;
+        b.y = clamp(this.roofY(dir === 1 ? 220 : 1060) - 20, CFG.minFlyY, 150);
+      }
+      b.scale0 = scale0; b.size = scale0;
+      b.depth = effDepth; b.lane = effLane;
+      b.speedAnchor = effLane === 0 ? CFG.baseSpeed.far : CFG.baseSpeed.near;
       b.speed = b.speedAnchor * b.speedMul * CFG.species[species].v;
       b.headingMode = roll(CFG.heading);
       b.fixAngle = pick(CFG.fixedAnglesDeg) * Math.PI / 180;
@@ -884,7 +975,7 @@
       b.acro = chance(CFG.acrobatics); b.acroMove = null; b.acroT = rand(4, 12);
       b.speedStyle = roll(CFG.speedStyles);
       b.wobPhase = Math.random() * 10; b.tPhase = Math.random() * 10; b.history = [];
-      b._stuckT = 0; b._px = b.x; b._py = b.y; b.glideMode = false;
+      b._stuckT = 0; b._px = b.x; b._py = b.y; b.glideMode = false; b.glideDip = 0;
     }
 
     _frame(t) {
@@ -904,11 +995,18 @@
       const flyAlive = this.birds.reduce((n, b) => n + (b instanceof FlyingBird && !b.dead ? 1 : 0), 0);
       if (this.spawnT <= 0 && flyAlive < CFG.population.maxFlyers) {
         this.spawnT = rand(1.4, 3.4);
-        if (chance(CFG.flockChance)) this._spawnFlock(); else this._spawnFlyer(false);
+        // if the medium/big quota is full, send only small birds + flocks (which
+        // are exempt) from the under-used side — no bird is ever teleported.
+        const hint = this._bigBalanceHint();
+        if (hint && hint.full && !chance(CFG.flockChance)) {
+          // spawn a deliberately small far/back solo
+          const dir = hint.dir || (chance(0.5) ? 1 : -1);
+          this._spawnFlyer(false, { dir, depth: "back", lane: 0, scale: undefined });
+        } else if (chance(CFG.flockChance)) this._spawnFlock();
+        else this._spawnFlyer(false, hint && hint.dir ? { dir: hint.dir } : {});
       }
 
       for (const b of this.birds) if (!b.dead) b.update(dt, this);
-      this._balanceBigBirds();   // keep the medium/big split at 3/2 (or 2/3)
       this.flocks = this.flocks.filter(f => !f.dead);
       this.birds = this.birds.filter(b => !b.dead);
       this._render(dt);
@@ -942,16 +1040,22 @@
     }
 
     _drawFlyer(ctx, b, far) {
-      const frames = this.baker.flyFrames, glide = this.baker.glideFrame;
+      // near/front birds use the eye-catch frame set; far/back birds stay dark
+      const shine = !far && b.depth === "front";
+      const frames = shine && this.baker.flyFramesShine ? this.baker.flyFramesShine : this.baker.flyFrames;
+      const glide = this.baker.glideFrame;
       const img = b.glideMode ? glide : frames[b.frame % frames.length];
       const ss = img._ss || 1, w = img.width, h = img.height;
       const k = (0.62 * b.size * (far ? 0.86 : 1)) / ss;
+      // continuous facing: |face| narrows through a banking turn (squash at the
+      // pivot) rather than flipping mirror instantly.
+      const fs = b.faceScale != null ? b.faceScale : b.facing;
       ctx.globalAlpha = far ? CFG.farFade : b.alpha;
 
       const sp = Math.hypot(b.vx, b.vy);
       if (sp > CFG.streakMinSpeed && !far) {
         const len = clamp((sp - CFG.streakMinSpeed) * 0.5, 10, 60) * b.size;
-        ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.rot); ctx.scale(b.facing, 1);
+        ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.rot); ctx.scale(Math.sign(fs) || b.facing, 1);
         ctx.globalAlpha = CFG.streak * 0.14; ctx.fillStyle = b.tint;
         ctx.beginPath();
         ctx.moveTo(-6 * b.size, -3 * b.size); ctx.lineTo(-len, -0.8 * b.size);
@@ -963,14 +1067,14 @@
         const hst = b.history[i];
         ctx.globalAlpha = (i + 1) / (b.history.length + 1) * CFG.afterimageAlpha * (far ? 0.5 : 1);
         ctx.save(); ctx.translate(hst.x, hst.y + (b.zig || 0)); ctx.rotate(hst.rot);
-        ctx.scale(b.facing * k, k); ctx.drawImage(glide, -glide.width / 2, -glide.height / 2); ctx.restore();
+        ctx.scale((hst.fs || b.facing) * k, k); ctx.drawImage(glide, -glide.width / 2, -glide.height / 2); ctx.restore();
       }
 
       ctx.globalAlpha = far ? CFG.farFade : b.alpha;
       ctx.save();
       ctx.translate(b.x, b.y);
       ctx.rotate(b.rot + (b.acroBank || 0));
-      ctx.scale(b.facing * k, k);
+      ctx.scale(fs * k, k);
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(img, -w / 2, -h / 2);
       ctx.restore();

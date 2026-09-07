@@ -24,9 +24,9 @@ const FX = (() => {
      cluster of drifting motes. No oval light shapes anywhere. */
   const LIGHTS = {
     porch: [
-      { src: [475, 340], floorY: 552, spread: [360, 620], color: "#e8a04c",
-        cone: [[466, 344], [484, 344], [566, 552], [366, 552]],
-        pool: [[350, 552], [566, 552], [546, 576], [372, 576]], op: 0.16, poolOp: 0.22, motes: 12 },
+      { src: [480, 328], floorY: 552, spread: [380, 600], color: "#e8a04c",
+        cone: [[470, 332], [490, 332], [566, 552], [392, 552]],
+        pool: [[376, 552], [580, 552], [560, 576], [396, 576]], op: 0.16, poolOp: 0.22, motes: 12 },
     ],
     hallway: [
       { src: [720, 384], floorY: 560, spread: [560, 900], color: "#e8a04c",
