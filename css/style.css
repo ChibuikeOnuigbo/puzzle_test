@@ -521,3 +521,51 @@ body.reduced #scene-holder.shake{animation:none}
 .bag-btn:hover{background:#3a2c1e;color:#e8c87a}
 .bag-rewrite{display:block;width:100%;margin-top:12px;padding:11px;background:#3a2213;border-color:rgba(232,160,76,.5);color:#e8c87a;font-size:14px}
 .inv-bag{border-color:rgba(201,163,95,.4)}
+
+/* ---- settings: sections + segmented quality control ---- */
+.set-section{font-family:var(--font-head,Georgia,serif);text-transform:uppercase;letter-spacing:.18em;font-size:calc(11px*var(--tx));color:var(--amber,#c9a86a);margin:14px 2px 4px;padding-bottom:4px;border-bottom:1px solid rgba(201,168,106,.35)}
+.set-section:first-child{margin-top:2px}
+.seg{display:inline-flex;border:1px solid rgba(201,168,106,.4);border-radius:6px;overflow:hidden}
+.seg-btn{background:transparent;color:var(--paper-dim);border:0;padding:6px 14px;font:inherit;font-size:calc(13px*var(--tx));cursor:pointer;border-left:1px solid rgba(201,168,106,.25)}
+.seg-btn:first-child{border-left:0}
+.seg-btn.on{background:var(--amber-dim,rgba(201,168,106,.35));color:var(--paper)}
+.anim-row label{max-width:78%}
+#spinfo{min-width:34px}
+
+/* ---- graphics quality tiers: lower = flatter, more 2D, cheaper ---- */
+/* MEDIUM: heavy blurs collapse to a light blur; soft realism layers drop */
+body.q-medium #scene-holder svg [filter^="url(#fxblur8"],
+body.q-medium #scene-holder svg [filter^="url(#fxblur10"],
+body.q-medium #scene-holder svg [filter^="url(#fogblur"],
+body.q-medium #scene-holder svg [filter="url(#blurf)"]{filter:url(#fxblur1) !important}
+body.q-medium #v_roof-grain{opacity:.18 !important}
+body.q-medium #v_yardfog{opacity:.5 !important}
+
+/* LOW: no blur at all, and the "painterly" realism layers disappear so the
+   scene reads as flat 2D shapes with a posterised palette. Shadows, grain,
+   glow, beams, sheen, drifting fog and motes are all switched off. */
+body.q-low #scene-holder svg [filter]{filter:none !important}
+body.q-low #scene-holder svg{filter:saturate(.82) contrast(1.08)}
+body.q-low #v_roof-grain,
+body.q-low #v_roof-shadow,
+body.q-low #v_roof-sheen,
+body.q-low [id$="-sheen"],
+body.q-low [data-moonglow],
+body.q-low .fx-mote,
+body.q-low #fx-flies,
+body.q-low #v_yardfog,
+body.q-low #v_yardmist,
+body.q-low #v_forest-fog,
+body.q-low [id$="-fog"],
+body.q-low [id$="-mist"],
+body.q-low #fx-lights .fx-light polygon,
+body.q-low #eaveshadow{display:none !important}
+body.q-low #fx-lights .fx-light polygon[fill]{opacity:0 !important}
+body.q-low #v_roof,
+body.q-low #layer-mid rect,
+body.q-low #layer-back rect{shape-rendering:crispEdges}
+
+/* Shadows off: hide the soft shading/grain overlays that only add shadow */
+body.no-shadows #v_eaveshadow,
+body.no-shadows [id$="-shadow"]{opacity:.12 !important}
+body.no-shadows .fx-light polygon[points]{opacity:.06 !important}

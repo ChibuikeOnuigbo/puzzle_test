@@ -44,6 +44,14 @@ const Rooms = (() => {
   const hs = (id, x, y, w, h, label, target) =>
     `<rect class="hotspot" data-hs="${id}" ${target ? `data-target="${target}"` : ""} data-label="${label}" x="${x}" y="${y}" width="${w}" height="${h}" rx="4"/>`;
 
+  /* should this ambient animation play? Honours the per-object registry
+     (Settings -> Reduced motion -> Customize); falls back to the master
+     reduced-motion switch when the registry is unavailable. Gameplay motion
+     never calls this. */
+  const animOn = id => (typeof AnimReg !== "undefined")
+    ? AnimReg.on(id)
+    : !Settings.get("reducedMotion");
+
   const clockFace = (cx, cy, r, hourDeg, minDeg, faceCol = "#d8c9a8") => `
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="${faceCol}" stroke="#221c16" stroke-width="${r * 0.08}"/>
     ${[0,90,180,270].map(a => `<line x1="${cx + Math.sin(a * Math.PI / 180) * r * 0.82}" y1="${cy - Math.cos(a * Math.PI / 180) * r * 0.82}" x2="${cx + Math.sin(a * Math.PI / 180) * r * 0.7}" y2="${cy - Math.cos(a * Math.PI / 180) * r * 0.7}" stroke="#221c16" stroke-width="${Math.max(1, r * 0.05)}"/>`).join("")}
@@ -201,6 +209,103 @@ const Rooms = (() => {
       <path d="M${x},${y} q-3,-9 -7,-11"/>
     </g>`;
 
+  /* ---- rich yard grass: many green blades growing up against the house,
+     merging into the floor, with brown/decay patches. Each blade is a jointed
+     strand (two segments, a slight kink) so it can bend in the wind; the whole
+     clump sways a few degrees very slowly. Wind + count drop on reduced
+     motion / low quality (2D). Uses a deterministic per-clump rng. ---- */
+  function _grassRng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+  const BLADE_GREEN = ["#2b4425", "#33512b", "#26401f", "#3d5c31", "#213a1d"];
+  const BLADE_DEAD = ["#4a3d24", "#57462c", "#3a3020", "#5e4c30"];
+  function grassClump(cx, cy, w, count, seed) {
+    const R = _grassRng(seed);
+    const wind = (typeof animOn === "function") ? animOn("trees") : true;   // reuse the wind toggle
+    let blades = "";
+    for (let i = 0; i < count; i++) {
+      const bx = cx + (R() - 0.5) * w;
+      const h = 8 + R() * 22;
+      const lean = (R() - 0.5) * 12;
+      const kink = 4 + R() * 5;                      // segment joint
+      const decayed = R() < 0.22;                    // brown dead/dry blades
+      const col = decayed ? BLADE_DEAD[i % BLADE_DEAD.length] : BLADE_GREEN[i % BLADE_GREEN.length];
+      const sw = 1 + R() * 1.3;
+      const sway = wind ? (R() * 1.6 + 0.8).toFixed(2) : 0;
+      const dur = (3.4 + R() * 2.4).toFixed(1);
+      const ph = (R() * -6).toFixed(1);
+      // jointed strand: base -> knee -> tip
+      const blade = `<path d="M${bx.toFixed(1)},${cy} q${(lean * 0.25).toFixed(1)},${(-h * 0.55).toFixed(1)} ${(lean * 0.5).toFixed(1)},${(-h + kink).toFixed(1)} q${(lean * 0.4).toFixed(1)},${(-kink).toFixed(1)} ${lean.toFixed(1)},${(-h).toFixed(1)}" stroke="${col}" stroke-width="${sw.toFixed(1)}" fill="none" stroke-linecap="round" opacity="${decayed ? 0.8 : 0.92}"/>`;
+      blades += wind
+        ? `<g><animateTransform attributeName="transform" type="rotate" values="-${sway} ${bx.toFixed(1)} ${cy};${sway} ${bx.toFixed(1)} ${cy};-${sway} ${bx.toFixed(1)} ${cy}" dur="${dur}s" begin="${ph}s" repeatCount="indefinite"/>${blade}</g>`
+        : blade;
+    }
+    // decay patch: a sparse dead base under the feet of some clumps
+    const patch = `<ellipse cx="${cx}" cy="${cy + 1}" rx="${(w * 0.4).toFixed(1)}" ry="3.2" fill="#4a3d24" opacity="0.28"/>`;
+    return `<g>${patch}${blades}</g>`;
+  }
+
+  /* the shadow the eaves throw across the wall: a large band whose TOP is a
+     straight line under the eave but whose LOWER edge is a random wavy/curved
+     scalloped line, deeper on one side than the other (the left hangs lower
+     than the right, so the two sides differ). Two such layers drift left-right
+     at different slow periods, so the wavy edge morphs/creeps rather than
+     sliding as one rigid rectangle. No fog, no blur — just a dark, graded
+     shadow with a living edge. */
+  function _shadowRng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+  function _wavyShadowBand(seed, depthLeft, depthRight, amp, scallops) {
+    const R = _shadowRng(seed);
+    const x0 = 150, x1 = 1130, topY = 124;
+    // lower-edge depth at a horizontal parameter t (0=left .. 1=right): a
+    // straight LEFT->RIGHT tilt (left hangs much deeper) PLUS two rolling waves
+    // of unrelated wavelengths plus per-scallop jitter, so the boundary is a
+    // random wavy/curved line — never a straight horizontal edge.
+    const depthAt = (t) => {
+      const tilt = depthLeft + (depthRight - depthLeft) * t;
+      const roll = Math.sin(t * Math.PI * 2.2 + seed) * amp * 0.7
+                 + Math.sin(t * Math.PI * 5.1 + seed * 1.7) * amp * 0.4
+                 + (R() - 0.5) * amp * 0.7;
+      return Math.max(8, tilt + roll);
+    };
+    const n = scallops;
+    const pt = [];
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const x = x1 - (x1 - x0) * t;          // walk right -> left
+      pt.push({ x, y: topY + depthAt(1 - t) });
+    }
+    let edge = "";
+    for (let i = 0; i < n; i++) {
+      const a = pt[i], b = pt[i + 1];
+      const xm = (a.x + b.x) / 2;
+      const ym = (a.y + b.y) / 2 + (R() - 0.5) * amp * 0.6;
+      edge += `Q${xm.toFixed(1)},${ym.toFixed(1)} ${b.x.toFixed(1)},${b.y.toFixed(1)} `;
+    }
+    return `M${x0},${topY} L${x1},${topY} L${x1},${pt[0].y.toFixed(1)} ${edge} L${x0},${pt[n].y.toFixed(1)} Z`;
+  }
+  function eaveShadow() {
+    const on = animOn("roofShade");
+    // A shadow DARKENS, so each layer is a near-opaque dark slab whose only soft
+    // part is a faint edge fade; a small gaussian penumbra blurs the wavy lower
+    // boundary into the siding (this is a cast-shadow edge, NOT mist — mist is
+    // light and additive, this is dark and multiplicative-looking). Two layers
+    // drift at different slow speeds/directions so the scalloped edge morphs.
+    const layer = (seed, dL, dR, amp, sc, op, dur, dx, blur) => {
+      const d = _wavyShadowBand(seed, dL, dR, amp, sc);
+      const drift = on ? `<animateTransform attributeName="transform" type="translate" values="${-dx},0;${dx},0;${-dx},0" dur="${dur}s" repeatCount="indefinite"/>` : "";
+      const filt = blur ? ` filter="url(#eavepenumbra)"` : "";
+      return `<g opacity="${op}"${filt}>${drift}<path d="${d}" fill="url(#eaveshadow)"/></g>`;
+    };
+    // Three dark wavy layers with VERY different left vs right depths and
+    // unrelated scallop counts, amplitudes and slow drift periods — so the
+    // scalloped boundary visibly morphs and the left reads nothing like the
+    // right. The top layer is crisp (sharp cast edge); the lower two add a
+    // soft, creeping penumbra below it.
+    return `<g id="v_eaveshadow">
+      ${layer(47, 92, 40, 16, 11, 0.95, 90, 26, false)}
+      ${layer(11, 66, 26, 26, 8,  0.5,  63, 22, true)}
+      ${layer(29, 44, 15, 15, 14, 0.4,  37, -17, true)}
+    </g>`;
+  }
+
   /* a fallen leaf, small and dull */
   const leaf = (x, y, r, rot, c) => `
     <ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 0.6}" fill="${c || "#2a231a"}" opacity="0.75" transform="rotate(${rot} ${x} ${y})"/>`;
@@ -231,7 +336,7 @@ const Rooms = (() => {
     const cx = x + pivotCol * px;
     let inner = pxArt(bitmap, px, x, y, opt.flip);
     if (opt.branches) inner += oakBranches(x, y, px);
-    if (Settings.get("reducedMotion") || !opt.swayDur) return inner;
+    if (!animOn("trees") || !opt.swayDur) return inner;
     const amt = opt.swayAmt != null ? opt.swayAmt : 0.9;
     return `<g>${inner}<animateTransform attributeName="transform" type="rotate" values="-${amt} ${cx} ${base};${amt} ${cx} ${base};-${amt} ${cx} ${base}" dur="${opt.swayDur}s" repeatCount="indefinite"/></g>`;
   };
@@ -372,7 +477,6 @@ const Rooms = (() => {
      and every change is geometry - cells jumping between tone paths as
      the terminator ellipse sweeps. Pixel method, vector calm. */
   const MOON_BANDS = ["#e9e4d2", "#cdc7b0", "#a9a48e"];   // highland, mid, mare
-  const MOON_NIGHT = "#10161e";                          // solid earthshade disc
   const MOON_CRATERS = [
     { u: -0.32, v: -0.18, r: 0.20 }, { u: 0.18, v: -0.34, r: 0.13 },
     { u: 0.34, v: 0.10, r: 0.16 }, { u: -0.05, v: 0.30, r: 0.24 },
@@ -389,11 +493,15 @@ const Rooms = (() => {
     }
     return b;
   }
-  /* paint the disc for a phase angle alpha (0 full .. pi new) and lit side */
-  function moonPaint(size, alpha, side) {
+  /* paint the disc for a phase angle alpha (0 full .. pi new) and lit side.
+     nightColor is the SKY color directly behind THIS moon: the dark side is
+     painted with it instead of a fixed black, so the earthshade disc has no
+     visible edge against the sky (no fake crescent halo). */
+  function moonPaint(size, alpha, side, nightColor) {
     const m = moonAlb();
     if (!m) return "";
     const g = MOON_DATA.g, cell = size / g;
+    const night = nightColor || "#10161f";
     const c = Math.cos(alpha);
     const acc = ["", "", ""];
     let dark = "";
@@ -409,53 +517,52 @@ const Rooms = (() => {
         const rect = `M${x.toFixed(2)},${y.toFixed(2)}h${w.toFixed(2)}v${h.toFixed(2)}h${(-w).toFixed(2)}z`;
         const b = moonBand(idx, u, v);
         if (d >= 0) acc[b] += rect;
-        else if (d > -0.12) acc[Math.min(2, b + 1)] += rect;  // soft terminator tooth
+        else if (d > -0.12) dark += rect;                 // terminator teeth blend into sky
         else dark += rect;
       }
     }
-    let out = dark ? `<path d="${dark}" fill="${MOON_NIGHT}"/>` : "";
+    let out = dark ? `<path d="${dark}" fill="${night}"/>` : "";
     out += acc.map((d, i) => d ? `<path d="${d}" fill="${MOON_BANDS[i]}"/>` : "").join("");
     return out;
   }
-  /* the clock: holds each phase, then sweeps the terminator over 7s.
-     waning right-lit down to new, then waxing back left-lit to full. */
-  const MOON_STOPS = [
-    { a: 0.12, s: 1, hold: 34 }, { a: 0.30, s: 1, hold: 34 }, { a: 0.50, s: 1, hold: 34 },
-    { a: 0.68, s: 1, hold: 34 }, { a: 0.84, s: 1, hold: 34 }, { a: 1.00, s: 1, hold: 10 },
-    { a: 0.84, s: -1, hold: 34 }, { a: 0.50, s: -1, hold: 34 }, { a: 0.30, s: -1, hold: 34 },
-  ];
-  const MOON_MORPH = 7;
-  let moonStop = 0, moonT0 = (typeof performance !== "undefined" ? performance.now() : 0);
-  let moonState = { a: MOON_STOPS[0].a * Math.PI, s: 1 };
+  /* blend two #rrggbb colours (used to match a moon's sky gradient at its y) */
+  function mixHex(c1, c2, t) {
+    const p = c => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
+    const a = p(c1), b = p(c2);
+    const q = a.map((v, i) => Math.round(v + (b[i] - v) * t));
+    return "#" + q.map(v => v.toString(16).padStart(2, "0")).join("");
+  }
+  /* the clock: ONE continuous phase parameter p in [0,1) drives the whole
+     synodic cycle, so the terminator never teleports and the lit side flips
+     only at the exact dark moment (p = 0.5), where nothing is lit anyway.
+     p: 0 = full (right-lit), 0.5 = new (dark), 1 = full again (left-lit). */
+  const MOON_CYCLE_SEC = 34 * 9;          // one full full->full synodic sweep
+  let moonT0 = (typeof performance !== "undefined" ? performance.now() : 0);
+  let moonState = { a: 0.12 * Math.PI, s: 1 };
   let moonRaf = 0, moonLastPaint = 0, moonPaintedKey = "";
+  function moonPhaseAt(now) {
+    const p = (((now - moonT0) / 1000 / MOON_CYCLE_SEC) % 1 + 1) % 1;   // [0,1)
+    // map: p 0 -> full(0.12), p .5 -> new(1.0), p 1 -> full(0.12)
+    const frac = p < 0.5 ? p / 0.5 : (1 - p) / 0.5;                   // 1 at new, 0 at full
+    const a = (0.12 + 0.88 * frac) * Math.PI;                         // terminator angle
+    const side = p < 0.5 ? 1 : -1;                                    // flips exactly at new
+    return { a, side, s: side, frac };
+  }
   function moonClock(now) {
-    const st = MOON_STOPS[moonStop];
-    const nx = MOON_STOPS[(moonStop + 1) % MOON_STOPS.length];
-    const t = (now - moonT0) / 1000;
-    if (t < st.hold) {
-      moonState = { a: st.a * Math.PI, s: st.s };
-    } else if (t < st.hold + MOON_MORPH) {
-      const k = (t - st.hold) / MOON_MORPH;
-      const e = k * k * (3 - 2 * k);
-      /* through new moon the side flips at the exact dark moment */
-      const a = (st.a + (nx.a === 1.00 && st.a === 0.84 ? 0.16 : nx.a - st.a) * e) * Math.PI;
-      let side = st.s;
-      if (st.a === 0.84 && nx.a === 1.00) side = 1;
-      if (st.a === 1.00 && nx.a === 0.84) side = e < 0.5 ? 1 : -1;
-      if (st.a === 1.00) side = e < 0.5 ? 1 : -1;
-      moonState = { a: Math.min(Math.PI, a), s: side };
-    } else {
-      moonStop = (moonStop + 1) % MOON_STOPS.length;
-      moonT0 = now;
-      moonState = { a: MOON_STOPS[moonStop].a * Math.PI, s: MOON_STOPS[moonStop].s };
-    }
+    moonState = moonPhaseAt(now);
     const key = moonState.a.toFixed(4) + "|" + moonState.s;
     if (key !== moonPaintedKey && now - moonLastPaint > 80) {   // ~12fps while morphing
       moonLastPaint = now;
       moonPaintedKey = key;
       document.querySelectorAll("[data-moon]").forEach(gEl => {
         const art = gEl.querySelector("[data-moonart]");
-        if (art) art.innerHTML = moonPaint(parseFloat(gEl.dataset.r) * 2, moonState.a, moonState.s);
+        if (!art) return;
+        // match the night side to THIS moon's local sky colour
+        const skyTop = gEl.getAttribute("data-skytop") || "#10161f";
+        const skyBot = gEl.getAttribute("data-skybot") || skyTop;
+        const cy = parseFloat(gEl.getAttribute("data-cy") || 50) / 720;
+        art.innerHTML = moonPaint(parseFloat(gEl.dataset.r) * 2, moonState.a, moonState.s,
+                                  mixHex(skyTop, skyBot, cy));
       });
     }
     moonRaf = requestAnimationFrame(moonClock);
@@ -464,13 +571,17 @@ const Rooms = (() => {
     if (typeof MOON_DATA === "undefined") return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#d8dce0"/>`;
     const size = r * 2;
     const soft = opt.soft !== false && r >= 20;
-    return `<g data-moon="1" data-r="${r}" transform="translate(${cx - r},${cy - r})">
+    const skyTop = opt.skyTop || "#10161f";
+    const skyBot = opt.skyBot || skyTop;
+    const nightNow = mixHex(skyTop, skyBot, cy / 720);
+    return `<g data-moon="1" data-r="${r}" data-cy="${cy}" data-skytop="${skyTop}" data-skybot="${skyBot}" transform="translate(${cx - r},${cy - r})">
       <circle data-moonglow="1" cx="${r}" cy="${r}" r="${(r * 1.9).toFixed(1)}" fill="url(#moonglow)" opacity="${opt.glowOp != null ? opt.glowOp : 0.42}"/>
-      <g data-moonart="1"${soft ? ' filter="url(#fxblur2)"' : ""}>${moonPaint(size, moonState.a, moonState.s)}</g>
+      <g data-moonart="1"${soft ? ' filter="url(#fxblur2)"' : ""}>${moonPaint(size, moonState.a, moonState.s, nightNow)}</g>
     </g>`;
   }
   function startMoonCycle() {
-    if (moonRaf || Settings.get("reducedMotion") || typeof MOON_DATA === "undefined") return;
+    const moonOn = (typeof AnimReg !== "undefined") ? AnimReg.on("moon") : !Settings.get("reducedMotion");
+    if (moonRaf || !moonOn || typeof MOON_DATA === "undefined") return;
     if (typeof requestAnimationFrame === "undefined") return;
     moonT0 = performance.now();
     moonRaf = requestAnimationFrame(moonClock);
@@ -499,6 +610,7 @@ const Rooms = (() => {
   }
   function roofShadow() {
     if (typeof ROOF_DATA === "undefined") return "";
+    const rm = !animOn("roofShade");
     const cw = 980 / ROOF_DATA.gw, ch = 94 / ROOF_DATA.gh;
     let d = "";
     for (const row of ROOF_DATA.shadow) {
@@ -508,7 +620,6 @@ const Rooms = (() => {
         d += `M${(150 + r[0] * cw).toFixed(1)},${y.toFixed(1)}h${w.toFixed(1)}v${(ch + 0.7).toFixed(1)}h${(-w).toFixed(1)}z`;
       }
     }
-    const rm = Settings.get("reducedMotion");
     const drift = rm ? "" : `<animateTransform attributeName="transform" type="translate" values="-26,4;26,-3;-26,4" dur="47s" repeatCount="indefinite"/>`;
     const drift2 = rm ? "" : `<animateTransform attributeName="transform" type="translate" values="34,-2;-34,3;34,-2" dur="63s" repeatCount="indefinite"/>`;
     return `<g id="v_roof-shadow" opacity="0.42"><g>${drift}<path d="${d}" fill="#050403"/></g>${roofBranchShadow(drift2)}</g>`;
@@ -568,58 +679,66 @@ const Rooms = (() => {
       return ((r ^ r >>> 14) >>> 0) / 4294967296;
     };
   }
+  /* Render a tree FROM the shared structure model (window.TreePerches), so the
+     painted limbs are exactly the ones the bird engine uses as perch anchors —
+     the map is the drawing. A fallback to a local grow keeps things working if
+     the module isn't present. */
   function vecTree(seed, x, baseY, h, opt = {}) {
-    const R = rngFrom(seed);
     const col = opt.color || "#04060a";
     const leafCol = opt.leafColor || "#05070b";
     const bare = !!opt.bare;
     const lean = opt.lean || 0;
-    const rm = Settings.get("reducedMotion");
+    const rm = !animOn("trees");
     const swayDur = opt.swayDur || 9;
     const swayAmt = opt.swayAmt || 0.5;
-    const maxDepth = opt.maxDepth || 4;
     const sway = (px, py, amt, dur) => `<animateTransform attributeName="transform" type="rotate" values="${(-amt).toFixed(2)} ${px.toFixed(1)} ${py.toFixed(1)};${amt.toFixed(2)} ${px.toFixed(1)} ${py.toFixed(1)};${(-amt).toFixed(2)} ${px.toFixed(1)} ${py.toFixed(1)}" dur="${dur.toFixed(2)}s" repeatCount="indefinite"/>`;
+    const model = (window.TreePerches && window.TreePerches.growTree)
+      ? window.TreePerches.growTree(seed, x, baseY, h, opt)
+      : localGrowTree(seed, x, baseY, h, opt);
+    function paint(n) {
+      let inner = `<path d="M${n.x1.toFixed(1)},${n.y1.toFixed(1)} Q${n.cx.toFixed(1)},${n.cy.toFixed(1)} ${n.x2.toFixed(1)},${n.y2.toFixed(1)}" stroke="${col}" stroke-width="${n.w.toFixed(1)}" fill="none" stroke-linecap="round"/>`;
+      // canopy blobs recorded during growth
+      for (const e of n.canopies) {
+        inner += `<ellipse cx="${e.x.toFixed(1)}" cy="${e.y.toFixed(1)}" rx="${e.rx.toFixed(1)}" ry="${e.ry.toFixed(1)}" fill="${leafCol}" opacity="${e.a}"/>`;
+      }
+      // free twigs at the outer tips
+      for (const tw of n.twigs) {
+        const mx = (n.x2 + tw.x) / 2, my = (n.y2 + tw.y) / 2;
+        inner += `<path d="M${n.x2.toFixed(1)},${n.y2.toFixed(1)} Q${mx.toFixed(1)},${my.toFixed(1)} ${tw.x.toFixed(1)},${tw.y.toFixed(1)}" stroke="${col}" stroke-width="1.2" fill="none" stroke-linecap="round"/>`;
+      }
+      let out = "";
+      for (const k of n.kids) out += paint(k);
+      // limbs that wave carry their own pivot (recorded by the grower)
+      if (n.swayPivot && !rm) {
+        return `<g>${sway(n.swayPivot.x, n.swayPivot.y, n.swayAmt, n.swayDur)}${inner}${out}</g>`;
+      }
+      return inner + out;
+    }
+    const body = paint(model.root);
+    const wrapped = rm ? body : `<g>${sway(x, baseY, swayAmt, swayDur)}${body}</g>`;
+    return `<g pointer-events="none">${wrapped}</g>`;
+  }
+
+  /* fallback grower (only used if tree-perches.js failed to load) */
+  function localGrowTree(seed, x, baseY, h, opt = {}) {
+    const R = rngFrom(seed);
+    const bare = !!opt.bare, lean = opt.lean || 0;
+    const maxDepth = opt.maxDepth || 4;
+    let id = 0; const nodes = [];
     function limb(x1, y1, ang, len, w, depth) {
       const bend = (R() - 0.5) * 0.44;
       const cx = x1 + Math.cos(ang + bend * 0.4) * len * 0.5;
       const cy = y1 + Math.sin(ang + bend * 0.4) * len * 0.5;
-      const x2 = x1 + Math.cos(ang + bend) * len;
-      const y2 = y1 + Math.sin(ang + bend) * len;
-      let inner = `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} Q${cx.toFixed(1)},${cy.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}" stroke="${col}" stroke-width="${Math.max(1.1, w).toFixed(1)}" fill="none" stroke-linecap="round"/>`;
-      if (!bare && depth >= 2 && R() < 0.4) {
-        const rs = len * (0.34 + R() * 0.2);
-        inner += `<ellipse cx="${(x2 - rs * 0.4).toFixed(1)}" cy="${(y2 - rs * 0.3).toFixed(1)}" rx="${(rs * 0.9).toFixed(1)}" ry="${(rs * 0.42).toFixed(1)}" fill="${leafCol}" opacity="0.95"/>`;
-      }
-      if (!bare && depth >= maxDepth - 1) {
-        /* twigs poking past the canopy so the edge is never a clean scallop */
-        for (let k = 0; k < 2; k++) {
-          const ta = ang + (R() - 0.5) * 1.1;
-          const tl = len * (0.5 + R() * 0.4);
-          inner += `<path d="M${x2.toFixed(1)},${y2.toFixed(1)} q${(Math.cos(ta) * tl * 0.5).toFixed(1)},${(Math.sin(ta) * tl * 0.5).toFixed(1)} ${(Math.cos(ta) * tl).toFixed(1)},${(Math.sin(ta) * tl).toFixed(1)}" stroke="${col}" stroke-width="1.2" fill="none" stroke-linecap="round"/>`;
-        }
-      }
-      if (!bare && depth >= 3 && R() < 0.75) {
-        const rr = len * (0.6 + R() * 0.4);
-        inner += `<ellipse cx="${x2.toFixed(1)}" cy="${(y2 - rr * 0.18).toFixed(1)}" rx="${(rr * (1.15 + R() * 0.55)).toFixed(1)}" ry="${(rr * (0.48 + R() * 0.2)).toFixed(1)}" fill="${leafCol}"/>`;
-        inner += `<ellipse cx="${(x2 + rr * 0.5).toFixed(1)}" cy="${(y2 - rr * 0.42).toFixed(1)}" rx="${(rr * 0.8).toFixed(1)}" ry="${(rr * 0.34).toFixed(1)}" fill="${leafCol}" opacity="0.9"/>`;
-      }
-      if (depth >= maxDepth) return inner;
+      const x2 = x1 + Math.cos(ang + bend) * len, y2 = y1 + Math.sin(ang + bend) * len;
+      const node = { id: id++, x1, y1, x2, y2, cx, cy, w: Math.max(1.1, w), depth, canopies: [], twigs: [], kids: [], swayPivot: null, swayAmt: 0, swayDur: 0 };
+      if (depth >= maxDepth) { nodes.push(node); return node; }
       const kids = depth === 0 ? 3 : (bare ? (R() < 0.5 ? 3 : 2) : (R() < 0.35 ? 3 : 2));
-      let out = "";
-      for (let i = 0; i < kids; i++) {
-        const spread = (i - (kids - 1) / 2) * (0.52 + R() * 0.34) + (R() - 0.5) * 0.3;
-        out += limb(x2, y2, ang + spread, len * (0.64 + R() * 0.14), w * 0.6, depth + 1);
-      }
-      if (depth < 2) out += limb(x2, y2, ang + (R() - 0.5) * 0.22, len * 0.76, w * 0.68, depth + 1);
-      /* main limbs wave on their own pivot, faster and wider than the trunk */
-      if (depth <= 1 && !rm) {
-        return `<g>${sway(x1, y1, swayAmt * (1.5 + depth * 0.7 + R() * 0.6), swayDur * (0.5 + R() * 0.28))}${inner}${out}</g>`;
-      }
-      return inner + out;
+      for (let i = 0; i < kids; i++) { const sp = (i - (kids - 1) / 2) * (0.52 + R() * 0.34) + (R() - 0.5) * 0.3; node.kids.push(limb(x2, y2, ang + sp, len * (0.64 + R() * 0.14), w * 0.6, depth + 1)); }
+      if (depth < 2) node.kids.push(limb(x2, y2, ang + (R() - 0.5) * 0.22, len * 0.76, w * 0.68, depth + 1));
+      if (depth <= 1) node.swayPivot = { x: x1, y: y1 };
+      nodes.push(node); return node;
     }
-    const body = limb(x, baseY, -Math.PI / 2 + lean, h * 0.34, Math.max(9, h * 0.042), 0);
-    const wrapped = rm ? body : `<g>${sway(x, baseY, swayAmt, swayDur)}${body}</g>`;
-    return `<g pointer-events="none">${wrapped}</g>`;
+    return { root: limb(x, baseY, -Math.PI / 2 + lean, h * 0.34, Math.max(9, h * 0.042), 0), nodes };
   }
 
   function forestFar() {
@@ -628,6 +747,7 @@ const Rooms = (() => {
     return `<g id="v_forest-far" filter="url(#fxblur2)" opacity="0.62" shape-rendering="crispEdges">${fRows(FOREST.far.rows, gyOf, FOREST.cell, 0)}</g>`;
   }
   function forestFog() {
+    if (Settings.get && Settings.get("fog") === false) return "";
     return `<g id="v_forest-fog" pointer-events="none">
       <rect x="0" y="392" width="1280" height="120" fill="url(#forestfog)" opacity="0.5"/>
       <ellipse cx="300" cy="446" rx="240" ry="16" fill="#7a8492" opacity="0.05" filter="url(#fxblur8)"/>
@@ -998,7 +1118,7 @@ const Rooms = (() => {
       <g id="v_gwin">
         <rect x="555" y="145" width="210" height="160" fill="url(#gsky)" stroke="#2c241c" stroke-width="9"/>
         <g clip-path="url(#gwinclip)">
-          ${moonView(600, 180, 12, { soft: false, glowOp: 0.3 })}
+          ${moonView(600, 180, 12, { soft: false, glowOp: 0.3, skyTop: "#10161f", skyBot: "#1a2230" })}
           ${[...Array(14)].map((_, i) => `<circle cx="${(i * 97 + 30) % 200 + 560}" cy="${(i * 41) % 60 + 152}" r="${i % 3 === 0 ? 1.4 : 0.9}" fill="#cfd8e0" opacity="${0.3 + (i % 4) * 0.12}"/>`).join("")}
           <!-- treetops, seen from above -->
           <path d="M555,268 q30,-26 62,-6 q26,-22 58,-4 q30,-18 60,2 q14,-8 25,-2 L760,305 L555,305 Z" fill="#0c1116"/>
@@ -1119,7 +1239,7 @@ const Rooms = (() => {
     <g id="layer-back">
       <rect width="1280" height="720" fill="url(#consky)"/>
       <!-- moon, high and small, through the glass -->
-      ${moonView(985, 84, 28)}
+      ${moonView(985, 84, 28, { skyTop: "#0d1720", skyBot: "#1b2a33" })}
       <!-- a treeline far away, seen through the mist -->
       <path d="M0,236 q60,-34 120,0 q60,-30 120,0 q60,-30 120,0 q60,-30 120,0 q60,-30 120,0 q60,-30 120,0 q60,-30 120,0 q60,-28 120,0 q60,-30 120,0 q60,-30 120,0 q60,-28 120,0 l0,80 l-1280,0 Z" fill="#0e1a20" opacity="0.9"/>
       <!-- glass roof: a ridge at top, panes sloping to the eave -->
@@ -1241,6 +1361,106 @@ const Rooms = (() => {
   }
 
   /* =====================================================================
+     PORCH — small art helpers
+     Rocky (not grassy) ground, grounded pots with real plants, a coir mat,
+     a cast-iron Dutch wall-lantern (muurlantaarn), moss with drawn blades,
+     and a dimmer, blurrier lit window. All flat vector so quality tiers can
+     simply drop the blur/shadow.
+  ===================================================================== */
+  let _rockRng = 9173;
+  function _rr() { _rockRng = (_rockRng * 1664525 + 1013904223) >>> 0; return _rockRng / 4294967296; }
+  /* rocky ground: scattered irregular stones of varied size over the yard,
+     deliberately NOT a grass field. Inside the path polygon stones are dirt. */
+  function rockyGround() {
+    let s = "";
+    const inPath = (x, y) => {
+      if (y < 574 || y > 720) return false;
+      const half = 40 + (y - 574) / (720 - 574) * 150;   // path widens to viewer
+      return Math.abs(x - 640) < half;
+    };
+    // a few dozen pebbles across the lawn (sides of the path)
+    for (let i = 0; i < 70; i++) {
+      const x = _rr() * 1280;
+      const y = 548 + _rr() * 168;
+      if (inPath(x, y)) continue;
+      const r = 2 + _rr() * 5;
+      const tone = _rr();
+      const fill = tone < 0.45 ? "#2a3038" : tone < 0.8 ? "#333a42" : "#23282f";
+      const skw = 0.7 + _rr() * 0.7;
+      s += `<ellipse cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" rx="${(r * skw).toFixed(1)}" ry="${(r * 0.55).toFixed(1)}" fill="${fill}"/>`;
+      s += `<ellipse cx="${(x - r * 0.2).toFixed(0)}" cy="${(y - r * 0.18).toFixed(0)}" rx="${(r * 0.32).toFixed(1)}" ry="${(r * 0.16).toFixed(1)}" fill="#3c444d" opacity="0.6"/>`;
+    }
+    // larger cracked rocks near the tree bases / yard edges
+    const big = [[120, 600, 16], [180, 668, 22], [1090, 610, 15], [1150, 672, 20], [80, 700, 18], [1210, 706, 17]];
+    for (const [x, y, r] of big) {
+      s += `<path d="M${x - r},${y + r * 0.3} q${-r * 0.2},${-r} ${r * 0.3},${-r * 0.9} q${r},${-r * 0.2} ${r * 0.8},${r * 0.6} q${r * 0.1},${r * 0.7} ${-r * 0.5},${r * 0.7} z" fill="#2b3138"/>`;
+      s += `<path d="M${x - r * 0.7},${y - r * 0.2} l${r * 0.5},${-r * 0.2} l${r * 0.3},${r * 0.35}" stroke="#191d23" stroke-width="1.4" fill="none" opacity="0.7"/>`;
+      s += `<ellipse cx="${x - r * 0.25}" cy="${y - r * 0.4}" rx="${r * 0.4}" ry="${r * 0.2}" fill="#3a424b" opacity="0.7"/>`;
+    }
+    return `<g id="v_rocks">${s}</g>`;
+  }
+  /* moss at a tree base: a soft mound plus drawn blades/leaflets so it reads
+     as moss/undergrowth rather than a flat green blur. */
+  function mossClump(cx, cy, scl) {
+    let s = "";
+    // mound
+    s += `<ellipse cx="${cx}" cy="${cy + 4}" rx="${46 * scl}" ry="${12 * scl}" fill="#11180f"/>`;
+    s += `<ellipse cx="${cx - 6}" cy="${cy + 1}" rx="${34 * scl}" ry="${9 * scl}" fill="#18221a"/>`;
+    // blades: small upward strokes of varied green, pixel-ish
+    const greens = ["#2b3d24", "#33482b", "#24341f", "#3c5230"];
+    for (let i = 0; i < 26; i++) {
+      const x = cx - 36 * scl + _rr() * 72 * scl;
+      const h = (5 + _rr() * 9) * scl;
+      const lean = (_rr() - 0.5) * 8 * scl;
+      const col = greens[i % greens.length];
+      s += `<path d="M${x.toFixed(1)},${cy + 2} q${(lean * 0.4).toFixed(1)},${(-h * 0.6).toFixed(1)} ${lean.toFixed(1)},${(-h).toFixed(1)}" stroke="${col}" stroke-width="${(1.1 + _rr()).toFixed(1)}" fill="none" stroke-linecap="round"/>`;
+    }
+    // tiny leaflet dots
+    for (let i = 0; i < 12; i++) {
+      const x = cx - 30 * scl + _rr() * 60 * scl;
+      s += `<circle cx="${x.toFixed(1)}" cy="${(cy - 2 - _rr() * 5).toFixed(1)}" r="${(0.9 + _rr() * 1.1).toFixed(1)}" fill="${["#3a5030", "#2b3d24", "#425a34"][i % 3]}"/>`;
+    }
+    return s;
+  }
+  /* a grounded flowerpot: saucer, tapered body with rim, lip highlight, a
+     contact shadow, and a real plant (leaves on stems). baseY = ground line. */
+  function flowerPot(cx, baseY, scale, dark, tilt) {
+    const w = 44 * scale, h = 40 * scale;
+    const top = baseY - h;
+    const body = dark ? "#4a2e22" : "#6f4432";
+    const rim = dark ? "#5a3828" : "#85553e";
+    const shade = dark ? "#3a241a" : "#5a3727";
+    const leaf = dark ? "#3a4730" : "#4c5c38";
+    const leaf2 = dark ? "#2f3a28" : "#5c6e44";
+    const tr = tilt ? ` transform="${tilt}"` : "";
+    let s = `<g id="v_pot_x"${tr}>`;
+    s += `<ellipse cx="${cx}" cy="${baseY + 2}" rx="${w * 0.62}" ry="${5 * scale}" fill="#0a0c10" opacity="0.55"/>`; // contact shadow
+    s += `<path d="M${cx - w * 0.28},${baseY} h${w * 0.56} l${w * 0.06},${5 * scale} h${-w * 0.68} Z" fill="${shade}"/>`; // saucer
+    s += `<path d="M${cx - w * 0.5},${top + 6} L${cx + w * 0.5},${top + 6} L${cx + w * 0.34},${baseY} L${cx - w * 0.34},${baseY} Z" fill="${body}"/>`;
+    s += `<path d="M${cx - w * 0.5},${top + 6} L${cx},${top + 6} L${cx - w * 0.34},${baseY} L${cx - w * 0.34},${baseY} Z" fill="${shade}" opacity="0.55"/>`;
+    s += `<rect x="${cx - w * 0.54}" y="${top}" width="${w * 1.08}" height="${7 * scale}" rx="${2 * scale}" fill="${rim}"/>`; // rim
+    s += `<rect x="${cx - w * 0.54}" y="${top}" width="${w * 1.08}" height="${2.4 * scale}" fill="#a06a4a" opacity="0.5"/>`;
+    s += `<ellipse cx="${cx}" cy="${top + 3.5}" rx="${w * 0.5}" ry="${3.2 * scale}" fill="#1c130c"/>`; // soil
+    // plant: several stems with leaves, grouped so they sway very gently in
+    // the wind (anchored at the soil), only when motion is allowed.
+    const plantSway = (typeof animOn === "function") ? animOn("trees") : true;
+    s += `<g>${plantSway ? `<animateTransform attributeName="transform" type="rotate" values="-1.4 ${cx} ${top + 3};1.4 ${cx} ${top + 3};-1.4 ${cx} ${top + 3}" dur="${(4.5 + _rr()).toFixed(1)}s" repeatCount="indefinite"/>` : ""}`;
+    const stems = 4 + Math.floor(_rr() * 2);
+    for (let i = 0; i < stems; i++) {
+      const lx = cx + (_rr() - 0.5) * w * 0.5;
+      const lh = (16 + _rr() * 18) * scale;
+      const bend = (_rr() - 0.5) * 14 * scale;
+      const my = top - lh;
+      s += `<path d="M${lx.toFixed(1)},${top + 3} q${(bend * 0.5).toFixed(1)},${(-lh * 0.5).toFixed(1)} ${bend.toFixed(1)},${(-lh).toFixed(1)}" stroke="${leaf2}" stroke-width="${(1.6 * scale).toFixed(1)}" fill="none"/>`;
+      s += `<ellipse cx="${(lx + bend).toFixed(1)}" cy="${my.toFixed(1)}" rx="${(4.5 * scale).toFixed(1)}" ry="${(2.6 * scale).toFixed(1)}" fill="${i % 2 ? leaf : leaf2}" transform="rotate(${(_rr() * 60 - 30).toFixed(0)} ${(lx + bend).toFixed(1)} ${my.toFixed(1)})"/>`;
+      if (_rr() < 0.6) s += `<ellipse cx="${(lx + bend * 0.5).toFixed(1)}" cy="${(my + lh * 0.4).toFixed(1)}" rx="${(3.6 * scale).toFixed(1)}" ry="${(2.1 * scale).toFixed(1)}" fill="${leaf}" opacity="0.9"/>`;
+    }
+    s += `</g>`;
+    s += `</g>`;
+    return s;
+  }
+
+  /* =====================================================================
      PORCH
   ===================================================================== */
   function svgPorch() {
@@ -1250,9 +1470,13 @@ const Rooms = (() => {
     ${DEFS}
     <defs>
       <filter id="blurf"><feGaussianBlur stdDeviation="3"/></filter>
+      <filter id="eavepenumbra" x="-5%" y="-30%" width="110%" height="200%">
+        <feGaussianBlur stdDeviation="3"/>
+      </filter>
       <linearGradient id="eaveshadow" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#060505" stop-opacity="0.5"/>
-        <stop offset="1" stop-color="#060505" stop-opacity="0"/>
+        <stop offset="0" stop-color="#05070b" stop-opacity="0.82"/>
+        <stop offset="0.7" stop-color="#05070b" stop-opacity="0.72"/>
+        <stop offset="1" stop-color="#05070b" stop-opacity="0"/>
       </linearGradient>
       <clipPath id="roofclip"><polygon points="150,124 640,30 1130,124"/></clipPath>
       <clipPath id="mistclip"><path clip-rule="evenodd" d="M0,540 H1280 V720 H0 Z M600,574 L680,574 L830,720 L452,720 Z"/></clipPath>
@@ -1293,7 +1517,7 @@ const Rooms = (() => {
           </g>
         </g>
       </g>`}
-      ${moonView(1120, 90, 34)}
+      ${moonView(1120, 90, 34, { skyTop: "#141b26", skyBot: "#1d2733" })}
       <!-- generated forest: far treeline, drifting fog, then the near trees whose branches wave -->
       <g id="v_forest">
         ${forestFar()}
@@ -1303,6 +1527,9 @@ const Rooms = (() => {
       </g>
       <rect x="0" y="540" width="1280" height="180" fill="#12161c"/>
       <rect x="0" y="536" width="1280" height="6" fill="#0c0f13"/>
+      <!-- rocky (not grassy) yard: varied stones, plus moss at each tree base -->
+      ${rockyGround()}
+      <g id="v_moss">${mossClump(70, 692, 1.15)}${mossClump(1212, 696, 1.1)}${mossClump(250, 704, 0.8)}${mossClump(1040, 706, 0.8)}</g>
       <!-- packed dirt path from the step, widening toward the viewer -->
       <polygon points="600,574 680,574 830,720 452,720" fill="#1a1e27" opacity="0.92"/>
       <polygon points="600,574 680,574 812,720 470,720" fill="#151923" opacity="0.6"/>
@@ -1317,7 +1544,7 @@ const Rooms = (() => {
       <!-- dark yard fog: three banks rolling across the garden BEHIND the
            house (the facade is layer-mid, so it stands in front of them).
            Darker and quicker than the indoor fog: a weather, not a mood. -->
-      <g id="v_yardfog" pointer-events="none" filter="url(#fxblur8)">
+      ${(Settings.get("fog") === false) ? "" : `<g id="v_yardfog" pointer-events="none" filter="url(#fxblur8)">
         <g opacity="0.4">
           <ellipse cx="240" cy="516" rx="300" ry="34" fill="#0a0e14"/>
           <ellipse cx="660" cy="536" rx="380" ry="40" fill="#0b0f16"/>
@@ -1334,12 +1561,24 @@ const Rooms = (() => {
           <ellipse cx="1100" cy="682" rx="380" ry="24" fill="#06080c"/>
           <animateTransform attributeName="transform" type="translate" values="-460,0;460,0;-460,0" dur="12s" repeatCount="indefinite"/>
         </g>
-      </g>
+      </g>`}
     </g>
     <g id="layer-mid">
-      <!-- house facade -->
+      <!-- house facade: weathered timber clapboard — staggered board seams,
+           per-board tone variation and a soft vertical vignette, not flat -->
       <rect x="180" y="120" width="920" height="430" fill="url(#wallg)"/>
-      ${[...Array(15)].map((_, i) => `<line x1="180" y1="${148 + i * 28}" x2="1100" y2="${148 + i * 28}" stroke="#241d16" stroke-width="2" opacity="0.5"/>`).join("")}
+      <rect x="180" y="120" width="920" height="430" fill="#000" opacity="0.12"/>
+      ${[...Array(15)].map((_, i) => {
+        const y = 148 + i * 28;
+        const seams = [180 + ((i * 137) % 360), 180 + ((i * 271 + 180) % 720), 180 + ((i * 419 + 520) % 900)];
+        const tone = i % 3 === 0 ? "#2c241b" : "#221b15";
+        return `<rect x="180" y="${y - 13}" width="920" height="26" fill="${tone}" opacity="${0.05 + (i % 2) * 0.04}"/>`
+             + `<line x1="180" y1="${y}" x2="1100" y2="${y}" stroke="#120e0a" stroke-width="2.4" opacity="0.55"/>`
+             + `<line x1="180" y1="${y - 13}" x2="1100" y2="${y - 13}" stroke="#3a3025" stroke-width="1" opacity="0.25"/>`
+             + seams.map(sx => `<line x1="${sx}" y1="${y - 13}" x2="${sx}" y2="${y}" stroke="#120e0a" stroke-width="1.6" opacity="0.4"/>`).join("");
+      }).join("")}
+      <rect x="180" y="120" width="120" height="430" fill="#000" opacity="0.18"/>
+      <rect x="980" y="120" width="120" height="430" fill="#000" opacity="0.18"/>
       <!-- roof: gabled, shingled, the right slope catching the moon -->
       <g id="v_roof">
         <g clip-path="url(#roofclip)">
@@ -1405,8 +1644,11 @@ const Rooms = (() => {
         ${typeof Birds !== "undefined" ? Birds.part("mid") : ""}
         <polygon points="150,124 640,30 1130,124" fill="none" stroke="#171310" stroke-width="5"/>
         <polygon points="150,124 640,30 1130,124" fill="none" stroke="#241d16" stroke-width="2" opacity="0.8"/>
-        <!-- the shadow the eaves cast across the wall below -->
-        <rect x="150" y="124" width="980" height="12" fill="url(#eaveshadow)"/>
+        <!-- the shadow the eaves cast across the wall: a large graded band whose
+             lower edge is a random wavy/curved scalloped line, deeper on the
+             left than the right, with two layers drifting at different slow
+             periods so the edge morphs (never a flat rectangle, no fog). -->
+        ${eaveShadow()}
         <!-- chimney, its moonward face picked out -->
         <g id="v_chimney">
           <rect x="336" y="42" width="32" height="46" fill="#191512"/>
@@ -1418,7 +1660,7 @@ const Rooms = (() => {
       <!-- smoke: the house keeps a fire behind one boarded chimney, and the
            smoke forgets to stop. Puffs grow and lean with the wind as they
            climb; medium, not a whisper. -->
-      ${reducedMotion ? "" : `<g id="v_smoke" pointer-events="none">
+      ${animOn("smoke") ? `<g id="v_smoke" pointer-events="none">
         ${[0, 1, 2, 3].map(i => `
         <g opacity="0">
           <animate attributeName="opacity" values="0;0.17;0.12;0" keyTimes="0;0.22;0.62;1" dur="12s" begin="${(i * 3).toFixed(1)}s" repeatCount="indefinite"/>
@@ -1433,11 +1675,18 @@ const Rooms = (() => {
             </ellipse>
           </g>
         </g>`).join("")}
-      </g>`}
+      </g>` : ""}
       <!-- dark windows -->
       <g id="v_win1"><rect x="270" y="210" width="120" height="150" fill="#0d1015" stroke="#171310" stroke-width="7"/><line x1="330" y1="210" x2="330" y2="360" stroke="#171310" stroke-width="5"/><line x1="270" y1="285" x2="390" y2="285" stroke="#171310" stroke-width="5"/></g>
-      <g id="v_win2"><rect x="900" y="210" width="120" height="150" fill="#0d1015" stroke="#171310" stroke-width="7"/><line x1="960" y1="210" x2="960" y2="360" stroke="#171310" stroke-width="5"/><line x1="900" y1="285" x2="1020" y2="285" stroke="#171310" stroke-width="5"/>
-        <rect x="962" y="287" width="56" height="71" fill="#e8a04c" opacity="0.12"><animate attributeName="opacity" values="0.12;0.12;0.04;0.12" dur="9s" repeatCount="indefinite"/></rect></g>
+      <g id="v_win2"><rect x="900" y="210" width="120" height="150" fill="#0b0e13" stroke="#171310" stroke-width="7"/>
+        <!-- a dim, softly-blurred hint of a lit room inside (lower-right pane) -->
+        <g ${reducedMotion ? "" : 'filter="url(#fxblur4)"'}>
+          <rect x="964" y="292" width="52" height="62" fill="#caa05a" opacity="0.16"/>
+          <rect x="970" y="330" width="20" height="24" fill="#3a2f22" opacity="0.5"/>
+          <circle cx="1002" cy="308" r="5" fill="#f0d18a" opacity="0.22"/>
+        </g>
+        <rect x="964" y="292" width="52" height="62" fill="#e8a04c" opacity="0.07">${animOn("windowGlow") ? '<animate attributeName="opacity" values="0.07;0.05;0.07;0.04;0.07" dur="11s" repeatCount="indefinite"/>' : ""}</rect>
+        <line x1="960" y1="210" x2="960" y2="360" stroke="#171310" stroke-width="5"/><line x1="900" y1="285" x2="1020" y2="285" stroke="#171310" stroke-width="5"/></g>
       <!-- door -->
       <g id="v_door">
         <rect x="560" y="250" width="160" height="300" fill="#33261a" stroke="#1c1510" stroke-width="6"/>
@@ -1447,7 +1696,12 @@ const Rooms = (() => {
         <rect x="650" y="390" width="52" height="120" fill="#291e14" stroke="#1c1510" stroke-width="3"/>
         <circle cx="700" cy="410" r="8" fill="#8a7148"/>
         <rect x="614" y="216" width="52" height="26" rx="3" fill="#463825"/>
-        <text x="640" y="236" text-anchor="middle" font-family="Georgia" font-size="19" fill="#c9a35f">17</text>
+        <g id="v_numplate">
+          <rect x="612" y="212" width="56" height="34" rx="4" fill="#1a1611" stroke="#3a3125" stroke-width="2"/>
+          <rect x="615" y="215" width="50" height="28" rx="3" fill="#241f18"/>
+          <text x="640" y="238" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="24" letter-spacing="2" fill="#d8b878">17</text>
+          <line x1="620" y1="220" x2="660" y2="220" stroke="#e8cc90" stroke-width="1" opacity="0.35"/>
+        </g>
       </g>
       <!-- note pinned on door -->
       <g id="v_note">
@@ -1457,18 +1711,61 @@ const Rooms = (() => {
         <line x1="602" y1="335" x2="628" y2="333" stroke="#6b5b45" stroke-width="2"/>
         <circle cx="619" cy="303" r="3" fill="#8a4a3a"/>
       </g>
-      <!-- porch light: fixture only; the beam and pool come from the FX light layer -->
+      <!-- porch light: a cast-iron Dutch wall lantern (muurlantaarn) drawn as a
+           strictly FRONT ELEVATION facing the camera: perfectly symmetric about
+           x=480. The wall bracket is a flat vertical backplate + centered drop
+           ring seen head-on (NOT a sideways hook, which read as a 45 degree
+           view); the cage is a symmetric peaked-cap lantern with vertical mullions,
+           warm glass, a crossbar, base and finial all flat to view. -->
       <g id="v_plight">
-        <rect x="440" y="270" width="10" height="26" fill="#2c241c"/>
-        <path d="M430,296 L460,296 L452,326 L438,326 Z" fill="#3a2f22"/>
-        <polygon points="437,324 453,324 449,332 441,332" fill="#f0c884"><animate attributeName="opacity" values="1;1;0.75;1" dur="6s" repeatCount="indefinite"/></polygon>
+        <!-- flat wall backplate (head-on): a small vertical strap on the siding -->
+        <rect x="474" y="250" width="12" height="46" rx="3" fill="#15110d"/>
+        <rect x="476" y="252" width="3" height="42" rx="1.5" fill="#2a231c" opacity="0.7"/>
+        <!-- mounting rosette centred on the strap -->
+        <circle cx="480" cy="262" r="6.5" fill="#1b1712"/>
+        <circle cx="480" cy="262" r="3.2" fill="#2e2620"/>
+        <!-- centered drop ring (the bracket seen head-on, foreshortened) -->
+        <rect x="478.6" y="268" width="2.8" height="12" rx="1.4" fill="#15110d"/>
+        <circle cx="480" cy="283" r="4.2" fill="none" stroke="#15110d" stroke-width="2.6"/>
+        <!-- crown finial + peaked cap (symmetric) -->
+        <path d="M480,284 l-2.4,6 h4.8 z" fill="#15110d"/>
+        <path d="M458,298 L502,298 L494,288 L466,288 Z" fill="#1b1713"/>
+        <path d="M466,288 L494,288 L480,284 Z" fill="#241d17"/>
+        <rect x="457" y="298" width="46" height="5" rx="1.6" fill="#0f0c09"/>
+        <!-- cage frame (head-on rectangle) -->
+        <rect x="463" y="303" width="34" height="42" rx="2.5" fill="#221b15"/>
+        <!-- warm glass pane, symmetric -->
+        <rect x="467" y="307" width="26" height="34" rx="1.5" fill="#f6cf82" opacity="0.97"${" "}
+        ${animOn("lampFlicker") ? ' filter="url(#fxblur2)"' : ""}>
+          ${animOn("lampFlicker") ? '<animate attributeName="opacity" values="0.97;0.85;0.94;0.74;0.97" dur="5s" repeatCount="indefinite"/>' : ""}
+        </rect>
+        <!-- inner candle flame core, centred -->
+        <ellipse cx="480" cy="328" rx="3.6" ry="10" fill="#fff3d2" opacity="0.88"/>
+        <ellipse cx="480" cy="330" rx="1.7" ry="5" fill="#fffaf0" opacity="0.9"/>
+        <!-- cast-iron vertical mullions (head-on bars), symmetric -->
+        <rect x="465.4" y="305" width="3" height="38" rx="1" fill="#120f0c"/>
+        <rect x="478.5" y="305" width="3" height="38" rx="1" fill="#120f0c"/>
+        <rect x="491.6" y="305" width="3" height="38" rx="1" fill="#120f0c"/>
+        <!-- crossbar -->
+        <rect x="463" y="324" width="34" height="3" rx="1.2" fill="#120f0c"/>
+        <!-- base ring + drip finial (symmetric) -->
+        <rect x="461" y="345" width="38" height="5.5" rx="2" fill="#15110d"/>
+        <path d="M480,350.5 l-4,8 h8 z" fill="#15110d"/>
+        <circle cx="480" cy="360" r="2.4" fill="#15110d"/>
       </g>
       <!-- porch floor -->
       <rect x="180" y="548" width="920" height="26" fill="#2b211a"/>
-      <!-- the overgrown front yard: bushes flank the step, stones line the path -->
+      <!-- the overgrown front yard: bushes flank the step, stones line the path.
+           Very small, slow sway (bushes barely move). -->
       <g id="v_yard" filter="url(#blurf)">
-        <circle cx="222" cy="556" r="30" fill="#141a12"/><circle cx="250" cy="564" r="24" fill="#141a12"/><circle cx="196" cy="566" r="22" fill="#10160f"/>
-        <circle cx="1056" cy="556" r="32" fill="#141a12"/><circle cx="1026" cy="566" r="24" fill="#141a12"/><circle cx="1084" cy="564" r="22" fill="#10160f"/>
+        <g>${animOn("trees") ? '<animateTransform attributeName="transform" type="rotate" values="-0.8 230 566;0.8 230 566;-0.8 230 566" dur="13s" repeatCount="indefinite"/>' : ""}
+          <circle cx="222" cy="556" r="30" fill="#141a12"/><circle cx="250" cy="564" r="24" fill="#141a12"/><circle cx="196" cy="566" r="22" fill="#10160f"/>
+          <circle cx="238" cy="548" r="18" fill="#1a2216" opacity="0.8"/>
+        </g>
+        <g>${animOn("trees") ? '<animateTransform attributeName="transform" type="rotate" values="0.8 1050 566;-0.8 1050 566;0.8 1050 566" dur="15s" repeatCount="indefinite"/>' : ""}
+          <circle cx="1056" cy="556" r="32" fill="#141a12"/><circle cx="1026" cy="566" r="24" fill="#141a12"/><circle cx="1084" cy="564" r="22" fill="#10160f"/>
+          <circle cx="1046" cy="546" r="18" fill="#1a2216" opacity="0.8"/>
+        </g>
       </g>
       <!-- stones lining the path and half sunk in the lawn -->
       <g id="v_stones">
@@ -1484,20 +1781,22 @@ const Rooms = (() => {
         <ellipse cx="560" cy="648" rx="8" ry="3.6" fill="#262b32"/>
         <ellipse cx="726" cy="652" rx="9" ry="4" fill="#232830"/>
       </g>
-      <!-- grass tufts creeping over the lawn and path edges -->
+      <!-- rich yard grass: jointed blades growing thick against the house and
+           merging into the floor, with brown decay patches, all in a very slow
+           wind. A low layer (on the ground plane) + tall clumps by the wall. -->
       <g id="v_grass">
-        ${tuft(250, 586)}
-        ${tuft(283, 596, "#1b241d")}
-        ${tuft(1014, 582)}
-        ${tuft(1048, 592, "#1b241d")}
-        ${tuft(392, 606)}
-        ${tuft(452, 640, "#1b241d")}
-        ${tuft(828, 604)}
-        ${tuft(756, 646, "#1b241d")}
-        ${tuft(500, 666, "#162019")}
-        ${tuft(700, 668)}
-        ${tuft(560, 700, "#1b241d")}
-        ${tuft(734, 706)}
+        ${grassClump(240, 572, 150, 26, 11)}
+        ${grassClump(1040, 572, 150, 26, 23)}
+        ${grassClump(330, 560, 90, 16, 31)}
+        ${grassClump(950, 560, 90, 16, 47)}
+        ${grassClump(420, 552, 70, 12, 59)}
+        ${grassClump(860, 552, 70, 12, 71)}
+        ${grassClump(300, 610, 120, 18, 83)}
+        ${grassClump(980, 612, 120, 18, 97)}
+        ${grassClump(500, 672, 90, 14, 113)}
+        ${grassClump(780, 672, 90, 14, 131)}
+        ${grassClump(150, 690, 120, 16, 149)}
+        ${grassClump(1130, 690, 120, 16, 167)}
       </g>
       <!-- fallen leaves: a drift of them under each tree, a few blown onto the path -->
       <g id="v_leaves">
@@ -1518,16 +1817,20 @@ const Rooms = (() => {
         ${leaf(648, 700, 3, 14, "#23271e")}
         ${leaf(704, 692, 2.8, -40)}
       </g>
-      <!-- pots: two in the light, one in shadow right of door -->
-      <g id="v_pot0"><path d="M356,520 L394,520 L388,556 L362,556 Z" fill="#7a4a34"/><ellipse cx="375" cy="520" rx="19" ry="5" fill="#8a5a40"/><path d="M375,506 q-11,8 -3,14 q9,-2 3,-14" fill="#5d6b4a"/></g>
-      <g id="v_pot1"><path d="M436,516 L480,516 L473,558 L443,558 Z" fill="#7a4a34"/><ellipse cx="458" cy="516" rx="22" ry="6" fill="#8a5a40"/><path d="M458,498 q-13,10 -4,18 q11,-3 4,-18" fill="#5d6b4a"/><path d="M462,500 q10,9 1,16" fill="none" stroke="#5d6b4a" stroke-width="3"/></g>
-      <g id="v_pot2" ${hasKey ? 'transform="translate(0,-4) rotate(-7 880 540)"' : ""}>
-        <path d="M858,518 L902,518 L895,558 L865,558 Z" fill="#5d3a2a"/><ellipse cx="880" cy="518" rx="22" ry="6" fill="#6b4430"/>
-        <path d="M880,502 q-12,9 -4,16 q10,-2 4,-16" fill="#46503a"/>
+      <!-- pots: two in the light, one in shadow right of door. All sit ON the
+           porch floor (base at y=574) with a contact shadow, so none float. -->
+      <g id="v_pot0">${flowerPot(372, 574, 0.92, false)}</g>
+      <g id="v_pot1">${flowerPot(460, 574, 1.0, false)}</g>
+      <g id="v_pot2" ${hasKey ? 'transform="translate(0,-6) rotate(-6 880 566)"' : ""}>${flowerPot(880, 574, 1.0, true)}</g>
+      <!-- coir doormat on the step, with a bristle texture and a worn middle -->
+      <g id="v_mat">
+        <ellipse cx="640" cy="578" rx="70" ry="6" fill="#0a0c10" opacity="0.5"/>
+        <rect x="566" y="556" width="148" height="20" rx="3" fill="#5b4630"/>
+        <rect x="566" y="556" width="148" height="5" rx="2" fill="#6d5539"/>
+        ${[...Array(9)].map((_, i) => `<line x1="${574 + i * 16}" y1="562" x2="${574 + i * 16}" y2="574" stroke="#4a3826" stroke-width="1.6" opacity="0.7"/>`).join("")}
+        <rect x="620" y="560" width="40" height="14" rx="2" fill="#463521" opacity="0.6"/>
+        <text x="640" y="571" text-anchor="middle" font-family="Georgia" font-size="9" fill="#7d6647" opacity="0.8">17</text>
       </g>
-      ${hasKey ? `<ellipse cx="880" cy="560" rx="26" ry="5" fill="#0b0d10"/>` : ""}
-      <!-- doormat -->
-      <g id="v_mat"><rect x="576" y="556" width="128" height="22" rx="3" fill="#4a3a2a"/><rect x="584" y="560" width="112" height="14" rx="2" fill="none" stroke="#5d4a35" stroke-width="2"/></g>
     </g>
     <g id="layer-front">
       ${yardMist()}
@@ -1584,7 +1887,7 @@ const Rooms = (() => {
       ${hs("pot1", 424, 490, 70, 76, "A flowerpot in the lamplight", "v_pot1")}
       ${hs("pot2", 846, 492, 70, 74, "A flowerpot in the dark", "v_pot2")}
       ${hs("mat", 566, 548, 148, 36, "The doormat", "v_mat")}
-      ${hs("plight", 420, 258, 52, 76, "The porch light", "v_plight")}
+      ${hs("plight", 450, 244, 64, 126, "The porch light", "v_plight")}
       ${hs("plate", 606, 208, 68, 40, "The number plate", "v_door")}
       ${hs("win", 890, 200, 140, 168, "An upstairs window", "v_win2")}
     </g>
@@ -1648,7 +1951,7 @@ const Rooms = (() => {
       <!-- wallpaper stripes -->
       ${[...Array(32)].map((_, i) => `<line x1="${i * 40}" y1="98" x2="${i * 40}" y2="490" stroke="#352c23" stroke-width="12" opacity="0.35"/>`).join("")}
       <!-- ceiling fog: slow thin wisps that breathe and drift -->
-      <g id="v_fog" pointer-events="none">
+      ${(Settings.get("fog") === false) ? "" : `<g id="v_fog" pointer-events="none">
         <ellipse cx="250" cy="86" rx="180" ry="15" fill="#8f8778" opacity="0.07" filter="url(#fogblur)">
           ${reducedMotion ? "" : `<animateTransform attributeName="transform" type="translate" values="-240,0;540,0;-240,0" dur="86s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.07;0.1;0.07" dur="37s" repeatCount="indefinite"/>`}
         </ellipse>
@@ -1658,7 +1961,7 @@ const Rooms = (() => {
         <ellipse cx="1040" cy="92" rx="170" ry="13" fill="#9a9385" opacity="0.05" filter="url(#fogblur)">
           ${reducedMotion ? "" : `<animateTransform attributeName="transform" type="translate" values="-180,0;320,0;-180,0" dur="128s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.05;0.08;0.05" dur="53s" repeatCount="indefinite"/>`}
         </ellipse>
-      </g>
+      </g>`}
     </g>
     <g id="layer-mid">
       <!-- kitchen doorway (left): open, showing the kitchen through the opening -->
@@ -1925,7 +2228,7 @@ const Rooms = (() => {
         <rect x="520" y="120" width="240" height="180" fill="url(#nightg)" stroke="#2c241c" stroke-width="10"/>
         <line x1="640" y1="120" x2="640" y2="300" stroke="#2c241c" stroke-width="7"/>
         <line x1="520" y1="210" x2="760" y2="210" stroke="#2c241c" stroke-width="7"/>
-        ${falseK ? `<rect x="525" y="125" width="230" height="170" fill="#2a1f2e" opacity="0.55"/>` : moonView(700, 160, 12, { soft: false, glowOp: 0.3 })}
+        ${falseK ? `<rect x="525" y="125" width="230" height="170" fill="#2a1f2e" opacity="0.55"/>` : moonView(700, 160, 12, { soft: false, glowOp: 0.3, skyTop: "#141b26", skyBot: "#1d2733" })}
         <path d="M530,290 q40,-26 80,0 q30,-20 60,0 q40,-24 80,0 Z" fill="#232d3a" opacity="0.8"/>
       </g>
       <!-- hanging lamp: fixture only; the beam and pool come from the FX light layer -->
@@ -2604,7 +2907,7 @@ const Rooms = (() => {
         <rect x="960" y="110" width="220" height="260" fill="url(#nightg)" stroke="#2c241c" stroke-width="10"/>
         <line x1="1070" y1="110" x2="1070" y2="370" stroke="#2c241c" stroke-width="7"/>
         <line x1="960" y1="240" x2="1180" y2="240" stroke="#2c241c" stroke-width="7"/>
-        ${moonView(1140, 150, 10, { soft: false, glowOp: 0.3 })}
+        ${moonView(1140, 150, 10, { soft: false, glowOp: 0.3, skyTop: "#141b26", skyBot: "#1d2733" })}
         <path d="M965,360 q30,-30 60,0 q30,-24 60,0 q40,-30 90,0 Z" fill="#232d3a" opacity="0.85"/>
       </g>
     </g>
@@ -3007,7 +3310,7 @@ const Rooms = (() => {
       <g id="v_bwin">
         <rect x="852" y="102" width="256" height="176" rx="4" fill="#3d4348"/>
         <rect x="862" y="112" width="236" height="156" fill="url(#bsea)"/>
-        ${moonView(1012, 152, 13, { soft: false, glowOp: 0.4 })}
+        ${moonView(1012, 152, 13, { soft: false, glowOp: 0.4, skyTop: "#0b1119", skyBot: "#15222c" })}
         <line x1="862" y1="200" x2="1098" y2="200" stroke="#0a1016" stroke-width="2" opacity="0.9"/>
         <rect x="862" y="200" width="236" height="68" fill="#12202a" opacity="0.8"/>
         ${[...Array(10)].map((_, i) => `<rect x="${984 + (i % 3) * 9 - i * 2}" y="${205 + i * 6}" width="${28 - i * 2}" height="2.2" rx="1.1" fill="#cfd8de" opacity="${0.45 - i * 0.035}"/>`).join("")}
@@ -3131,6 +3434,12 @@ const Rooms = (() => {
     updateNavArrows(holder, room);
     if (typeof FX !== "undefined" && FX.apply) FX.apply(holder, room);
     if (typeof Fog !== "undefined" && Fog.apply) Fog.apply(holder, room);
+    // the birds live on their own canvas overlay, mounted only on the porch
+    // and removed everywhere else so other rooms cost nothing.
+    if (typeof Birds !== "undefined" && Birds.mount && Birds.unmount) {
+      Birds.unmount();
+      if (room === "porch") Birds.mount();
+    }
     // object loops only sound while you are in the room with them;
     // once the house shuts the tap, the full flow dies and only drips remain
     AudioM.syncLoops({
@@ -3253,5 +3562,5 @@ const Rooms = (() => {
     });
   }
 
-  return { render, goto, _moonState: () => ({ ...moonState, stop: moonStop }), _moonJump: (i) => { moonStop = ((i % MOON_STOPS.length) + MOON_STOPS.length) % MOON_STOPS.length; moonT0 = typeof performance !== "undefined" ? performance.now() : 0; } };
+  return { render, goto, _moonState: () => ({ ...moonState }), _moonJump: () => { moonT0 = typeof performance !== "undefined" ? performance.now() : 0; } };
 })();

@@ -21,6 +21,33 @@ Honest list, ranked by impact. None are blockers; all have workarounds.
 7. **No mid-dialogue save granularity** — a refresh during a fade transition restores the
    destination room but drops any unspoken narration lines. State is never lost.
 
+## Update: birds v3, smooth moon, settings & porch art pass (Sep 2026)
+
+**Birds (js/birds.js v3 canvas engine)**
+- Flocks: near/mid flocks capped at 4; far/behind-the-house flocks run 5-7 (plus the rarer, bigger, all-tiny starling murmuration). ~87% of flyers ride above the roofline; the smallest birds are forced to the back layer.
+- Near/front birds have a raised size floor (>= 1.16 pre-render) so nothing close to the lens reads tiny.
+- No straight-line flight: every flyer wobbles/curves continuously; descents are banned (clamps to gentle climbs/curves); nothing exits the bottom of the screen; dynamic spawns and respawns always enter from a side edge or a perch.
+- Stuck/hover watchdog: a forward-progress floor means wind-fighters keep moving (gusts are short); any bird barely moving for ~0.8s is kicked forward; nothing flaps in place.
+- Big birds fly faster and flap more (size-scaled flap rate). The wing arc is clamped under ~70deg and a second (far) wing is baked so flapping birds read as two-winged.
+- Ground birds (Forager) rewritten: they mostly WALK with a waddle + pecks, zig-zag turns, and a toward/away depth step with perspective scaling; hops are only ~2% of steps.
+- Perch dwell is spread widely (some leave almost immediately, some wait on the roof).
+
+**Moon**
+- The phase clock is one continuous parameter (full -> new -> full); the terminator sweeps smoothly and the lit side flips only at the exact dark moment. No more teleport.
+- The earthshade/occluder is painted with the LOCAL sky colour (sampled per moon instance from the gradient behind it), so the crescent edge no longer reads as a fake black disc.
+
+**Settings / system**
+- Settings re-organised into grouped sections (Sound, Controls, Graphics, Motion, Game) each with a small info popup.
+- New Graphics quality tier: High (default) / Medium / Low — lower tiers drop blur/soft shading for a flatter 2D look; plus a separate Shadows toggle.
+- Turning fog off now removes ALL fog (static yard/forest/ceiling mist included), not just the live fog engine.
+- Reduced motion no longer blanket-stops everything: it opens a "Customize motion" picker backed by an OOP animation registry (js/anim-registry.js) — each ambient object (birds, murmurations, trees, fog, moon, branch shadows, smoke, fireflies, condensation, dust, parallax, ripples, lantern flicker, window shimmer) has a short name + one-line description and its own toggle. Gameplay-critical motion (doors, cursor, puzzles, dialogue) is never listed.
+
+**Porch art**
+- Ground is now rocky (varied pebbles + cracked rocks) instead of a grass field; moss at the tree bases is drawn with blades and leaflets rather than a flat green blur.
+- Flowerpots sit ON the ground (saucers, contact shadows, rimmed terracotta, real stems/leaves) instead of floating; the doormat is a grounded coir mat with bristles.
+- The porch fixture is a cast-iron Dutch wall lantern (muurlantaarn): wall plate, scroll arm, peaked cap, framed glass with iron muntins and a finial; the FX light core/beam was re-aimed to it.
+- House body is weathered timber clapboard (staggered seams, tone variation, edge vignette); the lit window is dimmer and blurred to just a hint of interior; the "17" is a proper mounted number plate.
+
 ## Update: atmosphere and systems pass (Sep 2026)
 Added and verified this pass:
 - Boot loading screen (the house "wakes up" before the menu appears).
@@ -273,18 +300,33 @@ Added and verified this pass:
   window onto a moonlit SEA (the fifth wrong sky), a washstand with a full
   jug, a mirror cabinet ajar, a damp grey towel and a wrung bath mat. Steam
   hangs over the bath; flies rarely come here.
-- BIRDS (js/birds.js, ~600 lines + scripts/gen/birds.js): two AI silhouette
-  sheets (eight flight poses, six perched poses) decoded to two-tone pixel runs
-  in js/bird-data.js. One session seed rolls the whole sky: sometimes no birds
-  at all; otherwise 1-3 groups of size 1-7 (rare flocks 8-11) in line/vee/
-  column/echelon/scatter formation, each bird with its own lane, speed, bob,
-  wing style (flapper/glider/mixer), depth scale and blur, plus an acrobatics
-  library (loop-the-loop, hunting stoop, zig, tumble spin, mid-air roll) and
-  speed bursts via keyPoints. Perches on ridge stones, eaves, gutter, chimney,
-  the front trees near the lens and the back trees behind the house; some birds
-  land while you watch (motion freezes, sprite swaps to a perched pose), some
-  take off again. Motion is SMIL so hidden tabs and reduced motion behave;
-  offline snapshots park flyers mid-run because resvg has no animateMotion.
+- BIRDS v2 — CANVAS ENGINE, OOP (js/birds.js + js/bird-data.js + scripts/gen/
+  birds.js). The AI silhouette sheets are now decoded to SINGLE-TONE binary
+  pixel masks (solid bird / empty sky, no edge halo — the old two-tone "edge"
+  cells read as pale patches around the body). Perched birds paint those masks
+  straight through PixelMask; flyers are deformable sprites baked once by
+  SpriteBaker: an articulated wing (folded on the fast upstroke, spread on the
+  slow power stroke, as real birds do) across 12 flap frames plus a held glide
+  frame, supersampled 2x then downscaled on draw for a clean anti-aliased edge.
+  All bird behaviours are OOP classes (Bird / FlyingBird / PerchedBird /
+  Forager / Flock / Sky) with EVERY percentage, speed and probability in the
+  BIRD_CFG knob panel at the top of the file — followRoof 0.80 (80% ride the
+  roofline, 20% the open high sky), landChance/perchOnTree 0.45, fightWind
+  0.15, acrobatics 0.10 (loop/stoop/zig/tumble/roll), flock & murmuration
+  (boids-style cohesion/alignment/separation over ~7 neighbours, Reynolds
+  rules), speed styles (constant / accelerate / accel-glide / bounding
+  undulation), heading modes (straight / oscillating weave / fixed climb
+  angles 0,45,60,80,135deg), per-bird sizes per species (swift/starling/
+  sparrow/crow/owl). Flyers never dip below the screen centre +50px. Tree
+  perches draw a branch across the feet so the legs read BEHIND the branch and
+  the body in front; landers dwell a random 3-16s then take off. Softness is
+  cheap: no SVG filters — faint onion-skin afterimages + a thin tapered
+  motion streak blend the wing frames and imply motion blur. Rendering is one
+  requestAnimationFrame that only runs on the porch, only while the tab is
+  visible, and reduces to a single held static frame (still perched birds)
+  under reduced motion; every bird is a pre-baked drawImage so the layer is
+  far cheaper than the old SMIL/filter version. Birds.part() is retained as an
+  empty stub for rooms.js; the canvas is mounted/unmounted with the room.
 - MOON v3 — SLOW TERMINATOR, NO OPACITY ANYWHERE: the AI full moon feeds a
   cell matrix, but the disc is painted as flat semi-real 2D: three posterised
   tones (highland/mid/mare), craters as JS circles in unit-disc space (floor a
