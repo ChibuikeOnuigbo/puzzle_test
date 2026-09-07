@@ -131,38 +131,46 @@
     const out = [];
     const { root } = tree.model;
     const minY = 190, maxY = 486;          // porch band a bird can settle in
-    // find the nearest swaying ancestor (depth<=1) for a node
-    const swayOf = (node) => {
-      let n = node, guard = 0;
-      while (n && !(n.swayPivot) && guard++ < 8) n = n._parent;
-      return n && n.swayPivot ? n : null;
-    };
     const tag = (node, parent) => { node._parent = parent; node.kids.forEach(k => tag(k, node)); };
     tag(root, null);
+    // The FULL chain of wind transforms that move a given limb, outermost
+    // first, exactly as the renderer nests them:
+    //   whole tree rocks about its base  ->  the stem's own rock about the base
+    //   -> the main limb's swing about its own root.
+    // A bird gripping the limb is pushed through the same chain each frame,
+    // so its feet stay on the painted wood.
+    const opt = tree.opt || {};
+    const chainOf = (node) => {
+      const chain = [{ px: tree.x, py: tree.baseY, amt: opt.swayAmt || 0.5, dur: opt.swayDur || 9, what: "tree" }];
+      const anc = [];
+      for (let n = node; n; n = n._parent) if (n.swayPivot) anc.unshift(n);
+      for (const n of anc) chain.push({ px: n.swayPivot.x, py: n.swayPivot.y, amt: n.swayAmt, dur: n.swayDur, what: n.depth === 0 ? "stem" : "main branch", limb: n.id });
+      return chain;
+    };
+    const legacySway = (chain) => { const l = chain[chain.length - 1]; return { px: l.px, py: l.py, amt: l.amt, dur: l.dur, limb: l.limb, tree: tree.id }; };
 
     const visit = (node) => {
       const isOuter = node.depth >= (tree.model.opt.maxDepth || 4) - 1;
       const inBand = (px, py) => py >= minY && py <= maxY && px > 8 && px < 1272;
       if (isOuter) {
+        const chain = chainOf(node);
         // the limb tip itself
         if (inBand(node.x2, node.y2)) {
-          const sw = swayOf(node);
           out.push({
             x: node.x2, y: node.y2, ang: node.ang, tree: tree.id, face: tree.face,
-            kind: "outerTip",
+            kind: "outerTip", role: "outer free branch", limb: node.id,
             s: tree.bare ? 1.05 : 0.98,
-            sway: sw ? { px: sw.swayPivot.x, py: sw.swayPivot.y, amt: sw.swayAmt, dur: sw.swayDur } : null,
+            sway: legacySway(chain), swayChain: chain,
           });
         }
         // the thin free twig ends (the most "unconnected & oscillating" spots)
         for (const t of node.twigs) {
           if (inBand(t.x, t.y)) {
-            const sw = swayOf(node);
             out.push({
               x: t.x, y: t.y, ang: t.ang, tree: tree.id, face: tree.face,
-              kind: "twigTip",
+              kind: "twigTip", role: "free twig", limb: node.id,
               s: tree.bare ? 1.0 : 0.92,
-              sway: sw ? { px: sw.swayPivot.x, py: sw.swayPivot.y, amt: sw.swayAmt, dur: sw.swayDur } : null,
+              sway: legacySway(chain), swayChain: chain,
             });
           }
         }
@@ -179,13 +187,61 @@
     return picked;
   }
 
+  /* The exact angle (degrees) a sway group is rotated by at SVG time t. The
+     renderer animates values="-amt;amt;-amt" over dur seconds with the default
+     linear calcMode, so the angle is a triangle wave. */
+  function swayAngleAt(s, t) {
+    if (!s || !s.dur) return 0;
+    const f = ((t / s.dur) % 1 + 1) % 1;
+    const tri = f < 0.5 ? f * 2 : 2 - f * 2;      // 0 -> 1 -> 0
+    return -s.amt + 2 * s.amt * tri;
+  }
+
   function anchors() {
     const all = [];
     for (const t of grown()) all.push(...anchorsFor(t));
     return all;
   }
 
+  /* A human-readable MAP of each tree: which limb is the stem, which are
+     connected branches, and which are the OUTER FREE branches (their far end
+     is not connected to anything, so they swing on their own and are the
+     only places a bird may grip). Used by the debug overlay (Birds.treeMap)
+     and by anyone reading the structure. */
+  function describe() {
+    return grown().map(t => {
+      const maxDepth = t.model.opt.maxDepth || 4;
+      const sections = t.model.nodes.map(n => {
+        const outer = n.depth >= maxDepth - 1;
+        const kind = n.depth === 0 ? "stem"
+          : outer ? "outer free branch"
+          : (n.depth === 1 ? "main branch" : "branch");
+        return {
+          id: n.id, kind, depth: n.depth,
+          from: [Math.round(n.x1), Math.round(n.y1)], to: [Math.round(n.x2), Math.round(n.y2)],
+          mid: [Math.round(n.cx), Math.round(n.cy)],
+          connectedEnd: "from",                       // the base is always attached
+          freeEnd: outer ? "to" : null,               // outer limbs end in the air
+          sways: !!n.swayPivot,
+          swayPivot: n.swayPivot ? [Math.round(n.swayPivot.x), Math.round(n.swayPivot.y)] : null,
+          twigs: n.twigs.map(tw => [Math.round(tw.x), Math.round(tw.y)]),
+        };
+      });
+      return {
+        tree: t.id, seed: t.seed, base: [t.x, t.baseY], height: t.h, bare: !!t.bare,
+        counts: {
+          stem: sections.filter(s => s.kind === "stem").length,
+          mainBranches: sections.filter(s => s.kind === "main branch").length,
+          branches: sections.filter(s => s.kind === "branch").length,
+          outerFree: sections.filter(s => s.kind === "outer free branch").length,
+        },
+        sections,
+        perches: anchorsFor(t).map(a => ({ x: Math.round(a.x), y: Math.round(a.y), role: a.role, limb: a.limb, swayLimb: a.sway ? a.sway.limb : null })),
+      };
+    });
+  }
+
   window.TreePerches = {
-    rngFrom, growTree, grown, TREES, anchors,
+    rngFrom, growTree, grown, TREES, anchors, describe, swayAngleAt,
   };
 })();

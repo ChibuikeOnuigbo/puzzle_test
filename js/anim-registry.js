@@ -22,6 +22,7 @@
     { id: "birds",        name: "Birds",            def: true,  desc: "Birds flying, flocking, landing and walking in the yard." },
     { id: "birdsFlock",   name: "Murmurations",     def: true,  desc: "The big, far-off flocks that turn together at dusk." },
     { id: "trees",        name: "Swaying trees",    def: true,  desc: "Branches and leaves rocking slowly in the wind." },
+    { id: "windowBirds",  name: "Birds at windows", def: true,  desc: "Small birds crossing the sky behind every window of the house." },
     { id: "fog",          name: "Drifting fog",     def: true,  desc: "Mist that rolls through the rooms and across the yard." },
     { id: "moon",         name: "Moon cycle",       def: true,  desc: "The moon turning through its phases as the night passes." },
     { id: "roofShade",    name: "Branch shadows",   def: true,  desc: "Tree shadows sliding slowly across the roof tiles." },

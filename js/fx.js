@@ -377,27 +377,9 @@ const FX = (() => {
       mk("animate", { attributeName: "opacity", values: "0.05;0.1;0.05", dur: rnd(18, 30).toFixed(0) + "s", repeatCount: "indefinite" }, w);
     }
 
-    /* a small bird that crosses the window now and then */
-    const bird = mk("g", { opacity: "0.85" }, inner);
-    const bw = mk("g", {}, bird);
-    mk("ellipse", { cx: 0, cy: 0, rx: 3.4, ry: 1.7, fill: "#12161c" }, bw);
-    mk("circle", { cx: 3.4, cy: -1, r: 1.2, fill: "#12161c" }, bw);
-    const wingL = mk("path", { d: "M-0.5,-0.6 q-4,-4 -7,-4.6", stroke: "#12161c", "stroke-width": 1.1, fill: "none" }, bw);
-    const wingR = mk("path", { d: "M0.5,-0.6 q4,-4 7,-4.6", stroke: "#12161c", "stroke-width": 1.1, fill: "none" }, bw);
-    mk("animateTransform", { attributeName: "transform", type: "rotate", values: "0;-26;0;18;0", dur: "0.5s", repeatCount: "indefinite" }, wingL);
-    mk("animateTransform", { attributeName: "transform", type: "rotate", values: "0;26;0;-18;0", dur: "0.5s", repeatCount: "indefinite" }, wingR);
-    mk("animateTransform", {
-      attributeName: "transform", type: "translate",
-      values: `${RAIN_CLIP.x - 20},${RAIN_CLIP.y + 46};${RAIN_CLIP.x - 20},${RAIN_CLIP.y + 46};${RAIN_CLIP.x + RAIN_CLIP.w + 20},${RAIN_CLIP.y + 22};${RAIN_CLIP.x + RAIN_CLIP.w + 20},${RAIN_CLIP.y + 22}`,
-      keyTimes: "0;0.62;0.8;1", dur: "19s", repeatCount: "indefinite",
-    }, bird);
-
-    /* a drip sliding down the inside of the glass, slowly */
-    for (let k = 0; k < 3; k++) {
-      const x = 930 + k * 42, d = mk("circle", { cx: x, cy: 140, r: 1.4, fill: "#bfe0f2", opacity: 0.6 }, group);
-      mk("animate", { attributeName: "cy", values: "136;300", dur: rnd(3.2, 4.8).toFixed(1) + "s", repeatCount: "indefinite" }, d);
-      mk("animate", { attributeName: "opacity", values: "0;0.6;0.6;0", dur: rnd(3.2, 4.8).toFixed(1) + "s", repeatCount: "indefinite" }, d);
-    }
+    /* the birds behind this glass and the water ON the glass are drawn by
+       the room itself (rooms.js windowBirds / glassDrops - see alwaysDo.md),
+       so the FX layer only supplies the falling rain and the ground fog. */
   }
 
   /* ---------------- cobwebs + spiders ---------------- */

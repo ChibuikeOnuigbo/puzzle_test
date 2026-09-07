@@ -90,6 +90,314 @@ const Rooms = (() => {
     return out;
   }
 
+  /* graphics tier (Settings -> Graphics quality): "high" | "medium" | "low".
+     Every window view changes with it (see alwaysDo.md). */
+  const quality = () => { try { return (Settings.get && Settings.get("quality")) || "high"; } catch (e) { return "high"; } };
+
+  /* =====================================================================
+     BIRDS THROUGH EVERY WINDOW  (rule: alwaysDo.md -> "Show birds moving")
+     ---------------------------------------------------------------------
+     Any window that looks OUT of the house gets a few birds crossing the sky
+     behind the glass. Each bird is a small vector silhouette seen from below
+     (body, forked tail, head + beak, two wings) that FLAPS (the wings
+     foreshorten + sweep, then hold a glide) while it rides a curved
+     <animateMotion> path across the panes; it waits off-glass between passes
+     so the crossings feel occasional, not looping. Everything is clipped to
+     the glass shape (rect or round) and drawn BEFORE the mullions so the bars
+     pass in front of it.
+       glass: { x, y, w, h }  or  { cx, cy, r }  (round window)
+       opt:   count, scale, color, band [top..bottom fraction], flock, seed
+     Honours the motion registry ("windowBirds"): when off, one still bird
+     hangs mid-pane. Graphics tier: low halves the count.
+     ===================================================================== */
+  function windowBirds(id, glass, opt = {}) {
+    const q = quality();
+    const on = animOn("windowBirds");
+    const round = glass.r != null;
+    const gx = round ? glass.cx - glass.r : glass.x, gy = round ? glass.cy - glass.r : glass.y;
+    const gw = round ? glass.r * 2 : glass.w, gh = round ? glass.r * 2 : glass.h;
+    const R = rngFrom(opt.seed || ((id.length * 131 + gx * 7 + gy * 13) >>> 0));
+    const col = opt.color || "#070a0e";
+    const want = opt.count != null ? opt.count : 3;
+    const count = q === "low" ? Math.max(1, Math.ceil(want / 2)) : want;
+    const band = opt.band || [0.08, 0.6];
+    const clipId = `wbclip-${id}`;
+    const clipShape = round
+      ? `<circle cx="${glass.cx}" cy="${glass.cy}" r="${glass.r}"/>`
+      : `<rect x="${gx}" y="${gy}" width="${gw}" height="${gh}"/>`;
+
+    /* one bird, facing +x, unit size ~ 16px span; the wings foreshorten
+       (scale y) and sweep (rotate) = a flap seen from underneath, with a
+       glide held at the end of every cycle */
+    const bird = (s, flapDur, glides) => {
+      const holds = "1 1;".repeat(glides);
+      const sweeps = "0;".repeat(glides);
+      const flap = on
+        ? `<animateTransform attributeName="transform" type="scale" values="1 1;1 0.28;1 1;1 0.3;1 1;${holds}1 1" dur="${flapDur}s" repeatCount="indefinite"/>`
+          + `<animateTransform attributeName="transform" type="rotate" additive="sum" values="0;-14;5;-12;0;${sweeps}0" dur="${flapDur}s" repeatCount="indefinite"/>`
+        : "";
+      // wings root at the shoulder (just behind the head) and sweep BACK
+      // toward the tail; the outer half is cut into three primaries
+      const wing = `M1.6,-0.4 L-0.6,-6.2 L-2.4,-10.4 L-3.2,-9.6 L-3.4,-7.4 L-4.6,-9.0 L-5.0,-8.0 L-4.6,-6.0 L-5.8,-7.0 L-5.8,-5.6 Q-5.0,-2.6 -3.0,-0.6 Z`;
+      const wingDn = `M1.6,0.4 L-0.6,6.2 L-2.4,10.4 L-3.2,9.6 L-3.4,7.4 L-4.6,9.0 L-5.0,8.0 L-4.6,6.0 L-5.8,7.0 L-5.8,5.6 Q-5.0,2.6 -3.0,0.6 Z`;
+      // a faint moonlit rim so a dark bird still reads against a dark sky
+      const rim = opt.rim === false ? "" : ` stroke="${opt.rimColor || "#93a6ba"}" stroke-width="0.45" stroke-opacity="0.42" stroke-linejoin="round" paint-order="stroke"`;
+      return `<g class="wb-bird" transform="scale(${s.toFixed(2)})" fill="${col}"${rim}>
+        <g class="wb-w">${flap}<path d="${wing}"/></g>
+        <g class="wb-w">${flap}<path d="${wingDn}"/></g>
+        <path d="M-4.6,0 Q-1,-1.7 3.4,-0.7 Q5.5,-0.2 6.2,0 Q5.5,0.2 3.4,0.7 Q-1,1.7 -4.6,0 Z"/>
+        <path d="M-4.4,0 L-7.6,-2 L-6.6,0 L-7.6,2 Z"/>
+        <circle cx="5.3" cy="0" r="1.25"/>
+        <path d="M6.3,-0.5 L8.3,0 L6.3,0.5 Z"/>
+      </g>`;
+    };
+
+    let out = `<clipPath id="${clipId}">${clipShape}</clipPath>`;
+    out += `<g data-window-birds="${id}" data-count="${count}" clip-path="url(#${clipId})" pointer-events="none">`;
+    for (let i = 0; i < count; i++) {
+      const s = (opt.scale || 1) * 1.35 * (0.6 + R() * 0.5) * (i === 0 && opt.flock ? 0.85 : 1);
+      const ltr = R() < 0.5;
+      const m = 18 * s + 6;
+      const y0 = gy + gh * (band[0] + R() * (band[1] - band[0]));
+      const y1 = gy + gh * (band[0] + R() * (band[1] - band[0]));
+      const x0 = ltr ? gx - m : gx + gw + m, x1 = ltr ? gx + gw + m : gx - m;
+      const dx = x1 - x0;
+      const c1y = y0 + (R() - 0.5) * gh * 0.5, c2y = y1 + (R() - 0.5) * gh * 0.5;
+      const path = `M${x0.toFixed(1)},${y0.toFixed(1)} C${(x0 + dx * 0.33).toFixed(1)},${c1y.toFixed(1)} ${(x0 + dx * 0.66).toFixed(1)},${c2y.toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}`;
+      const flapDur = (0.9 + R() * 0.6) / Math.max(0.6, s);
+      const glides = 1 + Math.floor(R() * 4);
+      const body = (i === 0 && opt.flock)
+        ? `<g>${bird(s, flapDur, glides)}<g transform="translate(-13,-8)">${bird(s * 0.9, flapDur * 1.07, glides)}</g><g transform="translate(-12,9)">${bird(s * 0.92, flapDur * 0.95, glides)}</g></g>`
+        : bird(s, flapDur, glides);
+      if (!on) {
+        // still night: one bird, wings spread, hanging mid-pane
+        if (i > 0) break;
+        const mx = gx + gw * 0.3, my = (y0 + y1) / 2;   // off the centre mullion
+        out += `<g transform="translate(${mx.toFixed(1)},${my.toFixed(1)}) ${ltr ? "" : "scale(-1,1)"}">${body}</g>`;
+        continue;
+      }
+      const T = 9 + R() * 12;                       // seconds per pass incl. the wait
+      const cross = 0.3 + R() * 0.3;                // fraction of T spent crossing
+      out += `<g>
+        <animateMotion dur="${T.toFixed(1)}s" begin="${(-R() * T).toFixed(1)}s" repeatCount="indefinite" rotate="auto" path="${path}" calcMode="linear" keyPoints="0;1;1" keyTimes="0;${cross.toFixed(2)};1"/>
+        ${body}
+      </g>`;
+    }
+    return out + `</g>`;
+  }
+
+  /* =====================================================================
+     WATER ON THE GLASS  (rule: alwaysDo.md -> "Wet glass gets real drops")
+     ---------------------------------------------------------------------
+     Rain touching the window, seen from inside: dozens of beaded droplets
+     sitting on the pane (a lens: pale rim, transparent centre, a pin of
+     specular light up-left, a darker foot), and a few heavier drops that
+     swell where they sit, then RUN down the pane leaving a thin wet trail
+     that grows behind them and fades. Drops wobble sideways a little as
+     they run. All flat vector, no filters. Registry id "drips"; graphics
+     tier changes the count and the lens shading (low = flat discs).
+     ===================================================================== */
+  function glassDrops(id, glass, opt = {}) {
+    const q = quality();
+    const on = animOn("drips");
+    const R = rngFrom(opt.seed || ((id.length * 977 + glass.x * 3 + glass.y * 5) >>> 0));
+    const { x, y, w, h } = glass;
+    const gradId = `gdrop-${id}`;
+    const beads = q === "low" ? 16 : q === "medium" ? 30 : (opt.beads || 48);
+    const runners = q === "low" ? 2 : q === "medium" ? 4 : (opt.runners || 6);
+    let out = `<radialGradient id="${gradId}" cx="0.4" cy="0.36" r="0.66">
+      <stop offset="0" stop-color="#e6f2fa" stop-opacity="0.06"/>
+      <stop offset="0.68" stop-color="#d6e8f2" stop-opacity="0.14"/>
+      <stop offset="0.88" stop-color="#eef6fb" stop-opacity="0.58"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.12"/>
+    </radialGradient>`;
+    out += `<g data-glass-drops="${id}" data-beads="${beads}" data-runners="${runners}" pointer-events="none">`;
+    /* a wet sheen where the light from the room catches the film of water */
+    if (q !== "low") out += `<path d="M${x + 6},${y + h * 0.7} L${x + w * 0.42},${y + 4} L${x + w * 0.52},${y + 4} L${x + 14},${y + h * 0.78} Z" fill="#dbe9f2" opacity="0.045"/>`;
+    /* beaded droplets */
+    const bead = (bx, by, r) => {
+      if (q === "low") return `<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="${r.toFixed(2)}" fill="#cfe2ee" opacity="0.24"/>`;
+      return `<g>
+        <ellipse cx="${bx.toFixed(1)}" cy="${(by + r * 0.16).toFixed(1)}" rx="${(r * 0.92).toFixed(2)}" ry="${(r * 0.5).toFixed(2)}" fill="#04070b" opacity="0.28"/>
+        <ellipse cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" rx="${r.toFixed(2)}" ry="${(r * 1.1).toFixed(2)}" fill="url(#${gradId})"/>
+        <circle cx="${(bx - r * 0.32).toFixed(1)}" cy="${(by - r * 0.4).toFixed(1)}" r="${Math.max(0.35, r * 0.26).toFixed(2)}" fill="#ffffff" opacity="0.72"/>
+      </g>`;
+    };
+    for (let i = 0; i < beads; i++) {
+      const r = R() < 0.72 ? 0.7 + R() * 1.2 : 1.8 + R() * 1.6;
+      out += bead(x + 3 + R() * (w - 6), y + 3 + R() * (h - 6), r);
+    }
+    /* running drops: swell, run, trail, fade */
+    for (let i = 0; i < runners; i++) {
+      const rx = x + 8 + R() * (w - 16);
+      const y0 = y + 2 + R() * h * 0.45, y1 = y + h + 6;
+      const r = 1.7 + R() * 1.3;
+      const dur = 5 + R() * 6, begin = -(R() * dur);
+      const kt = `0;${(0.18 + R() * 0.14).toFixed(2)};0.86;1`;
+      const wob = `${rx.toFixed(1)};${rx.toFixed(1)};${(rx + 1.6).toFixed(1)};${(rx - 1.2).toFixed(1)};${(rx + 0.8).toFixed(1)};${rx.toFixed(1)}`;
+      const trailW = (r * 0.62).toFixed(2);
+      if (!on) {
+        const ym = (y0 + y1) * 0.5;
+        out += `<line x1="${rx.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${rx.toFixed(1)}" y2="${ym.toFixed(1)}" stroke="#dbe9f2" stroke-width="${trailW}" opacity="0.22" stroke-linecap="round"/>` + bead(rx, ym, r * 1.3);
+        continue;
+      }
+      out += `<g>
+        <line x1="${rx.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${rx.toFixed(1)}" y2="${y0.toFixed(1)}" stroke="#dbe9f2" stroke-width="${trailW}" stroke-linecap="round" opacity="0">
+          <animate attributeName="y2" values="${y0.toFixed(1)};${y0.toFixed(1)};${y1.toFixed(1)};${y1.toFixed(1)}" keyTimes="${kt}" dur="${dur.toFixed(1)}s" begin="${begin.toFixed(1)}s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values="0;0.08;0.3;0" keyTimes="${kt}" dur="${dur.toFixed(1)}s" begin="${begin.toFixed(1)}s" repeatCount="indefinite"/>
+        </line>
+        ${q === "low" ? "" : `<ellipse cx="${rx.toFixed(1)}" cy="${y0.toFixed(1)}" rx="${(r * 0.9).toFixed(2)}" ry="${(r * 0.5).toFixed(2)}" fill="#04070b" opacity="0.3">
+          <animate attributeName="cy" values="${(y0 + r * 0.3).toFixed(1)};${(y0 + r * 0.3).toFixed(1)};${(y1 + r * 0.3).toFixed(1)};${(y1 + r * 0.3).toFixed(1)}" keyTimes="${kt}" dur="${dur.toFixed(1)}s" begin="${begin.toFixed(1)}s" repeatCount="indefinite"/>
+          <animate attributeName="cx" values="${wob}" dur="${dur.toFixed(1)}s" begin="${begin.toFixed(1)}s" repeatCount="indefinite"/>
+        </ellipse>`}
+        <ellipse cx="${rx.toFixed(1)}" cy="${y0.toFixed(1)}" rx="${r.toFixed(2)}" ry="${(r * 1.25).toFixed(2)}" fill="${q === "low" ? "#cfe2ee" : `url(#${gradId})`}" ${q === "low" ? 'opacity="0.3"' : ""}>
+          <animate attributeName="cy" values="${y0.toFixed(1)};${y0.toFixed(1)};${y1.toFixed(1)};${y1.toFixed(1)}" keyTimes="${kt}" dur="${dur.toFixed(1)}s" begin="${begin.toFixed(1)}s" repeatCount="indefinite"/>
+          <animate attributeName="cx" values="${wob}" dur="${dur.toFixed(1)}s" begin="${begin.toFixed(1)}s" repeatCount="indefinite"/>
+          <animate attributeName="rx" values="${(r * 0.6).toFixed(2)};${r.toFixed(2)};${(r * 0.9).toFixed(2)};${(r * 0.9).toFixed(2)}" keyTimes="${kt}" dur="${dur.toFixed(1)}s" begin="${begin.toFixed(1)}s" repeatCount="indefinite"/>
+          <animate attributeName="ry" values="${(r * 0.7).toFixed(2)};${(r * 1.25).toFixed(2)};${(r * 1.5).toFixed(2)};${(r * 1.5).toFixed(2)}" keyTimes="${kt}" dur="${dur.toFixed(1)}s" begin="${begin.toFixed(1)}s" repeatCount="indefinite"/>
+        </ellipse>
+        ${q === "low" ? "" : `<circle cx="${(rx - r * 0.3).toFixed(1)}" cy="${(y0 - r * 0.45).toFixed(1)}" r="${(r * 0.26).toFixed(2)}" fill="#ffffff" opacity="0.75">
+          <animate attributeName="cy" values="${(y0 - r * 0.45).toFixed(1)};${(y0 - r * 0.45).toFixed(1)};${(y1 - r * 0.45).toFixed(1)};${(y1 - r * 0.45).toFixed(1)}" keyTimes="${kt}" dur="${dur.toFixed(1)}s" begin="${begin.toFixed(1)}s" repeatCount="indefinite"/>
+          <animate attributeName="cx" values="${wob.split(";").map(v => (parseFloat(v) - r * 0.3).toFixed(1)).join(";")}" dur="${dur.toFixed(1)}s" begin="${begin.toFixed(1)}s" repeatCount="indefinite"/>
+        </circle>`}
+      </g>`;
+    }
+    return out + `</g>`;
+  }
+
+  /* =====================================================================
+     THE BEDROOM WINDOW'S GARDEN  (child room, "cwin")
+     ---------------------------------------------------------------------
+     What the child's window looks out on, rebuilt as a proper little scene
+     instead of a flat pixel grid:
+       * a sky in three graded bands + a low cloud deck (drifts);
+       * FOUR depth planes of trees, far to near: a soft far treeline, a
+         middle rank, and two near trees grown from the SAME structure grower
+         the porch uses (TreePerches.growTree), painted as tapered limbs with
+         leaf clusters — so the trees have real branches, not blobs;
+       * WIND: every plane sways at its own period (near trees the most, the
+         far line the least) and the whole garden takes a slow GUST every
+         ~11s (a skew that leans the canopies together and lets them spring
+         back), plus a few loose leaves that are torn across the glass;
+       * a wet lawn + a pale garden path that catches the room light, and a
+         thin ground mist lying over the grass.
+     Graphics quality changes the view: HIGH is all of the above; MEDIUM
+     drops the far treeline's soft edge, the leaf clusters go to flat discs
+     and there is no gust; LOW is a flat two-tone paper-cut (silhouettes on
+     a plain sky, no mist, no leaves, no gust). The old generated pixel view
+     (WINDOW_VIEW) is no longer painted here.
+     ===================================================================== */
+  function bedroomGarden(x, y, w, h) {
+    const q = quality();
+    const treesOn = animOn("trees");
+    const R = rngFrom(4177);
+    const x2 = x + w, y2 = y + h;
+    const horizon = y + h * 0.66;              // where the lawn meets the trees
+    const sway = (px, py, amt, dur, ph) => treesOn
+      ? `<animateTransform attributeName="transform" type="rotate" values="${(-amt).toFixed(2)} ${px.toFixed(1)} ${py.toFixed(1)};${amt.toFixed(2)} ${px.toFixed(1)} ${py.toFixed(1)};${(-amt).toFixed(2)} ${px.toFixed(1)} ${py.toFixed(1)}" dur="${dur.toFixed(2)}s" begin="${(-ph).toFixed(2)}s" repeatCount="indefinite"/>`
+      : "";
+    let out = "";
+
+    /* ---- sky: three bands + stars (high/medium) ---- */
+    out += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#cwinsky)"/>`;
+    if (q !== "low") {
+      for (let i = 0; i < 18; i++) {
+        const sx = x + R() * w, sy = y + R() * h * 0.42, r = R() < 0.2 ? 1.1 : 0.7;
+        out += `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="${r}" fill="#dfe7ee" opacity="${(0.25 + R() * 0.45).toFixed(2)}">${treesOn ? `<animate attributeName="opacity" values="0.6;0.2;0.6" dur="${(2 + R() * 4).toFixed(1)}s" repeatCount="indefinite"/>` : ""}</circle>`;
+      }
+      /* low cloud deck: two long soft slabs sliding across */
+      const cloud = (cy, ry, op, dur, from, to) => `<ellipse cx="${x + w * 0.5}" cy="${cy}" rx="${w * 0.7}" ry="${ry}" fill="#0a0e15" opacity="${op}"${q === "high" ? ' filter="url(#fxblur8)"' : ""}>${treesOn ? `<animateTransform attributeName="transform" type="translate" values="${from},0;${to},0;${from},0" dur="${dur}s" repeatCount="indefinite"/>` : ""}</ellipse>`;
+      out += cloud(y + h * 0.12, 14, 0.55, 95, -30, 60) + cloud(y + h * 0.26, 12, 0.42, 130, 40, -60);
+    }
+
+    /* ---- far treeline: a soft rolling silhouette (plane 1) ---- */
+    let far = `M${x - 10},${horizon + 4}`;
+    for (let i = 0; i <= 12; i++) {
+      const tx = x - 10 + (w + 20) * i / 12, th = h * (0.1 + R() * 0.1);
+      far += ` Q${(tx - (w + 20) / 24).toFixed(1)},${(horizon - th * 1.35).toFixed(1)} ${tx.toFixed(1)},${(horizon - th * 0.5).toFixed(1)}`;
+    }
+    far += ` L${x2 + 10},${horizon + 6} Z`;
+    out += `<g>${sway(x + w / 2, horizon + 40, 0.35, 13, R() * 5)}<path d="${far}" fill="#0f1a22" opacity="${q === "low" ? 1 : 0.85}"${q === "high" ? ' filter="url(#fxblur2)"' : ""}/></g>`;
+
+    /* ---- middle rank: five rounded crowns on thin stems (plane 2) ---- */
+    for (let i = 0; i < 5; i++) {
+      const tx = x + w * (0.05 + i * 0.22 + R() * 0.08), th = h * (0.18 + R() * 0.12), rw = w * (0.07 + R() * 0.05);
+      const base = horizon - 2;
+      let crown = "";
+      if (q === "low") crown = `<ellipse cx="${tx}" cy="${base - th}" rx="${rw}" ry="${th * 0.62}" fill="#0b141a"/>`;
+      else {
+        for (let k = 0; k < 5; k++) {
+          const cx = tx + (R() - 0.5) * rw * 1.2, cy = base - th * (0.55 + R() * 0.7), rr = rw * (0.45 + R() * 0.4);
+          crown += `<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="${rr.toFixed(1)}" ry="${(rr * 0.72).toFixed(1)}" fill="${k % 2 ? "#0c161d" : "#101d25"}"/>`;
+        }
+      }
+      out += `<g>${sway(tx, base, 0.7 + R() * 0.5, 7.5 + R() * 3, R() * 6)}<path d="M${tx},${base} L${tx + 1},${base - th * 0.7}" stroke="#0a1116" stroke-width="2.4" stroke-linecap="round"/>${crown}</g>`;
+    }
+
+    /* ---- lawn, path, fence (ground) ---- */
+    out += `<rect x="${x}" y="${horizon - 2}" width="${w}" height="${y2 - horizon + 2}" fill="url(#cwinlawn)"/>`;
+    out += `<path d="M${x + w * 0.46},${y2} L${x + w * 0.54},${y2} L${x + w * 0.52},${horizon + 4} L${x + w * 0.49},${horizon + 4} Z" fill="#2c3b46" opacity="${q === "low" ? 0.6 : 0.5}"/>`;
+    if (q !== "low") {
+      // a leaning picket fence, wet, catching the room light on its tops
+      for (let i = 0; i < 14; i++) {
+        const fx = x + 4 + i * (w / 14), fh = 10 + (i % 3) * 2, fy = horizon + h * 0.16 + (i % 2) * 1.5;
+        out += `<rect x="${fx.toFixed(1)}" y="${fy.toFixed(1)}" width="2.2" height="${fh}" fill="#0d151b"/><rect x="${fx.toFixed(1)}" y="${fy.toFixed(1)}" width="2.2" height="1.2" fill="#6f8291" opacity="0.5"/>`;
+      }
+      out += `<rect x="${x}" y="${(horizon + h * 0.2).toFixed(1)}" width="${w}" height="1.6" fill="#0d151b"/>`;
+      // ground mist lying on the grass (not in the room: it is behind the glass)
+      out += `<ellipse cx="${x + w * 0.35}" cy="${horizon + h * 0.14}" rx="${w * 0.42}" ry="${h * 0.05}" fill="#c9d8e2" opacity="0.07"${q === "high" ? ' filter="url(#fxblur8)"' : ""}>${treesOn ? `<animateTransform attributeName="transform" type="translate" values="0,0;${w * 0.16},0;0,0" dur="41s" repeatCount="indefinite"/>` : ""}</ellipse>`;
+      out += `<ellipse cx="${x + w * 0.72}" cy="${horizon + h * 0.1}" rx="${w * 0.36}" ry="${h * 0.04}" fill="#c9d8e2" opacity="0.06"${q === "high" ? ' filter="url(#fxblur8)"' : ""}>${treesOn ? `<animateTransform attributeName="transform" type="translate" values="0,0;${-w * 0.12},0;0,0" dur="53s" repeatCount="indefinite"/>` : ""}</ellipse>`;
+    }
+
+    /* ---- near trees: real limbs from the shared grower (planes 3 + 4) ---- */
+    const grow = (window.TreePerches && window.TreePerches.growTree) ? window.TreePerches.growTree : localGrowTree;
+    const nearTree = (seed, tx, baseY, th, lean, amt, dur, colTrunk, colLeaf, leafScale) => {
+      const model = grow(seed, tx, baseY, th, { maxDepth: 4, lean, swayAmt: amt, swayDur: dur });
+      const paint = (n) => {
+        let s = `<path d="M${n.x1.toFixed(1)},${n.y1.toFixed(1)} Q${n.cx.toFixed(1)},${n.cy.toFixed(1)} ${n.x2.toFixed(1)},${n.y2.toFixed(1)}" stroke="${colTrunk}" stroke-width="${(n.w * 0.55).toFixed(1)}" fill="none" stroke-linecap="round"/>`;
+        if (n.depth >= 2) {
+          // leaf clusters: high = layered lobes, medium = flat discs, low = none (bare paper-cut)
+          if (q === "high") {
+            for (let k = 0; k < 3; k++) {
+              const lx = n.x2 + (R() - 0.5) * n.len * 0.6, ly = n.y2 + (R() - 0.6) * n.len * 0.5, lr = n.len * leafScale * (0.35 + R() * 0.35);
+              s += `<path d="M${(lx - lr).toFixed(1)},${ly.toFixed(1)} q${(lr * 0.3).toFixed(1)},${(-lr * 0.9).toFixed(1)} ${lr.toFixed(1)},${(-lr * 0.55).toFixed(1)} q${(lr * 0.7).toFixed(1)},${(-lr * 0.3).toFixed(1)} ${lr.toFixed(1)},${(lr * 0.55).toFixed(1)} q${(-lr * 0.4).toFixed(1)},${(lr * 0.6).toFixed(1)} ${(-lr * 1.1).toFixed(1)},${(lr * 0.35).toFixed(1)} q${(-lr * 0.7).toFixed(1)},${(lr * 0.1).toFixed(1)} ${(-lr * 0.9).toFixed(1)},${(-lr * 0.35).toFixed(1)} Z" fill="${k === 1 ? colLeaf : "#0c161d"}" opacity="${k === 2 ? 0.85 : 1}"/>`;
+            }
+          } else if (q === "medium") {
+            const lr = n.len * leafScale * 0.5;
+            s += `<circle cx="${n.x2.toFixed(1)}" cy="${(n.y2 - lr * 0.3).toFixed(1)}" r="${lr.toFixed(1)}" fill="${colLeaf}"/>`;
+          }
+        }
+        for (const tw of n.twigs) s += `<path d="M${n.x2.toFixed(1)},${n.y2.toFixed(1)} L${tw.x.toFixed(1)},${tw.y.toFixed(1)}" stroke="${colTrunk}" stroke-width="0.9" fill="none" stroke-linecap="round"/>`;
+        let kids = ""; for (const k of n.kids) kids += paint(k);
+        if (n.swayPivot && treesOn) return `<g>${sway(n.swayPivot.x, n.swayPivot.y, n.swayAmt, n.swayDur, R() * 4)}${s}${kids}</g>`;
+        return s + kids;
+      };
+      const body = paint(model.root);
+      return `<g>${sway(tx, baseY, amt, dur, R() * 6)}${body}</g>`;
+    };
+    // plane 3: a mid-near tree left of the path; plane 4: the big tree at the right edge
+    out += nearTree(311, x + w * 0.17, horizon + h * 0.08, h * 0.62, 0.05, 0.8, 8.4, "#0a1218", "#132029", 0.55);
+    out += nearTree(517, x + w * 0.93, horizon + h * 0.22, h * 0.88, -0.09, 1.1, 6.9, "#070d12", "#101a22", 0.62);
+
+    /* ---- WIND: gusts + loose leaves (high only; medium has plane sway) ---- */
+    let wrapped = out;
+    if (q === "high" && treesOn) {
+      // a gust: the whole garden leans (skewX) and springs back, every ~11s
+      wrapped = `<g><animateTransform attributeName="transform" type="skewX" values="0;0;-2.4;-1.4;-2.8;0;0" keyTimes="0;0.55;0.64;0.7;0.76;0.88;1" dur="11s" repeatCount="indefinite" additive="sum"/>
+        <animateTransform attributeName="transform" type="translate" values="0,0;0,0;${(horizon * 0.042).toFixed(1)},0;${(horizon * 0.024).toFixed(1)},0;${(horizon * 0.049).toFixed(1)},0;0,0;0,0" keyTimes="0;0.55;0.64;0.7;0.76;0.88;1" dur="11s" repeatCount="indefinite" additive="sum"/>${out}</g>`;
+      // loose leaves torn across the glass on the gust
+      for (let i = 0; i < 7; i++) {
+        const ly = y + h * (0.25 + R() * 0.5), amp = 6 + R() * 10, dur = 2.2 + R() * 1.6, T = 11;
+        const begin = -(R() * T);
+        const path = `M${x - 8},${ly.toFixed(1)} q${w * 0.25},${-amp} ${w * 0.5},${amp * 0.4} t${w * 0.5 + 16},${-amp * 0.6}`;
+        wrapped += `<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.56;0.6;0.82;0.86;1" dur="${T}s" begin="${begin.toFixed(1)}s" repeatCount="indefinite"/>
+          <animateMotion dur="${T}s" begin="${begin.toFixed(1)}s" repeatCount="indefinite" rotate="auto" path="${path}" keyPoints="0;0;1;1" keyTimes="0;0.56;0.86;1" calcMode="linear"/>
+          <path d="M0,0 q2,-2.6 4.6,-0.2 q-2.4,2.4 -4.6,0.2 Z" fill="#1a2a2a"><animateTransform attributeName="transform" type="rotate" values="0;360" dur="${dur.toFixed(1)}s" repeatCount="indefinite"/></path></g>`;
+      }
+    }
+    return wrapped;
+  }
+
   /* ---- pixel-art trees: hand bitmapped, monochrome with dark pixels ----
      No visual assets are loaded; the trees are drawn cell by cell from these
      bitmaps. Rows may be ragged; the renderer walks each row as a run of
@@ -243,66 +551,77 @@ const Rooms = (() => {
     return `<g>${patch}${blades}</g>`;
   }
 
-  /* the shadow the eaves throw across the wall: a large band whose TOP is a
-     straight line under the eave but whose LOWER edge is a random wavy/curved
-     scalloped line, deeper on one side than the other (the left hangs lower
-     than the right, so the two sides differ). Two such layers drift left-right
-     at different slow periods, so the wavy edge morphs/creeps rather than
-     sliding as one rigid rectangle. No fog, no blur — just a dark, graded
-     shadow with a living edge. */
+  /* the shadow the eaves throw across the wall.
+     Its TOP is the straight line under the gutter (that IS where the eave
+     is), but its LOWER EDGE is a random wavy/curved line: the left half hangs
+     much deeper than the right and the two halves use different wave counts
+     and amplitudes, so left never mirrors right. The edge is not a texture
+     that slides: it MORPHS. Several keyframe shapes of the same band (same
+     seed family, different phase) are tweened through a very slow <animate
+     attributeName="d"> so the scallops swell, shrink and creep - a living
+     cast shadow. No blur, no fog, no mist: a dark, crisp, graded shadow. */
+  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   function _shadowRng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
-  function _wavyShadowBand(seed, depthLeft, depthRight, amp, scallops) {
+  /* one band shape. `phase` shifts the waves (0..1 = one full creep) and
+     `breath` (-1..1) swells/shrinks the scallops, so successive keyframes
+     morph rather than translate. Point COUNT and ORDER are fixed for a given
+     (scallops) so SMIL can interpolate d -> d. */
+  function _wavyShadowBand(seed, depthLeft, depthRight, amp, scallops, phase = 0, breath = 0) {
     const R = _shadowRng(seed);
     const x0 = 150, x1 = 1130, topY = 124;
-    // lower-edge depth at a horizontal parameter t (0=left .. 1=right): a
-    // straight LEFT->RIGHT tilt (left hangs much deeper) PLUS two rolling waves
-    // of unrelated wavelengths plus per-scallop jitter, so the boundary is a
-    // random wavy/curved line — never a straight horizontal edge.
+    const jit = []; for (let i = 0; i <= scallops * 2 + 2; i++) jit.push(R() - 0.5);   // fixed per seed
+    const ph = phase * Math.PI * 2;
     const depthAt = (t) => {
-      const tilt = depthLeft + (depthRight - depthLeft) * t;
-      const roll = Math.sin(t * Math.PI * 2.2 + seed) * amp * 0.7
-                 + Math.sin(t * Math.PI * 5.1 + seed * 1.7) * amp * 0.4
-                 + (R() - 0.5) * amp * 0.7;
-      return Math.max(8, tilt + roll);
+      // asymmetric base: left hangs deep and falls off with an ease, right is shallow
+      const tilt = depthLeft + (depthRight - depthLeft) * Math.pow(t, 0.8);
+      // the LEFT half rolls with long slow waves, the RIGHT half with short
+      // quick ones (different wavelengths per side -> the sides look different)
+      const wl = Math.sin(t * Math.PI * 1.7 + ph + seed) * amp * 0.9
+               + Math.sin(t * Math.PI * 3.3 - ph * 0.6 + seed * 1.7) * amp * 0.45;
+      const wr = Math.sin(t * Math.PI * 6.2 + ph * 1.3 + seed * 0.4) * amp * 0.55
+               + Math.sin(t * Math.PI * 9.1 - ph + seed * 2.3) * amp * 0.3;
+      const mix = t * t;                              // 0 on the left .. 1 on the right
+      const wave = (wl * (1 - mix) + wr * mix) * (1 + breath * 0.35);
+      return clamp(tilt + wave, 8, 92);              // never deeper than the window heads
     };
     const n = scallops;
     const pt = [];
     for (let i = 0; i <= n; i++) {
       const t = i / n;
-      const x = x1 - (x1 - x0) * t;          // walk right -> left
-      pt.push({ x, y: topY + depthAt(1 - t) });
+      const x = x1 - (x1 - x0) * t;                   // walk right -> left
+      pt.push({ x, y: topY + depthAt(1 - t) + jit[i] * amp * 0.5 });
     }
     let edge = "";
     for (let i = 0; i < n; i++) {
       const a = pt[i], b = pt[i + 1];
-      const xm = (a.x + b.x) / 2;
-      const ym = (a.y + b.y) / 2 + (R() - 0.5) * amp * 0.6;
+      const xm = (a.x + b.x) / 2 + jit[n + 1 + i] * 18;
+      // alternate the bulge so the boundary scallops (curves), not zig-zags
+      const bulge = (i % 2 ? 1 : -1) * amp * (0.45 + 0.35 * Math.sin(ph + i * 1.3)) * (1 + breath * 0.5);
+      const ym = (a.y + b.y) / 2 + bulge;
       edge += `Q${xm.toFixed(1)},${ym.toFixed(1)} ${b.x.toFixed(1)},${b.y.toFixed(1)} `;
     }
     return `M${x0},${topY} L${x1},${topY} L${x1},${pt[0].y.toFixed(1)} ${edge} L${x0},${pt[n].y.toFixed(1)} Z`;
   }
   function eaveShadow() {
     const on = animOn("roofShade");
-    // A shadow DARKENS, so each layer is a near-opaque dark slab whose only soft
-    // part is a faint edge fade; a small gaussian penumbra blurs the wavy lower
-    // boundary into the siding (this is a cast-shadow edge, NOT mist — mist is
-    // light and additive, this is dark and multiplicative-looking). Two layers
-    // drift at different slow speeds/directions so the scalloped edge morphs.
-    const layer = (seed, dL, dR, amp, sc, op, dur, dx, blur) => {
-      const d = _wavyShadowBand(seed, dL, dR, amp, sc);
-      const drift = on ? `<animateTransform attributeName="transform" type="translate" values="${-dx},0;${dx},0;${-dx},0" dur="${dur}s" repeatCount="indefinite"/>` : "";
-      const filt = blur ? ` filter="url(#eavepenumbra)"` : "";
-      return `<g opacity="${op}"${filt}>${drift}<path d="${d}" fill="url(#eaveshadow)"/></g>`;
+    // each layer: a closed loop of 5 keyframe shapes (the last = the first)
+    // tweened by SMIL over a long period; a second, slower creep of the whole
+    // layer a few px sideways. Crisp edges only (a cast shadow, not mist).
+    const layer = (seed, dL, dR, amp, sc, op, dur, dx, driftDur) => {
+      const frames = [];
+      for (let k = 0; k < 4; k++) frames.push(_wavyShadowBand(seed, dL, dR, amp, sc, k / 4, Math.sin(k * 1.9 + seed)));
+      frames.push(frames[0]);
+      const morph = on ? `<animate attributeName="d" values="${frames.join(";")}" dur="${dur}s" calcMode="spline" keySplines="0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1" repeatCount="indefinite"/>` : "";
+      const drift = on ? `<animateTransform attributeName="transform" type="translate" values="${-dx},0;${dx},0;${-dx},0" dur="${driftDur}s" repeatCount="indefinite"/>` : "";
+      return `<g opacity="${op}">${drift}<path d="${frames[0]}" fill="url(#eaveshadow)">${morph}</path></g>`;
     };
-    // Three dark wavy layers with VERY different left vs right depths and
-    // unrelated scallop counts, amplitudes and slow drift periods — so the
-    // scalloped boundary visibly morphs and the left reads nothing like the
-    // right. The top layer is crisp (sharp cast edge); the lower two add a
-    // soft, creeping penumbra below it.
+    // three dark bands with very different left/right depths, wave counts
+    // and periods: the union has a deep, rolling left and a shallow, finer
+    // right, and no two layers ever line up.
     return `<g id="v_eaveshadow">
-      ${layer(47, 92, 40, 16, 11, 0.95, 90, 26, false)}
-      ${layer(11, 66, 26, 26, 8,  0.5,  63, 22, true)}
-      ${layer(29, 44, 15, 15, 14, 0.4,  37, -17, true)}
+      ${layer(47, 74, 30, 14, 13, 0.92, 38, 14, 90)}
+      ${layer(11, 58, 20, 18,  9, 0.55, 53, 10, 63)}
+      ${layer(29, 42, 12, 12, 17, 0.42, 29,  8, 41)}
     </g>`;
   }
 
@@ -798,6 +1117,7 @@ const Rooms = (() => {
         <rect x="116" y="126" width="208" height="120" fill="#78818c"/>
         <rect x="116" y="246" width="208" height="98" fill="#4a525c"/>
         <rect x="116" y="228" width="208" height="20" fill="#a8935f" opacity="0.4"/>
+        ${windowBirds("dwin", { x: 116, y: 126, w: 208, h: 218 }, { count: 4, scale: 1.05, band: [0.05, 0.5], flock: true, color: "#3a3f46" })}
         <line x1="220" y1="120" x2="220" y2="350" stroke="#2c241c" stroke-width="7"/>
         <line x1="110" y1="235" x2="330" y2="235" stroke="#2c241c" stroke-width="7"/>
         <!-- the window's light falls as a slanted shaft + moving shadows in the FX layer -->
@@ -1120,6 +1440,7 @@ const Rooms = (() => {
         <g clip-path="url(#gwinclip)">
           ${moonView(600, 180, 12, { soft: false, glowOp: 0.3, skyTop: "#10161f", skyBot: "#1a2230" })}
           ${[...Array(14)].map((_, i) => `<circle cx="${(i * 97 + 30) % 200 + 560}" cy="${(i * 41) % 60 + 152}" r="${i % 3 === 0 ? 1.4 : 0.9}" fill="#cfd8e0" opacity="${0.3 + (i % 4) * 0.12}"/>`).join("")}
+          ${windowBirds("gwin", { x: 560, y: 150, w: 200, h: 150 }, { count: 3, scale: 0.8, band: [0.1, 0.6] })}
           <!-- treetops, seen from above -->
           <path d="M555,268 q30,-26 62,-6 q26,-22 58,-4 q30,-18 60,2 q14,-8 25,-2 L760,305 L555,305 Z" fill="#0c1116"/>
           <path d="M560,282 q40,-16 78,-2 q44,-14 84,2 q20,-8 38,0 L760,305 L555,305 Z" fill="#0a0e13" opacity="0.9"/>
@@ -1242,6 +1563,7 @@ const Rooms = (() => {
       ${moonView(985, 84, 28, { skyTop: "#0d1720", skyBot: "#1b2a33" })}
       <!-- a treeline far away, seen through the mist -->
       <path d="M0,236 q60,-34 120,0 q60,-30 120,0 q60,-30 120,0 q60,-30 120,0 q60,-30 120,0 q60,-30 120,0 q60,-30 120,0 q60,-28 120,0 q60,-30 120,0 q60,-30 120,0 q60,-28 120,0 l0,80 l-1280,0 Z" fill="#0e1a20" opacity="0.9"/>
+      ${windowBirds("cons", { x: 0, y: 40, w: 1280, h: 200 }, { count: 5, scale: 1.3, band: [0.1, 0.9], flock: true, color: "#08101a" })}
       <!-- glass roof: a ridge at top, panes sloping to the eave -->
       <g id="v_conroof">
         <polygon points="0,150 640,34 640,80 0,196" fill="url(#conglass)" opacity="0.95"/>
@@ -1470,13 +1792,10 @@ const Rooms = (() => {
     ${DEFS}
     <defs>
       <filter id="blurf"><feGaussianBlur stdDeviation="3"/></filter>
-      <filter id="eavepenumbra" x="-5%" y="-30%" width="110%" height="200%">
-        <feGaussianBlur stdDeviation="3"/>
-      </filter>
       <linearGradient id="eaveshadow" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#05070b" stop-opacity="0.82"/>
-        <stop offset="0.7" stop-color="#05070b" stop-opacity="0.72"/>
-        <stop offset="1" stop-color="#05070b" stop-opacity="0"/>
+        <stop offset="0" stop-color="#05070b" stop-opacity="0.84"/>
+        <stop offset="0.75" stop-color="#05070b" stop-opacity="0.74"/>
+        <stop offset="1" stop-color="#05070b" stop-opacity="0.5"/>
       </linearGradient>
       <clipPath id="roofclip"><polygon points="150,124 640,30 1130,124"/></clipPath>
       <clipPath id="mistclip"><path clip-rule="evenodd" d="M0,540 H1280 V720 H0 Z M600,574 L680,574 L830,720 L452,720 Z"/></clipPath>
@@ -1711,47 +2030,58 @@ const Rooms = (() => {
         <line x1="602" y1="335" x2="628" y2="333" stroke="#6b5b45" stroke-width="2"/>
         <circle cx="619" cy="303" r="3" fill="#8a4a3a"/>
       </g>
-      <!-- porch light: a cast-iron Dutch wall lantern (muurlantaarn) drawn as a
-           strictly FRONT ELEVATION facing the camera: perfectly symmetric about
-           x=480. The wall bracket is a flat vertical backplate + centered drop
-           ring seen head-on (NOT a sideways hook, which read as a 45 degree
-           view); the cage is a symmetric peaked-cap lantern with vertical mullions,
-           warm glass, a crossbar, base and finial all flat to view. -->
+      <!-- porch light: a cast-iron wall lantern drawn as a strict FRONT
+           ELEVATION (camera square-on to the wall, 0 deg): everything is
+           mirror-symmetric about x=480. Following the head-on reference: a
+           rectangular wall BACKPLATE sits flat on the siding behind the top of
+           the lantern, a symmetric pair of iron SCROLLS holds a centred ring,
+           and the coach lantern hangs from it - peaked cap, finial, a cage
+           that flares slightly toward the base, two vertical mullions + a
+           crossbar over warm glass, and a flat base rail. No side view, no
+           hook seen from the side. -->
       <g id="v_plight">
-        <!-- flat wall backplate (head-on): a small vertical strap on the siding -->
-        <rect x="474" y="250" width="12" height="46" rx="3" fill="#15110d"/>
-        <rect x="476" y="252" width="3" height="42" rx="1.5" fill="#2a231c" opacity="0.7"/>
-        <!-- mounting rosette centred on the strap -->
-        <circle cx="480" cy="262" r="6.5" fill="#1b1712"/>
-        <circle cx="480" cy="262" r="3.2" fill="#2e2620"/>
-        <!-- centered drop ring (the bracket seen head-on, foreshortened) -->
-        <rect x="478.6" y="268" width="2.8" height="12" rx="1.4" fill="#15110d"/>
-        <circle cx="480" cy="283" r="4.2" fill="none" stroke="#15110d" stroke-width="2.6"/>
-        <!-- crown finial + peaked cap (symmetric) -->
-        <path d="M480,284 l-2.4,6 h4.8 z" fill="#15110d"/>
-        <path d="M458,298 L502,298 L494,288 L466,288 Z" fill="#1b1713"/>
-        <path d="M466,288 L494,288 L480,284 Z" fill="#241d17"/>
-        <rect x="457" y="298" width="46" height="5" rx="1.6" fill="#0f0c09"/>
-        <!-- cage frame (head-on rectangle) -->
-        <rect x="463" y="303" width="34" height="42" rx="2.5" fill="#221b15"/>
-        <!-- warm glass pane, symmetric -->
-        <rect x="467" y="307" width="26" height="34" rx="1.5" fill="#f6cf82" opacity="0.97"${" "}
+        <!-- rectangular wall backplate (flat to the wall) -->
+        <rect x="458" y="270" width="44" height="52" rx="2" fill="#15110d"/>
+        <rect x="461" y="273" width="38" height="46" rx="1.5" fill="none" stroke="#2a231c" stroke-width="1"/>
+        <circle cx="464" cy="276" r="1.1" fill="#3a3128"/><circle cx="496" cy="276" r="1.1" fill="#3a3128"/>
+        <circle cx="464" cy="316" r="1.1" fill="#3a3128"/><circle cx="496" cy="316" r="1.1" fill="#3a3128"/>
+        <!-- top stem + symmetric scroll bracket, centred -->
+        <rect x="477.5" y="248" width="5" height="26" rx="2" fill="#15110d"/>
+        <path d="M480,256 c-9,0 -13,-2 -13,-6 c0,-3 3,-4 5,-2 c2,2 0,5 -3,4" fill="none" stroke="#15110d" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M480,256 c9,0 13,-2 13,-6 c0,-3 -3,-4 -5,-2 c-2,2 0,5 3,4" fill="none" stroke="#15110d" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M480,266 c-11,0 -16,-3 -16,-8 c0,-3 3,-4 5,-2 c2,2 0,5 -3,4" fill="none" stroke="#15110d" stroke-width="2.4" stroke-linecap="round"/>
+        <path d="M480,266 c11,0 16,-3 16,-8 c0,-3 -3,-4 -5,-2 c-2,2 0,5 3,4" fill="none" stroke="#15110d" stroke-width="2.4" stroke-linecap="round"/>
+        <!-- centred hanging ring + finial -->
+        <circle cx="480" cy="277" r="3.6" fill="none" stroke="#15110d" stroke-width="2.4"/>
+        <circle cx="480" cy="277" r="3.6" fill="none" stroke="#3a3128" stroke-width="0.8" opacity="0.6"/>
+        <path d="M480,280 l-2.4,5 h4.8 z" fill="#15110d"/>
+        <!-- peaked cap (a symmetric trapezoid seen head-on) + its brim -->
+        <path d="M480,284 L500,299 L460,299 Z" fill="#1d1813"/>
+        <path d="M480,284 L500,299 L480,299 Z" fill="#161210"/>
+        <rect x="455" y="298" width="50" height="4.5" rx="1.5" fill="#0f0c09"/>
+        <rect x="455" y="298" width="50" height="1.4" fill="#3a3128" opacity="0.5"/>
+        <!-- cage body: flares a little toward the base, symmetric -->
+        <path d="M462,303 L498,303 L500,347 L460,347 Z" fill="#221b15"/>
+        <!-- warm glass, symmetric inside the frame -->
+        <path d="M466,307 L494,307 L495.6,343 L464.4,343 Z" fill="#f6cf82" opacity="0.97"${" "}
         ${animOn("lampFlicker") ? ' filter="url(#fxblur2)"' : ""}>
           ${animOn("lampFlicker") ? '<animate attributeName="opacity" values="0.97;0.85;0.94;0.74;0.97" dur="5s" repeatCount="indefinite"/>' : ""}
-        </rect>
-        <!-- inner candle flame core, centred -->
-        <ellipse cx="480" cy="328" rx="3.6" ry="10" fill="#fff3d2" opacity="0.88"/>
-        <ellipse cx="480" cy="330" rx="1.7" ry="5" fill="#fffaf0" opacity="0.9"/>
-        <!-- cast-iron vertical mullions (head-on bars), symmetric -->
-        <rect x="465.4" y="305" width="3" height="38" rx="1" fill="#120f0c"/>
-        <rect x="478.5" y="305" width="3" height="38" rx="1" fill="#120f0c"/>
-        <rect x="491.6" y="305" width="3" height="38" rx="1" fill="#120f0c"/>
-        <!-- crossbar -->
-        <rect x="463" y="324" width="34" height="3" rx="1.2" fill="#120f0c"/>
-        <!-- base ring + drip finial (symmetric) -->
-        <rect x="461" y="345" width="38" height="5.5" rx="2" fill="#15110d"/>
-        <path d="M480,350.5 l-4,8 h8 z" fill="#15110d"/>
-        <circle cx="480" cy="360" r="2.4" fill="#15110d"/>
+        </path>
+        <!-- candle, dead centre -->
+        <rect x="477" y="322" width="6" height="20" rx="1" fill="#fbe6b8" opacity="0.9"/>
+        <ellipse cx="480" cy="319" rx="2.6" ry="6" fill="#fff3d2" opacity="0.92"/>
+        <ellipse cx="480" cy="320" rx="1.2" ry="3.2" fill="#fffaf0"/>
+        <!-- iron frame: two outer uprights, two inner mullions, one crossbar -->
+        <path d="M462,303 L460,347" stroke="#120f0c" stroke-width="2.6"/>
+        <path d="M498,303 L500,347" stroke="#120f0c" stroke-width="2.6"/>
+        <path d="M472,303 L471.4,347" stroke="#120f0c" stroke-width="2"/>
+        <path d="M488,303 L488.6,347" stroke="#120f0c" stroke-width="2"/>
+        <rect x="461" y="323" width="38" height="2.6" rx="1" fill="#120f0c"/>
+        <!-- base rail + drip finial (symmetric) -->
+        <rect x="457" y="346" width="46" height="5.5" rx="2" fill="#15110d"/>
+        <rect x="457" y="346" width="46" height="1.2" fill="#3a3128" opacity="0.5"/>
+        <path d="M480,351.5 l-4,8 h8 z" fill="#15110d"/>
+        <circle cx="480" cy="361" r="2.4" fill="#15110d"/>
       </g>
       <!-- porch floor -->
       <rect x="180" y="548" width="920" height="26" fill="#2b211a"/>
@@ -1978,6 +2308,7 @@ const Rooms = (() => {
           <line x1="130" y1="234" x2="130" y2="300" stroke="#1a140f" stroke-width="4"/>
           <line x1="82" y1="266" x2="178" y2="266" stroke="#1a140f" stroke-width="4"/>
           <circle cx="160" cy="250" r="6" fill="#cfd8e0" opacity="0.5"/>
+          ${windowBirds("hkwin", { x: 84, y: 236, w: 92, h: 62 }, { count: 2, scale: 0.45, band: [0.1, 0.6] })}
           ${State.flag("falseKitchen") ? `<rect x="82" y="234" width="96" height="66" fill="#2a1f2e" opacity="0.5"/>` : ""}
           <!-- the kitchen lamp, far off to the left: a slanted shaft, never an oval -->
           <polygon points="96,256 150,242 212,472 58,472" fill="url(#lampglow)" opacity="0.26">
@@ -2226,6 +2557,7 @@ const Rooms = (() => {
       <!-- window over sink -->
       <g id="v_kwin">
         <rect x="520" y="120" width="240" height="180" fill="url(#nightg)" stroke="#2c241c" stroke-width="10"/>
+        ${windowBirds("kwin", { x: 525, y: 125, w: 230, h: 170 }, { count: 3, scale: 1.2, band: [0.06, 0.55] })}
         <line x1="640" y1="120" x2="640" y2="300" stroke="#2c241c" stroke-width="7"/>
         <line x1="520" y1="210" x2="760" y2="210" stroke="#2c241c" stroke-width="7"/>
         ${falseK ? `<rect x="525" y="125" width="230" height="170" fill="#2a1f2e" opacity="0.55"/>` : moonView(700, 160, 12, { soft: false, glowOp: 0.3, skyTop: "#141b26", skyBot: "#1d2733" })}
@@ -2591,6 +2923,7 @@ const Rooms = (() => {
       <!-- the wrong window: full daylight while the rest of the house is night -->
       <g id="v_lwin">
         <rect x="540" y="130" width="220" height="180" fill="url(#dayg)" stroke="#2c241c" stroke-width="10"/>
+        ${windowBirds("lwin", { x: 545, y: 135, w: 210, h: 170 }, { count: 4, scale: 1, band: [0.05, 0.55], flock: true, color: "#2e3335" })}
         <line x1="650" y1="130" x2="650" y2="310" stroke="#2c241c" stroke-width="7"/>
         <line x1="540" y1="216" x2="760" y2="216" stroke="#2c241c" stroke-width="7"/>
         <circle cx="600" cy="172" r="20" fill="#f2e3b8" opacity="0.95"/>
@@ -2706,38 +3039,35 @@ const Rooms = (() => {
       ${[...Array(16)].map((_, i) => `<circle cx="${60 + i * 80}" cy="${140 + (i % 3) * 120}" r="10" fill="#4a415c" opacity="0.5"/>`).join("")}
       <rect x="0" y="500" width="1280" height="220" fill="url(#floorg)"/>
       <ellipse cx="500" cy="620" rx="260" ry="46" fill="#5d5a7a" opacity="0.35"/>
-      <!-- rain window: a generated night garden behind the glass; the live
-           rain, drifting clouds and a passing bird are drawn over it by the
-           FX layer, all clipped inside the panes so nothing falls indoors -->
+      <!-- rain window: the garden behind the glass is a layered, wind-blown
+           scene (bedroomGarden: far treeline, middle rank, two near trees
+           grown from the shared limb grower, gusts, loose leaves) that
+           changes with the graphics tier; birds cross the sky behind it; the
+           live rain falls in the FX layer; and the water actually touching
+           the pane is drawn last, over everything, as beaded + running drops -->
       <g id="v_cwin">
         <defs>
           <clipPath id="cwinglass"><rect x="905" y="125" width="210" height="180"/></clipPath>
+          <linearGradient id="cwinsky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#111a28"/><stop offset="0.5" stop-color="#1d2b3b"/><stop offset="1" stop-color="#37495c"/>
+          </linearGradient>
+          <linearGradient id="cwinlawn" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#16261f"/><stop offset="1" stop-color="#0c1517"/>
+          </linearGradient>
         </defs>
         <rect x="900" y="120" width="220" height="190" fill="#0b1017"/>
         <g clip-path="url(#cwinglass)">
-          <!-- the night garden, painted cell by cell from generated data:
-               no photograph is loaded, only its approximated colours -->
-          ${windowView(905, 125, 210, 180)}
-          <!-- the night keeps its own weather: huge slow clouds slide over
-               the generated sky and darken it in passes -->
-          <g fill="#0a0e15">
-            <ellipse cx="940" cy="150" rx="90" ry="26" opacity="0.55" filter="url(#fxblur10)">
-              <animateTransform attributeName="transform" type="translate" values="-30,0;60,0;-30,0" dur="95s" repeatCount="indefinite"/>
-            </ellipse>
-            <ellipse cx="1060" cy="136" rx="110" ry="30" opacity="0.5" filter="url(#fxblur10)">
-              <animateTransform attributeName="transform" type="translate" values="20,0;-70,0;20,0" dur="120s" repeatCount="indefinite"/>
-            </ellipse>
-            <ellipse cx="1000" cy="176" rx="130" ry="26" opacity="0.42" filter="url(#fxblur10)">
-              <animateTransform attributeName="transform" type="translate" values="-50,0;40,0;-50,0" dur="140s" repeatCount="indefinite"/>
-            </ellipse>
-          </g>
+          ${bedroomGarden(905, 125, 210, 180)}
+          ${windowBirds("cwin", { x: 905, y: 125, w: 210, h: 180 }, { count: 4, scale: 0.9, band: [0.06, 0.5], flock: true })}
           <!-- cold wash so the picture sits at the room's brightness -->
-          <rect x="905" y="125" width="210" height="180" fill="#0a0e14" opacity="0.34"/>
-          <rect x="905" y="125" width="210" height="60" fill="#0a0e14" opacity="0.18"/>
+          <rect x="905" y="125" width="210" height="180" fill="#0a0e14" opacity="0.22"/>
         </g>
         <line x1="1010" y1="120" x2="1010" y2="310" stroke="#2c241c" stroke-width="7"/>
         <line x1="900" y1="215" x2="1120" y2="215" stroke="#2c241c" stroke-width="7"/>
         <rect x="900" y="120" width="220" height="190" fill="none" stroke="#2c241c" stroke-width="10"/>
+        <!-- the rain that is TOUCHING the glass: beads sitting on the pane and
+             heavier drops that swell and run, leaving wet trails -->
+        <g clip-path="url(#cwinglass)">${glassDrops("cwin", { x: 905, y: 125, w: 210, h: 180 })}</g>
         <!-- a little crack, low in the left pane -->
         <g stroke="#bfe0f2" stroke-width="1.1" fill="none" opacity="0.35">
           <path d="M934,290 L956,272 L968,282 L986,258"/>
@@ -2830,6 +3160,7 @@ const Rooms = (() => {
       ${[...Array(7)].map((_, i) => `<line x1="${i * 200}" y1="620" x2="${i * 200 + 90}" y2="720" stroke="#000" stroke-width="2" opacity="0.5"/>`).join("")}
       <!-- tiny round window: a coin of moonlight -->
       <circle cx="640" cy="180" r="42" fill="url(#nightg)" stroke="#2c241c" stroke-width="8"/>
+      ${windowBirds("awin", { cx: 640, cy: 180, r: 40 }, { count: 2, scale: 0.7, band: [0.15, 0.7] })}
       <line x1="640" y1="140" x2="640" y2="220" stroke="#2c241c" stroke-width="5"/>
       <line x1="600" y1="180" x2="680" y2="180" stroke="#2c241c" stroke-width="5"/>
     </g>
@@ -2905,6 +3236,7 @@ const Rooms = (() => {
       <!-- window -->
       <g id="v_swin">
         <rect x="960" y="110" width="220" height="260" fill="url(#nightg)" stroke="#2c241c" stroke-width="10"/>
+        ${windowBirds("swin", { x: 965, y: 115, w: 210, h: 250 }, { count: 3, scale: 1.25, band: [0.05, 0.5] })}
         <line x1="1070" y1="110" x2="1070" y2="370" stroke="#2c241c" stroke-width="7"/>
         <line x1="960" y1="240" x2="1180" y2="240" stroke="#2c241c" stroke-width="7"/>
         ${moonView(1140, 150, 10, { soft: false, glowOp: 0.3, skyTop: "#141b26", skyBot: "#1d2733" })}
@@ -3318,6 +3650,7 @@ const Rooms = (() => {
         ${[...Array(6)].map((_, i) => `<circle cx="${880 + i * 38}" cy="${126 + (i % 3) * 12}" r="1.1" fill="#cfd8de" opacity="0.5"/>`).join("")}
         <!-- a far headland, low and wrong, on an inland horizon -->
         <path d="M862,196 q40,-10 74,-2 q30,6 52,2 l0,6 l-126,0 Z" fill="#0a1218" opacity="0.9"/>
+        ${windowBirds("bwin", { x: 862, y: 112, w: 236, h: 156 }, { count: 4, scale: 0.9, band: [0.08, 0.55], flock: true, color: "#0a1016" })}
         <line x1="980" y1="112" x2="980" y2="268" stroke="#3d4348" stroke-width="7"/>
         <line x1="862" y1="190" x2="1098" y2="190" stroke="#3d4348" stroke-width="7"/>
         <rect x="846" y="276" width="268" height="10" rx="3" fill="#4a5157"/>
