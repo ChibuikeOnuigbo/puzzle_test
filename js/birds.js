@@ -143,19 +143,19 @@
        raised FLOOR so nothing close to the lens reads too small; far birds
        are genuinely small. */
     sizeBands: {
-      far:  [0.38, 0.56],
-      mid:  [0.60, 0.85],
-      near: [0.85, 1.12],                         // lowered again: birds stay modest
+      far:  [0.34, 0.50],
+      mid:  [0.55, 0.78],
+      near: [0.72, 0.98],                         // greatly reduced: birds stay small
     },
     /* absolute hard ceiling for a near/front bird (post species flavour) */
-    maxNearScale: 1.18,
+    maxNearScale: 1.0,
 
     species: {
-      swift:    { s: 0.74, v: 1.40, wing: "flapper", tint: "#0b0f16" },
-      starling: { s: 0.82, v: 1.20, wing: "flapper", tint: "#0a0e14" },
-      sparrow:  { s: 0.84, v: 1.10, wing: "mixer",   tint: "#0b0f16" },
-      crow:     { s: 1.02, v: 1.06, wing: "mixer",   tint: "#070a0f" },
-      owl:      { s: 1.22, v: 0.95, wing: "mixer",   tint: "#06090d" },
+      swift:    { s: 0.70, v: 1.40, wing: "flapper", tint: "#0b0f16" },
+      starling: { s: 0.76, v: 1.20, wing: "flapper", tint: "#0a0e14" },
+      sparrow:  { s: 0.78, v: 1.10, wing: "mixer",   tint: "#0b0f16" },
+      crow:     { s: 0.96, v: 1.06, wing: "mixer",   tint: "#070a0f", big: true },
+      owl:      { s: 1.05, v: 0.95, wing: "mixer",   tint: "#06090d", big: true },
     },
     speciesRoll: ["swift", "starling", "starling", "sparrow", "sparrow", "crow", "crow"],
     owlChance: 0.04,
@@ -251,18 +251,50 @@
       ctx.quadraticCurveTo(-28, 6, -18, 5);
       ctx.closePath(); ctx.fill();
 
-      // ---- body: a narrow, angular fuselage — a long triangle/teardrop that
+      // ---- body: a narrow angular fuselage — a straight-backed wedge that
       // tapers to a pointed head/beak and pinches to a thin rump at the tail.
-      // No fat oval abdomen: max body depth is only ~13px over a 48px length. ----
+      // No fat oval abdomen. For BIG birds the belly is built from LAYERED
+      // angular feather plates (overlapping triangles/squares), so the abdomen
+      // reads as stacked facets, never a smooth oval blob. ----
+      const big = !!opt.big;
       ctx.beginPath();
-      ctx.moveTo(-22, 2);                       // tail rump (pinched, thin)
-      ctx.quadraticCurveTo(-22, -7, -4, -8);    // back sweeping up to the nape
-      ctx.quadraticCurveTo(8, -9, 18, -7);      // crown over the head
+      ctx.moveTo(-22, 1);                       // tail rump (pinched, thin)
+      ctx.lineTo(-6, -8);                       // straight back to the nape
+      ctx.quadraticCurveTo(8, -10, 18, -7);     // crown over the head
       ctx.quadraticCurveTo(24, -5, 24, -2);     // forehead into face
-      ctx.quadraticCurveTo(22, 1, 14, 4);       // throat
-      ctx.quadraticCurveTo(2, 6, -12, 6);       // shallow breast (straight-ish)
-      ctx.quadraticCurveTo(-20, 5, -22, 2);     // belly tapering back to rump
+      ctx.lineTo(14, 3);                        // throat (angular)
+      ctx.lineTo(-8, big ? 6 : 4);              // breast
+      ctx.lineTo(-22, 1);                       // belly tapering back to rump
       ctx.closePath(); ctx.fill();
+
+      if (big) {
+        // layered abdomen: overlapping FEATHER CHEVRONS that form the slim lower
+        // edge itself (breast -> rump), plus faint internal facet lines. They
+        // tuck flush to the belly so the silhouette stays a narrow wedge — the
+        // layers read as stacked plumage, never a fat oval or dangling blocks.
+        const feats = [ { x: 10, y: 4.4 }, { x: 1, y: 5.6 }, { x: -8, y: 5.4 }, { x: -16, y: 3.4 } ];
+        ctx.fillStyle = tint;
+        for (let i = 0; i < feats.length; i++) {
+          const f = feats[i], w = 7.5, tip = 2.4;
+          // a small downward-pointing feather triangle whose base sits on the
+          // belly line and whose point just kisses below it (scalloped edge).
+          ctx.beginPath();
+          ctx.moveTo(f.x - w * 0.5, f.y - 0.4);
+          ctx.lineTo(f.x + w * 0.5, f.y - 0.9);
+          ctx.lineTo(f.x + 0.4, f.y + tip);
+          ctx.closePath(); ctx.fill();
+        }
+        // internal facet strokes: short angled lines stacked like feather rows
+        ctx.strokeStyle = "rgba(66,76,90,0.6)"; ctx.lineWidth = 0.8; ctx.lineCap = "round";
+        const facets = [ { x: 8, y: 1.4 }, { x: -1, y: 2.6 }, { x: -10, y: 2.2 } ];
+        for (const f of facets) {
+          ctx.beginPath();
+          ctx.moveTo(f.x - 3.4, f.y - 1.6);
+          ctx.lineTo(f.x + 3.2, f.y + 0.4);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = tint;
+      }
 
       // ---- beak (small, pointed) ----
       ctx.beginPath();
@@ -301,21 +333,22 @@
     }
 
     _buildFlyer() {
-      // baked silhouettes are near-black; a couple of frame sets carry an
-      // eye catch-light for the lighter-plumaged (near) birds.
-      const set = (style, shine) => {
+      // baked silhouettes are near-black; frame sets: dark far birds, catch-light
+      // near birds, and a BIG set with the layered-plate abdomen.
+      const set = (style, shine, big) => {
         const frames = [];
         for (let f = 0; f < CFG.flapFrames; f++) {
           const { c, ctx } = this._flyerCanvas();
-          this._drawFlyer(ctx, f / CFG.flapFrames, style, { tint: "#0b0f16", eyeShine: shine });
+          this._drawFlyer(ctx, f / CFG.flapFrames, style, { tint: "#0b0f16", eyeShine: shine, big });
           frames.push(c);
         }
         return frames;
       };
-      this.flyFrames = set("flapper", false);
-      this.flyFramesShine = set("flapper", true);
+      this.flyFrames = set("flapper", false, false);
+      this.flyFramesShine = set("flapper", true, false);
+      this.flyFramesBig = set("flapper", true, true);
       const g = this._flyerCanvas();
-      this._drawFlyer(g.ctx, 0.5, "glider", { tint: "#0b0f16", eyeShine: true });
+      this._drawFlyer(g.ctx, 0.5, "glider", { tint: "#0b0f16", eyeShine: true, big: true });
       this.glideFrame = g.c;
     }
 
@@ -534,9 +567,10 @@
 
       /* keep the whole body above the ceiling / below the floor; a bird on
          final approach may dip lower to reach a perch, but never below ground */
-      const floor = this.state === "landing" ? 432 : CFG.maxFlyY;
-      // landing birds may rise right to the roof ridge (a little above the open
-      // ceiling) to meet a roof perch; otherwise honour the flight floor.
+      // landing birds may rise to the roof ridge (a little above the open
+      // ceiling) for a roof perch, or drop to the low foreground branches for a
+      // tree perch; open flight honours the normal band.
+      const floor = this.state === "landing" ? 505 : CFG.maxFlyY;
       const ceiling = this.state === "landing" ? 12 : CFG.minFlyY;
       this.y = clamp(this.y, ceiling, floor);
       if (this.y >= floor - 0.5 && this.vy > 0) this.vy = 0;   // no sinking into the ground
@@ -663,24 +697,28 @@
         ? rand(CFG.treeStaySec[0], CFG.treeStaySec[1])
         : rand(CFG.perchStaySec[0], CFG.perchStaySec[1]);
       this.leaving = false; this.leaveT = 0;
-      // a per-tree sway phase/rate so birds follow THEIR branch
-      this.swayPhase = (site.x * 0.37) % (Math.PI * 2);
-      this.swayRate = this.onTree ? 0.9 : 0;
+      // the free outer branch this bird grips (from the tree-structure map):
+      // its own sway pivot/amount/duration so the bird rides THAT limb.
+      this.sway = site.sway || null;
+      this.swayPhase = (site.x * 0.37 + site.y * 0.21) % (Math.PI * 2);
     }
     update(dt, sky) {
       this.bornT += dt;
       if (!this.leaving) {
         this.poseT -= dt;
         if (this.poseT <= 0) { this.pose = Math.random() < 0.72 ? 0 : (Math.random() < 0.5 ? 1 : 2); this.poseT = rand(2.5, 9); }
-        // tree birds are grip-locked to the branch: they breathe-bob AND ride
-        // the branch's gentle wind sway (rotation about the feet).
-        this.bob = Math.sin(this.bornT * 2.1) * 0.6;
-        if (this.onTree) {
-          this.branchSway = Math.sin(this.bornT * this.swayRate + this.swayPhase) * 2.6;
+        // tree birds are grip-locked to a free outer branch: a tiny breathe-bob
+        // PLUS the limb's wind sway (a small roll whose amplitude/duration come
+        // from the branch's own sway group).
+        this.bob = Math.sin(this.bornT * 2.1) * 0.5;
+        if (this.onTree && this.sway) {
+          const rate = TAU / Math.max(3, this.sway.dur || 8);
+          this.branchSway = Math.sin(this.bornT * rate + this.swayPhase) * (this.sway.amt || 1.2);
         } else this.branchSway = 0;
         if (this.bornT > this.dwell) { this.leaving = true; this.leaveT = 0; }
       } else {
         this.leaveT += dt; this.y -= dt * 80;
+        this.branchSway = 0;
         if (this.leaveT > 0.4) { this.dead = true; sky.spawnFlyer({ fromPerch: this.site, dir: this.facing }); }
       }
     }
@@ -785,11 +823,21 @@
         { x: 880, y: 76, s: 0.64, face: -1 }, { x: 250, y: 118, s: 0.62, face: 1 },
         { x: 1030, y: 118, s: 0.62, face: -1 }, { x: 352, y: 35, s: 0.66, face: 1 },
       ].map(p => ({ ...p, id: "r" + p.x }));
-      const tree = [
-        { x: 62, y: 296, s: 1.05, face: 1, tree: true }, { x: 128, y: 254, s: 1.0, face: 1, tree: true },
-        { x: 34, y: 420, s: 1.1, face: 1, tree: true }, { x: 1178, y: 298, s: 1.05, face: -1, tree: true },
-        { x: 1236, y: 258, s: 1.0, face: -1, tree: true }, { x: 1148, y: 382, s: 1.1, face: -1, tree: true },
-      ].map(p => ({ ...p, id: "t" + p.x }));
+      // TREE perches come from the SHARED structure map (js/tree-perches.js):
+      // they are the real FREE OUTER branch / twig tips of the two foreground
+      // trees — the unconnected ends that oscillate — so a bird grips an actual
+      // painted branch, never an invented point.
+      let tree = [];
+      if (typeof window !== "undefined" && window.TreePerches && window.TreePerches.anchors) {
+        try {
+          tree = window.TreePerches.anchors().map(a => ({
+            id: a.tree + ":" + Math.round(a.x) + ":" + Math.round(a.y),
+            x: Math.round(a.x), y: Math.round(a.y),
+            s: a.s, face: a.face, tree: true,
+            branchAng: a.ang, sway: a.sway,
+          }));
+        } catch (e) { tree = []; }
+      }
       return { roof, tree };
     }
     /* choose a perch. wantTree picks the group; we only offer sites that are
@@ -852,8 +900,17 @@
       const animsOn = (id) => (typeof AnimReg !== "undefined") ? AnimReg.on(id) : !((typeof Settings !== "undefined") && Settings.get && Settings.get("reducedMotion"));
       const reduced = !animsOn("birds");
       const s = this.sites();
-      for (let i = 0; i < CFG.initialPerchedRoof; i++) { const p = pick(s.roof); if (!this.birds.some(b => b instanceof PerchedBird && b.site === p)) this.birds.push(new PerchedBird(p)); }
-      for (let i = 0; i < CFG.initialPerchedTree; i++) { const p = pick(s.tree); if (!this.birds.some(b => b instanceof PerchedBird && b.site === p)) this.birds.push(new PerchedBird(p)); }
+      const takenId = new Set();
+      const seedFrom = (pool, n) => {
+        for (let i = 0; i < n; i++) {
+          const free = pool.filter(p => !takenId.has(p.id));
+          if (!free.length) break;
+          const p = pick(free); takenId.add(p.id);
+          this.birds.push(new PerchedBird(p));
+        }
+      };
+      seedFrom(s.roof, CFG.initialPerchedRoof);
+      seedFrom(s.tree, CFG.initialPerchedTree);
       if (!reduced) {
         for (let i = 0; i < CFG.foragers; i++) {
           const fy = rand(CFG.ground.yFar, CFG.ground.yNear);
@@ -954,7 +1011,7 @@
         scale = rand(CFG.sizeBands.far[0], CFG.sizeBands.far[1]) * CFG.species[species].s;
       } else {
         // near bird: big enough to read, then the medium/big cap may shrink it
-        scale = Math.max(this._bandFor(2) * CFG.species[species].s, 0.85);
+        scale = this._bandFor(2) * CFG.species[species].s;
         scale = this._capBigBird(scale, dir);
         scale = Math.min(scale, CFG.maxNearScale);   // hard ceiling on biggest bird
         // if the cap downgraded it, send it to the back instead
@@ -1050,7 +1107,7 @@
         scale0 = rand(CFG.sizeBands.far[0], CFG.sizeBands.far[1]) * CFG.species[species].s;
         b.y = clamp(this.roofY(dir === 1 ? 220 : 1060) - rand(10, 70), CFG.minFlyY, 150);
       } else {
-        scale0 = Math.max(this._bandFor(2) * CFG.species[species].s, 0.85);
+        scale0 = this._bandFor(2) * CFG.species[species].s;
         scale0 = this._capBigBird(scale0, dir);
         scale0 = Math.min(scale0, CFG.maxNearScale);
         b.y = rand(150, CFG.maxFlyY - 30);
@@ -1135,9 +1192,12 @@
     }
 
     _drawFlyer(ctx, b, far) {
-      // near/front birds use the eye-catch frame set; far/back birds stay dark
-      const shine = !far && b.depth === "front";
-      const frames = shine && this.baker.flyFramesShine ? this.baker.flyFramesShine : this.baker.flyFrames;
+      // far/back birds stay dark; near/front birds get the catch-light; a BIG
+      // species (crow/owl) uses the layered-plate abdomen set.
+      const isBig = (CFG.species[b.speciesKey] && CFG.species[b.speciesKey].big) || b.size >= CFG.bigBirdScale;
+      const frames = isBig && this.baker.flyFramesBig
+        ? this.baker.flyFramesBig
+        : (!far && b.depth === "front" && this.baker.flyFramesShine ? this.baker.flyFramesShine : this.baker.flyFrames);
       const glide = this.baker.glideFrame;
       const img = b.glideMode ? glide : frames[b.frame % frames.length];
       const ss = img._ss || 1, w = img.width, h = img.height;
@@ -1176,22 +1236,25 @@
       ctx.globalAlpha = 1;
     }
 
-    _drawPerchSprite(ctx, spr, b, extraY = 0) {
-      const u = 3;
+    _drawPerchSprite(ctx, spr, b, extraY = 0, drawToes = false) {
       const k = (30 * b.size) / spr.height;
       const bob = b.bob || 0, peck = b.peck > 0 ? 4 * b.size : 0;
-      const feetY = 0; // sprite bottom sits on the perch (after -height translate)
       ctx.save();
+      // Grip-lock to a swaying branch: rotate the WHOLE bird about the branch's
+      // own sway PIVOT (the limb root, from the tree-structure map) so its feet
+      // move with the painted limb instead of the bird sliding off.
+      if (b.onTree && b.sway && b.sway.px != null && b.branchSway !== 0) {
+        const ang = (b.branchSway || 0) * 0.01;   // small degrees-ish roll
+        ctx.translate(b.sway.px, b.sway.py);
+        ctx.rotate(ang * b.facing * -0.4);
+        ctx.translate(-b.sway.px, -b.sway.py);
+      }
       ctx.translate(b.x + (b.zig || 0), b.y + bob + extraY);
-      // a tree-perched bird is grip-locked to the limb: rotate about its FEET so
-      // it follows the branch's wind sway.
-      if (b.branchSway) ctx.rotate((b.branchSway / 40) * b.facing);
       ctx.scale(b.facing * k, k);
       ctx.drawImage(spr, -spr.width / 2, -spr.height + peck);
-      // eye: in sprite-local units (the scaleX flip handles facing; the bird is
-      // baked facing +x so the head/eye sit on the local right ~0.64 width).
-      // near/front TREE birds get a clear warm catch-light (the lantern catches
-      // them up close); roof/ground birds get a faint dimple.
+      // eye: sprite-local units (scaleX flip handles facing; bird faces +x so
+      // the head/eye sit on the local right). TREE birds up close get a clear
+      // warm catch-light (lantern-lit); roof/ground birds a faint dimple.
       const ex = spr.width * 0.64;
       const ey = spr.height * 0.16 - peck / k;
       const bright = b.onTree;
@@ -1204,26 +1267,26 @@
         ctx.fillStyle = "rgba(200,210,222,0.5)";
         ctx.beginPath(); ctx.arc(ex, ey, 2.6, 0, TAU); ctx.fill();
       }
+      if (drawToes) {
+        // two tiny toe-grips at the feet (sprite bottom), clamped onto the limb
+        ctx.strokeStyle = "#04070b"; ctx.lineWidth = 1.4; ctx.lineCap = "round";
+        for (const s of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(s * 4, -2);
+          ctx.lineTo(s * 9, 2);
+          ctx.stroke();
+        }
+      }
       ctx.restore();
     }
 
     _drawPerched(ctx, b) {
       const spr = this.baker.perchSprite(b.pose);
       if (!spr) return;
-      if (b.onTree && !b.leaving) {
-        // the foreground limb the feet grip
-        ctx.save(); ctx.strokeStyle = "#05080c"; ctx.lineWidth = 6 * b.size + 2; ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(b.x - 30 * b.size, b.y + 3);
-        ctx.quadraticCurveTo(b.x, b.y + 6, b.x + 30 * b.size, b.y + 2);
-        ctx.stroke();
-        ctx.strokeStyle = "rgba(40,52,40,0.5)"; ctx.lineWidth = 2 * b.size;
-        ctx.beginPath();
-        ctx.moveTo(b.x - 30 * b.size, b.y + 1);
-        ctx.quadraticCurveTo(b.x, b.y + 4, b.x + 30 * b.size, b.y + 0);
-        ctx.stroke(); ctx.restore();
-      }
-      this._drawPerchSprite(ctx, spr, b);
+      // No invented branch: the bird sits on a real painted limb of the
+      // foreground tree (SVG layer beneath this canvas), placed there from the
+      // shared tree-structure map. The grip toes are drawn with the sprite.
+      this._drawPerchSprite(ctx, spr, b, 0, !!b.onTree && !b.leaving);
     }
 
     _drawForager(ctx, b) {
@@ -1238,12 +1301,7 @@
         if (b instanceof PerchedBird && !b.leaving) {
           const spr = this.baker.perchSprite(0);
           if (!spr) continue;
-          this._drawPerchSprite(cf, spr, b);
-          if (b.site.tree) {
-            cf.strokeStyle = "#070a0e"; cf.lineWidth = 5 * b.size + 2; cf.lineCap = "round";
-            cf.beginPath(); cf.moveTo(b.x - 26 * b.size, b.y + 2);
-            cf.quadraticCurveTo(b.x, b.y + 5, b.x + 26 * b.size, b.y + 1); cf.stroke();
-          }
+          this._drawPerchSprite(cf, spr, b, 0, !!b.onTree);
         }
       }
     }

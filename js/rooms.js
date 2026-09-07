@@ -616,8 +616,11 @@ const Rooms = (() => {
       return ((r ^ r >>> 14) >>> 0) / 4294967296;
     };
   }
+  /* Render a tree FROM the shared structure model (window.TreePerches), so the
+     painted limbs are exactly the ones the bird engine uses as perch anchors —
+     the map is the drawing. A fallback to a local grow keeps things working if
+     the module isn't present. */
   function vecTree(seed, x, baseY, h, opt = {}) {
-    const R = rngFrom(seed);
     const col = opt.color || "#04060a";
     const leafCol = opt.leafColor || "#05070b";
     const bare = !!opt.bare;
@@ -625,49 +628,54 @@ const Rooms = (() => {
     const rm = !animOn("trees");
     const swayDur = opt.swayDur || 9;
     const swayAmt = opt.swayAmt || 0.5;
-    const maxDepth = opt.maxDepth || 4;
     const sway = (px, py, amt, dur) => `<animateTransform attributeName="transform" type="rotate" values="${(-amt).toFixed(2)} ${px.toFixed(1)} ${py.toFixed(1)};${amt.toFixed(2)} ${px.toFixed(1)} ${py.toFixed(1)};${(-amt).toFixed(2)} ${px.toFixed(1)} ${py.toFixed(1)}" dur="${dur.toFixed(2)}s" repeatCount="indefinite"/>`;
+    const model = (window.TreePerches && window.TreePerches.growTree)
+      ? window.TreePerches.growTree(seed, x, baseY, h, opt)
+      : localGrowTree(seed, x, baseY, h, opt);
+    function paint(n) {
+      let inner = `<path d="M${n.x1.toFixed(1)},${n.y1.toFixed(1)} Q${n.cx.toFixed(1)},${n.cy.toFixed(1)} ${n.x2.toFixed(1)},${n.y2.toFixed(1)}" stroke="${col}" stroke-width="${n.w.toFixed(1)}" fill="none" stroke-linecap="round"/>`;
+      // canopy blobs recorded during growth
+      for (const e of n.canopies) {
+        inner += `<ellipse cx="${e.x.toFixed(1)}" cy="${e.y.toFixed(1)}" rx="${e.rx.toFixed(1)}" ry="${e.ry.toFixed(1)}" fill="${leafCol}" opacity="${e.a}"/>`;
+      }
+      // free twigs at the outer tips
+      for (const tw of n.twigs) {
+        const mx = (n.x2 + tw.x) / 2, my = (n.y2 + tw.y) / 2;
+        inner += `<path d="M${n.x2.toFixed(1)},${n.y2.toFixed(1)} Q${mx.toFixed(1)},${my.toFixed(1)} ${tw.x.toFixed(1)},${tw.y.toFixed(1)}" stroke="${col}" stroke-width="1.2" fill="none" stroke-linecap="round"/>`;
+      }
+      let out = "";
+      for (const k of n.kids) out += paint(k);
+      // limbs that wave carry their own pivot (recorded by the grower)
+      if (n.swayPivot && !rm) {
+        return `<g>${sway(n.swayPivot.x, n.swayPivot.y, n.swayAmt, n.swayDur)}${inner}${out}</g>`;
+      }
+      return inner + out;
+    }
+    const body = paint(model.root);
+    const wrapped = rm ? body : `<g>${sway(x, baseY, swayAmt, swayDur)}${body}</g>`;
+    return `<g pointer-events="none">${wrapped}</g>`;
+  }
+
+  /* fallback grower (only used if tree-perches.js failed to load) */
+  function localGrowTree(seed, x, baseY, h, opt = {}) {
+    const R = rngFrom(seed);
+    const bare = !!opt.bare, lean = opt.lean || 0;
+    const maxDepth = opt.maxDepth || 4;
+    let id = 0; const nodes = [];
     function limb(x1, y1, ang, len, w, depth) {
       const bend = (R() - 0.5) * 0.44;
       const cx = x1 + Math.cos(ang + bend * 0.4) * len * 0.5;
       const cy = y1 + Math.sin(ang + bend * 0.4) * len * 0.5;
-      const x2 = x1 + Math.cos(ang + bend) * len;
-      const y2 = y1 + Math.sin(ang + bend) * len;
-      let inner = `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} Q${cx.toFixed(1)},${cy.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}" stroke="${col}" stroke-width="${Math.max(1.1, w).toFixed(1)}" fill="none" stroke-linecap="round"/>`;
-      if (!bare && depth >= 2 && R() < 0.4) {
-        const rs = len * (0.34 + R() * 0.2);
-        inner += `<ellipse cx="${(x2 - rs * 0.4).toFixed(1)}" cy="${(y2 - rs * 0.3).toFixed(1)}" rx="${(rs * 0.9).toFixed(1)}" ry="${(rs * 0.42).toFixed(1)}" fill="${leafCol}" opacity="0.95"/>`;
-      }
-      if (!bare && depth >= maxDepth - 1) {
-        /* twigs poking past the canopy so the edge is never a clean scallop */
-        for (let k = 0; k < 2; k++) {
-          const ta = ang + (R() - 0.5) * 1.1;
-          const tl = len * (0.5 + R() * 0.4);
-          inner += `<path d="M${x2.toFixed(1)},${y2.toFixed(1)} q${(Math.cos(ta) * tl * 0.5).toFixed(1)},${(Math.sin(ta) * tl * 0.5).toFixed(1)} ${(Math.cos(ta) * tl).toFixed(1)},${(Math.sin(ta) * tl).toFixed(1)}" stroke="${col}" stroke-width="1.2" fill="none" stroke-linecap="round"/>`;
-        }
-      }
-      if (!bare && depth >= 3 && R() < 0.75) {
-        const rr = len * (0.6 + R() * 0.4);
-        inner += `<ellipse cx="${x2.toFixed(1)}" cy="${(y2 - rr * 0.18).toFixed(1)}" rx="${(rr * (1.15 + R() * 0.55)).toFixed(1)}" ry="${(rr * (0.48 + R() * 0.2)).toFixed(1)}" fill="${leafCol}"/>`;
-        inner += `<ellipse cx="${(x2 + rr * 0.5).toFixed(1)}" cy="${(y2 - rr * 0.42).toFixed(1)}" rx="${(rr * 0.8).toFixed(1)}" ry="${(rr * 0.34).toFixed(1)}" fill="${leafCol}" opacity="0.9"/>`;
-      }
-      if (depth >= maxDepth) return inner;
+      const x2 = x1 + Math.cos(ang + bend) * len, y2 = y1 + Math.sin(ang + bend) * len;
+      const node = { id: id++, x1, y1, x2, y2, cx, cy, w: Math.max(1.1, w), depth, canopies: [], twigs: [], kids: [], swayPivot: null, swayAmt: 0, swayDur: 0 };
+      if (depth >= maxDepth) { nodes.push(node); return node; }
       const kids = depth === 0 ? 3 : (bare ? (R() < 0.5 ? 3 : 2) : (R() < 0.35 ? 3 : 2));
-      let out = "";
-      for (let i = 0; i < kids; i++) {
-        const spread = (i - (kids - 1) / 2) * (0.52 + R() * 0.34) + (R() - 0.5) * 0.3;
-        out += limb(x2, y2, ang + spread, len * (0.64 + R() * 0.14), w * 0.6, depth + 1);
-      }
-      if (depth < 2) out += limb(x2, y2, ang + (R() - 0.5) * 0.22, len * 0.76, w * 0.68, depth + 1);
-      /* main limbs wave on their own pivot, faster and wider than the trunk */
-      if (depth <= 1 && !rm) {
-        return `<g>${sway(x1, y1, swayAmt * (1.5 + depth * 0.7 + R() * 0.6), swayDur * (0.5 + R() * 0.28))}${inner}${out}</g>`;
-      }
-      return inner + out;
+      for (let i = 0; i < kids; i++) { const sp = (i - (kids - 1) / 2) * (0.52 + R() * 0.34) + (R() - 0.5) * 0.3; node.kids.push(limb(x2, y2, ang + sp, len * (0.64 + R() * 0.14), w * 0.6, depth + 1)); }
+      if (depth < 2) node.kids.push(limb(x2, y2, ang + (R() - 0.5) * 0.22, len * 0.76, w * 0.68, depth + 1));
+      if (depth <= 1) node.swayPivot = { x: x1, y: y1 };
+      nodes.push(node); return node;
     }
-    const body = limb(x, baseY, -Math.PI / 2 + lean, h * 0.34, Math.max(9, h * 0.042), 0);
-    const wrapped = rm ? body : `<g>${sway(x, baseY, swayAmt, swayDur)}${body}</g>`;
-    return `<g pointer-events="none">${wrapped}</g>`;
+    return { root: limb(x, baseY, -Math.PI / 2 + lean, h * 0.34, Math.max(9, h * 0.042), 0), nodes };
   }
 
   function forestFar() {
