@@ -74,3 +74,72 @@ Run `node scripts/qa/jsdom_check.js` (must print `ALL CHECKS PASSED`) and
 render every room you touched with `scripts/qa/render_still.mjs`, then look
 at the picture. Note anything that couldn't be verified in
 `docs/KNOWN_ISSUES.md`.
+
+## 9. Graphics audit — every visible element, three real tiers
+
+| | |
+|---|---|
+| **Action** | Every visible house element has a quality audit; HIGH / MEDIUM / LOW must be visibly different *scenes* (structure, counts, secondary shapes), never blur/opacity of the same scene. |
+| **How** | Each renderer reads `quality()` and gates detail clusters: `QH` (high-only texture strokes, highlights, props), `QM` (kept on high+medium), the rest always. See `svgHallway`, `svgKitchen`, `svgSittingroom` for the pattern. |
+| **Check** | `node scripts/qa/quality_matrix.js` must print `QUALITY MATRIX PASSED` (pixel-diff threshold per room pair). |
+
+## 10. Anything that opens must close
+
+Every openable object (fridge, drawers, cupboards, closet, sideboard, lockbox,
+hatch) has a valid close state reachable by the same hotspot. `node
+scripts/qa/open_close.js` walks the curated pairs, asserts the `*Open` flag
+flips both ways and the object's own SVG group differs between states.
+
+## 11. Nothing escapes the glass
+
+No exterior object (grass, tree, bird, cloud, sun, moon) may render outside
+its window aperture. `Windows.build()` returns `{defs, exterior}` where the
+exterior is one `<g clip-path=...>`; the caller draws frame/mullions/sill
+AFTER it. `node scripts/qa/jsdom_check2.js` asserts the dining window has no
+unclipped glow ellipse and the frame renders after the clipped exterior. New
+windows must use `Windows.build` or an explicit `clipPath` + frame-after.
+
+## 12. Flies keep personal space and answer the dirt
+
+Separation always beats cohesion; detector boxes with padding; the swarm may
+never collapse to a dot, and ~45% flock loosely while the rest wander. Fly
+attractors come from the `Condition` ledger (dirty state per element), so
+tidying a room weakens the swarm. `node scripts/qa/fly_sim.js` runs 6000
+ticks and asserts min pairwise distance, bounding-box spread, state variety
+(WANDER/ATTRACTED/DART/PAUSE/LAND/REST) and attractor response.
+
+## 13. Doorway truth — what you see is the room you get
+
+An opening with no closed door must show the REAL destination room, rendered
+from the same code as standing in it: `Previews.through(room, aperture, opt)`
+(`js/previews.js`) reuses each room's registered builder (kitchen,
+sittingroom). Never hand-paint a "fake" room behind a doorway. Act-2
+distortions (false kitchen) pass through the same aperture as an overlay, so
+the geometry still matches.
+
+## 14. Doors never at the screen edge; arrows tell the truth
+
+Major doorways stay inside `DOOR_SAFE` (config.js). Off-screen exits are the
+softly glowing edge arrows; arrow visibility, hotspot and tooltip ALL derive
+from `EXIT_DESCRIPTORS` via `NAV_ARROWS`/`exitDescriptor()`, so they can never
+disagree. The hallway's LEFT arrow means "step back outside" (leaving-house
+dialogue), never the kitchen — the kitchen is the open doorway you click.
+`node scripts/qa/nav_audit.js` checks every room.
+
+## 15. No inventory before the satchel
+
+`Game.openInventory()` and the I key refuse until `hasBag` (the satchel found
+in the study). The pocket bar stays hidden; the refusal is said plainly in
+dialogue. Saves persist the unlock like any flag.
+
+## 16. Water goes through states, never vanishes
+
+drip → trickle → stream → sink fill → overflow → floor spread → drain →
+residual → dry. Every transition is a visible intermediate; audio stays in
+step (`js/audio.js` water synth). No abrupt disappearance.
+
+## 17. Spiders and webs earn their place
+
+Spiders have eight legs (body + cephalothorax + 4 visible pairs). Cobwebs only
+in plausible neglect spots (corners, untouched closets, attic, basement) —
+never on tidy surfaces.

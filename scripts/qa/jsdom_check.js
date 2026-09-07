@@ -9,7 +9,7 @@ const boot = `<script>
 window.matchMedia = window.matchMedia || (q => ({ matches:false, media:q, addEventListener(){}, removeEventListener(){}, addListener(){}, removeListener(){} }));
 window.HTMLCanvasElement.prototype.getContext = window.HTMLCanvasElement.prototype.getContext || (() => null);
 </script>`;
-const files = ["js/config.js","js/audio.js","js/core.js","js/forest-data.js","js/window-data.js","js/roof-data.js","js/moon-data.js","js/bird-data.js","js/birds.js","js/rooms.js","js/puzzles.js","js/fx.js","js/fog.js","js/mirror.js","js/main.js"];
+const files = ["js/config.js","js/audio.js","js/core.js","js/debug.js","js/condition.js","js/windows.js","js/painting-data.js","js/artlib.js","js/previews.js","js/forest-data.js","js/window-data.js","js/roof-data.js","js/moon-data.js","js/bird-data.js","js/birds.js","js/tree-perches.js","js/anim-registry.js","js/rooms.js","js/puzzles.js","js/fx.js","js/fog.js","js/mirror.js","js/main.js"];
 for (const f of files) {
   const code = fs.readFileSync(path.join(root,f), "utf8").replace(/<\/script>/gi, "<\\/script>");
   html = html.replace(`<script src="${f}"></script>`, `<script>${code}</script>`);
@@ -51,17 +51,23 @@ const w = dom.window, wait = ms => new Promise(r => setTimeout(r, ms)), ev = c =
   check("gallery right arrow returns to the corridor", ev("document.getElementById('nav-right').dataset.hs === 'gback'"));
   check("gallery is in the house graph", ev("(HOUSE_GRAPH.gallery || []).join(',')") === "landing,conservatory,bathroom");
   check("bathroom hangs off the gallery only", ev("(HOUSE_GRAPH.bathroom || []).join(',')") === "gallery");
-  check("dining no longer touches the gallery", ev("(HOUSE_GRAPH.diningroom || []).join(',')") === "kitchen");
+  check("dining touches kitchen + sitting room only", ev("(HOUSE_GRAPH.diningroom || []).join(',')") === "kitchen,sittingroom");
   // --- outside fog must keep the middle of the frame clear ---
   ev("State.setRoom('porch'); Rooms.render()"); await wait(60);
   check("porch fog keeps mid screen clear", ev("Math.max(...Fog._blobs().filter(b => b.y > 330 && b.y < 520).map(b => b.o), 0)") <= 0.03);
   check("porch floor fog capped at 0.2", ev("Math.max(...Fog._blobs().filter(b => b.y > 560).map(b => b.o), 0)") <= 0.2001);
 
-  // --- persistent flies: >300 in the dining room, surviving re-renders ---
+  // --- flies v2: sane density, mandatory personal space, no dot collapse ---
   ev("State.setRoom('diningroom'); Rooms.render()"); await wait(80);
   const flyN = ev("document.querySelectorAll('#fx-flies .fx-fly').length");
-  check("dining room keeps a big fly population", flyN >= 150);
+  check("dining room fly population is sane (20-60)", flyN >= 20 && flyN <= 60);
   check("fly populations are rolled per room, some scarce some swarming", ev(`(() => { const rs = ["hallway","kitchen","study","attic","basement","childroom","porch","conservatory","gallery"]; const m = rs.map(r => FX._flyMult(r)); return Math.max(...m) / Math.min(...m) >= 2; })()`));
+  // run the simulation a while, then verify separation held (no single-dot cluster)
+  ev("FX._setFlySeed(1234); for (let i=0;i<240;i++) FX._step(1);");
+  const sep = ev("(() => { const s = FX._flyStats(); return s.count ? s.minDist : 99; })()");
+  check("flies keep personal space (min separation > 1px)", sep > 1);
+  const spread = ev("(() => { const s = FX._flyStats(); return s.bboxArea; })()");
+  check("flies spread through the room, not one dot", spread > 40000);
   ev("Rooms.render()"); await wait(30);
   check("flies persist across a re-render", ev("document.querySelectorAll('#fx-flies .fx-fly').length") === flyN);
 

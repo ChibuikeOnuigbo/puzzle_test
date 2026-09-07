@@ -42,3 +42,29 @@ local server. Harnesses live in `scripts/qa/`. Screenshots in `artifacts/visual-
 Screens inspected as images: menu, porch, note, hallway (act 1 & 2), kitchen (before/after
 fix), study, basement (dark/on), CAM 03, knock door, fifth room, choice, ending, mobile menu,
 nested popups. Composition, palette, focal points and readability checked per screen.
+
+## House-wide coherence pass (added with the visual/world upgrade)
+
+Automated suites, all run headless in jsdom + resvg:
+
+- `scripts/qa/jsdom_check.js` / `jsdom_check2.js` — story/logic regression;
+  now also asserts the dining graph row (`kitchen,sittingroom`), clipped
+  window structure (no unclipped glow; frame after clipped exterior), sane fly
+  population + separation, and the sitting room's presence.
+- `scripts/qa/nav_audit.js` — per room: edge arrows exist exactly where
+  `EXIT_DESCRIPTORS` says, tooltips equal the descriptor text, hallway left
+  means OUTSIDE (leaving-house dialogue), DOOR_SAFE margins hold.
+- `scripts/qa/fly_sim.js` — 6000 deterministic ticks: min pairwise distance
+  never collapses, bounding box never shrinks to a dot, ≥3 behaviour states
+  occur (WANDER/ATTRACTED/DART/PAUSE/LAND/REST), attractor strength answers
+  the Condition ledger (dirty 3.34 → tidied 0.88 in the dining room).
+- `scripts/qa/open_close.js` — every curated openable (closet, fridge,
+  drawer, lockbox, sideboard) flips its `*Open` flag both ways and the
+  object's SVG group differs between states and restores exactly.
+- `scripts/qa/quality_matrix.js` — renders each key room at high/medium/low
+  into `artifacts/visual-qa/` and fails unless adjacent tiers differ by the
+  pixel threshold. Stills are meant to be eyeballed too.
+
+Manual visual review for this pass: kitchen, dining, hallway, sitting room,
+landing, child room, basement at high; sitting room fire animation and the
+hatch cord sway read from markup (no browser in sandbox).

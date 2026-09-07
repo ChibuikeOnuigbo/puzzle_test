@@ -1,0 +1,51 @@
+{
+  "source": "art/generated/painting-sitting.png",
+  "grid": [
+    52,
+    42
+  ],
+  "meanLuminance": 24.7,
+  "luminanceRange": [
+    1,
+    215
+  ],
+  "regionShare": [
+    {
+      "palette": 0,
+      "share": 0.137
+    },
+    {
+      "palette": 1,
+      "share": 0.19
+    },
+    {
+      "palette": 2,
+      "share": 0.214
+    },
+    {
+      "palette": 3,
+      "share": 0.165
+    },
+    {
+      "palette": 4,
+      "share": 0.164
+    },
+    {
+      "palette": 5,
+      "share": 0.099
+    },
+    {
+      "palette": 6,
+      "share": 0.03
+    }
+  ],
+  "palette": [
+    "#070503",
+    "#0e0905",
+    "#160d08",
+    "#24140a",
+    "#3e1f0c",
+    "#6c300e",
+    "#b6672c"
+  ]
+}

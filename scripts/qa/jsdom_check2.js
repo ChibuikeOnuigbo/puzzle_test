@@ -14,7 +14,7 @@ window.HTMLCanvasElement.prototype.getContext = window.HTMLCanvasElement.prototy
   window.setTimeout = function(fn, d){ return o(fn, (d||0)/20); };
 })();
 </script>`;
-const files = ["js/config.js","js/audio.js","js/core.js","js/forest-data.js","js/window-data.js","js/roof-data.js","js/moon-data.js","js/bird-data.js","js/birds.js","js/rooms.js","js/puzzles.js","js/fx.js","js/fog.js","js/mirror.js","js/main.js"];
+const files = ["js/config.js","js/audio.js","js/core.js","js/debug.js","js/condition.js","js/windows.js","js/painting-data.js","js/artlib.js","js/previews.js","js/forest-data.js","js/window-data.js","js/roof-data.js","js/moon-data.js","js/bird-data.js","js/birds.js","js/tree-perches.js","js/anim-registry.js","js/rooms.js","js/puzzles.js","js/fx.js","js/fog.js","js/mirror.js","js/main.js"];
 for (const f of files) {
   const code = fs.readFileSync(path.join(root,f), "utf8").replace(/<\/script>/gi, "<\\/script>");
   html = html.replace(`<script src="${f}"></script>`, `<script>${code}</script>`);
@@ -79,7 +79,9 @@ const w = dom.window, wait = ms => new Promise(r=>setTimeout(r,ms)), ev = c => w
   ev("State.setRoom('diningroom'); Rooms.render()"); await wait(60);
   check("dining: no edge door visual", ev("document.querySelectorAll('#v_dback').length") === 0);
   check("dining: feast + spoilt + garbage rendered", q("#v_feast") && q("#v_spoilt") && q("#v_garbage"));
-  check("dining: no oval window glow", ev("document.querySelectorAll('#v_dwin ellipse').length") === 0);
+  check("dining: no unclipped glow ellipse on the window", ev("document.querySelectorAll('#v_dwin > ellipse').length") === 0);
+  check("dining: window exterior is clipped to the glass", ev("!!document.querySelector('#v_dwin [clip-path]')"));
+  check("dining: frame drawn after clipped exterior", ev("(() => { const w = document.getElementById('v_dwin'); const kids = [...w.children]; const ext = kids.findIndex(k => k.getAttribute('clip-path') || k.querySelector('[clip-path]')); const frame = kids.findIndex(k => k.tagName === 'rect' && k.getAttribute('stroke-width') === '10'); return ext > -1 && frame > ext; })()"));
   ev("State.setRoom('study'); Rooms.render()"); await wait(60);
   check("study: no edge door visual, hotspot remains", ev("document.querySelectorAll('#v_sback').length===0 && !!document.querySelector('.hotspot[data-hs=sback]')"));
 
@@ -163,7 +165,8 @@ const w = dom.window, wait = ms => new Promise(r=>setTimeout(r,ms)), ev = c => w
   ev("Settings.set('reducedMotion', false)");   // flies rest under reduced motion
   ev("State.setRoom('diningroom'); Rooms.render()"); await wait(80);
   const fliesN = ev("document.querySelectorAll('#fx-flies .fx-fly').length");
-  check("dining: a large fly population", fliesN >= 150);
+  check("dining: a sane fly population", fliesN >= 20 && fliesN <= 60);
+  check("dining: flies hold personal space", ev("(() => { const s = FX._flyStats(); return s.minDist > 1 && s.bboxArea > 40000; })()"));
   ev("State.setFlag('hallLampOn', !State.flag('hallLampOn')); Rooms.render()"); await wait(40);
   check("dining: flies persist through a re-render", ev("document.querySelectorAll('#fx-flies .fx-fly').length") === fliesN);
   ev("State.addItem('torch'); State.setFlag('torchOn', false); State.setRoom('attic'); Rooms.render()"); await wait(40);

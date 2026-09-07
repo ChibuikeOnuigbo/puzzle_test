@@ -6,7 +6,7 @@ let html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "css", "style.css"), "utf8");
 html = html.replace("</head>", "<style>" + css.replace(/<\/style>/gi, "<\\/style>") + "</style></head>");
 const boot = `<script>window.__QA__=true;window.matchMedia=window.matchMedia||(q=>({matches:false,media:q,addEventListener(){},removeEventListener(){},addListener(){},removeListener(){}}));window.HTMLCanvasElement.prototype.getContext=window.HTMLCanvasElement.prototype.getContext||(()=>null);</script>`;
-const files = ["js/config.js","js/audio.js","js/core.js","js/forest-data.js","js/window-data.js","js/roof-data.js","js/moon-data.js","js/bird-data.js","js/tree-perches.js","js/birds.js","js/anim-registry.js","js/rooms.js","js/puzzles.js","js/fx.js","js/fog.js","js/mirror.js","js/main.js"];
+const files = ["js/config.js","js/audio.js","js/core.js","js/debug.js","js/condition.js","js/windows.js","js/painting-data.js","js/artlib.js","js/previews.js","js/forest-data.js","js/window-data.js","js/roof-data.js","js/moon-data.js","js/bird-data.js","js/tree-perches.js","js/birds.js","js/anim-registry.js","js/rooms.js","js/puzzles.js","js/fx.js","js/fog.js","js/mirror.js","js/main.js"];
 for (const f of files) { const code = fs.readFileSync(path.join(root, f), "utf8").replace(/<\/script>/gi, "<\\/script>"); html = html.replace(`<script src="${f}"></script>`, `<script>${code}</script>`); }
 html = html.replace("<body>", "<body>" + boot);
 const dom = new JSDOM(html, { runScripts: "dangerously", pretendToBeVisual: true, url: "http://localhost/" });
@@ -16,5 +16,6 @@ w.eval(pre || ""); w.eval(`State.setRoom(${JSON.stringify(room)}); Rooms.render(
 w.eval(`(() => { const s = document.querySelector('#scene-holder svg'); const h = s.querySelector('#hotspots'); if (h) h.remove(); s.querySelectorAll('text[data-roomlabel]').forEach(t => t.remove()); })()`);
 const svg = w.eval(`new XMLSerializer().serializeToString(document.querySelector('#scene-holder svg'))`);
 const stats = w.eval(`(() => { const s = document.querySelector('#scene-holder svg'); return { wb: [...s.querySelectorAll('[data-window-birds]')].map(g => g.dataset.windowBirds + ':' + g.querySelectorAll('.wb-bird').length), drops: [...s.querySelectorAll('[data-glass-drops]')].map(g => g.dataset.glassDrops + ':' + g.dataset.beads + '/' + g.dataset.runners) }; })()`);
+fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, new Resvg(svg, { fitTo: { mode: "width", value: 1280 }, font: { loadSystemFonts: true }, background: "#000" }).render().asPng());
 console.log("wrote", out, JSON.stringify(stats)); w.close(); process.exit(0);

@@ -982,10 +982,14 @@ const RoomActions = {
         Dialogue.say(`The drawer slides open. ${capword(C.batteries)} batteries inside, rolling to a stop. ${capword(C.batteries)}.`);
         Rooms.render();
       } else {
+        /* anything that opens must close: a second click shuts the drawer */
+        State.setFlag("drawerOpen", false);
+        AudioM.close();
         Dialogue.say(Dialogue.pick("drawer2", [
-          `${capword(C.batteries)} batteries. For what? Every clock in this house stopped by choice.`,
-          `Still ${numword(C.batteries)} batteries. Still no idea what they were for.`,
+          `I slide the drawer shut. ${capword(C.batteries)} batteries. For what? Every clock in this house stopped by choice.`,
+          `Closed. Still ${numword(C.batteries)} batteries in there. Still no idea what they were for.`,
         ]));
+        Rooms.render();
       }
     },
     lockbox() {
@@ -997,8 +1001,20 @@ const RoomActions = {
           Dialogue.say("The study key. Small, brass, and warm, like someone just put it down.");
           Rooms.render();
         } else {
-          Dialogue.say("The lockbox sits open and empty.");
+          /* the lid closes again once its secret is out */
+          State.setFlag("lockboxOpen", false);
+          AudioM.close();
+          Dialogue.say("I let the lid fall. The dial rests at zero, keeping its own counsel.");
+          Rooms.render();
         }
+        return;
+      }
+      if (State.flag("tookStudyKey") || State.flag("studyUnlocked")) {
+        /* already solved: reopens freely, no keypad ritual twice */
+        State.setFlag("lockboxOpen");
+        AudioM.open();
+        Dialogue.say("Open again. Empty steel, and the smell of machine oil.");
+        Rooms.render();
         return;
       }
       if (!State.flag("sawList")) {
@@ -1101,13 +1117,13 @@ const RoomActions = {
   /* ============ DINING ROOM / ARCHIVE ============ */
   diningroom: {
     dback() { Rooms.goto("kitchen", null); },
-    fire() {
-      Dialogue.say(Dialogue.pick("fire", [
-        "A fireplace, boarded over with its own mantel shelf still up. Three planks, each at its own angle, nailed from the room side.",
-        "Whoever closed this fire closed it from in here, and meant it. There is ash in the hearth and one log that never got its turn.",
-        "The house has plenty of ways through its walls. This is one it decided to shut. I do not know which of us it was keeping out.",
-      ]));
-      State.addAware(1);
+    gositting() {
+      const first = !State.flag("visitedSitting");
+      State.setFlag("visitedSitting");
+      Rooms.goto("sittingroom", first ? [
+        "The boards are down, and the doorway is open. Beyond it, a sitting room I am certain was never on any plan of this house.",
+        "A fire is burning in there. Someone is keeping it fed. I have been here eleven years too late to meet them.",
+      ] : null);
     },
     dwin() {
       State.addAware(1);
@@ -1308,6 +1324,67 @@ const RoomActions = {
       Dialogue.say(Dialogue.pick("chalk", [
         "A chalk line on the floor in the shape of the table. Drawn around something that is no longer standing there.",
         "The house rearranged this room to make space for its filing. It even marked where the furniture used to live.",
+      ]));
+    },
+  },
+
+  /* ============ THE SITTING ROOM ============ */
+  sittingroom: {
+    sitback() { Rooms.goto("diningroom", null); },
+    fire() {
+      State.addAware(1);
+      Dialogue.say(Dialogue.pick("sitfire", [
+        "A real fire, laid and lit, drawing clean up the chimney. The coals are banked the way someone does who means to come back to them.",
+        "I hold my hand to it. Warm. Not old-warm, not remembered-warm. Now-warm. Someone fed this within the hour.",
+        "The mantel is swept. The ash is sifted. This is the one room in the house that is being looked after, and I cannot say by whom.",
+      ]));
+    },
+    mantel() {
+      Dialogue.say(Dialogue.pick("sitmantel", [
+        "Two brass candlesticks, lit, and a small clock stopped at 8:17. Of course it is.",
+        "A grey vase, empty and clean, and a clock with no interest in any time but one.",
+      ]));
+    },
+    spaint() {
+      State.addAware(1);
+      Dialogue.say(Dialogue.pick("sitpaint", [
+        "An oil painting in low warm tones: a room lit by a fire, done by someone who loved the dark around the light.",
+        "The brushwork is thick near the flames and thin at the edges, like the painter ran out of everything at the borders.",
+        "I look closer. The room in the painting has five chairs. This one has two seats and a place for logs.",
+      ]));
+    },
+    armchair() {
+      Dialogue.say(Dialogue.pick("sitchair", [
+        "A deep armchair turned toward the hearth. The cushion still holds a shape, the way a bed does when someone has only just stood up.",
+        "The fabric is worn shiny on the arms from two hands resting there, night after night.",
+      ]));
+    },
+    sofa() {
+      Dialogue.say(Dialogue.pick("sitsofa", [
+        "The sofa is soft enough to lose a day in. A folded throw lies across one end, warm to the touch.",
+        "I do not sit. It is not my house, and the cushion that holds a shape is not mine to fill.",
+      ]));
+    },
+    slamp() {
+      const on = State.flag("sitLampOn") !== false;
+      if (on) {
+        State.setFlag("sitLampOn", false);
+        AudioM.close();
+        Dialogue.say(Dialogue.pick("slampOff", [
+          "I switch the reading lamp off. The fire takes over the room, and the shadows lean in closer.",
+        ]));
+      } else {
+        State.setFlag("sitLampOn", true);
+        AudioM.open();
+        Dialogue.say(Dialogue.pick("slampOn", [
+          "The reading lamp comes on, warm and steady. Between it and the fire the room feels almost lived in.",
+        ]));
+      }
+      Rooms.render();
+    },
+    logs() {
+      Dialogue.say(Dialogue.pick("sitlogs", [
+        "A basket of dry, split logs, stacked neatly. Enough for a long evening. The house keeps this room supplied.",
       ]));
     },
   },

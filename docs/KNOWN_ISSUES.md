@@ -429,3 +429,17 @@ not runnable in this sandbox (Chromium download is blocked here).
   this pass); SMIL flapping / animateMotion / the running drops were checked
   by reading the generated markup, not in a browser (Chromium is unavailable
   in the sandbox).
+
+## House-wide coherence pass — known limitations
+
+- Sitting room and previews render in jsdom/resvg stills only; SMIL fire
+  flicker, lamp glow breathing and the hatch-cord pendulum are verified by
+  markup inspection, not in a real browser.
+- The extraction pipeline (`scripts/gen/painting.js`) needs `npm install`
+  (sharp). The shipped `js/painting-data.js` is committed so the game itself
+  still needs no build step and no node_modules.
+- Quality tiers trade detail clusters (stripe counts, brick rows, highlights,
+  prop counts). In very dark rooms (basement) the difference is structural
+  but subtle by candlelight; the matrix threshold was tuned to catch it.
+- `windowView()` (pixel-grid legacy) remains defined but unused; removal is
+  safe and deferred.

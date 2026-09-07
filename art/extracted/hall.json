@@ -1,0 +1,51 @@
+{
+  "source": "art/generated/painting-hall.png",
+  "grid": [
+    44,
+    56
+  ],
+  "meanLuminance": 31.1,
+  "luminanceRange": [
+    1,
+    183
+  ],
+  "regionShare": [
+    {
+      "palette": 0,
+      "share": 0.205
+    },
+    {
+      "palette": 1,
+      "share": 0.234
+    },
+    {
+      "palette": 2,
+      "share": 0.214
+    },
+    {
+      "palette": 3,
+      "share": 0.118
+    },
+    {
+      "palette": 4,
+      "share": 0.16
+    },
+    {
+      "palette": 5,
+      "share": 0.043
+    },
+    {
+      "palette": 6,
+      "share": 0.024
+    }
+  ],
+  "palette": [
+    "#0a0705",
+    "#16100b",
+    "#281b10",
+    "#242a2c",
+    "#4c321a",
+    "#324956",
+    "#a77034"
+  ]
+}

@@ -116,7 +116,17 @@ const Game = (() => {
     return m === 1 ? "a minute ago" : m + " minutes ago";
   }
 
+  /* THE SATCHEL RULE: the inventory is locked until the player has actually
+     FOUND the bag in the study. Before that there is nowhere to keep things,
+     and the game says so plainly instead of pretending a bag exists. */
   function openInventory() {
+    if (!State.flag("hasBag")) {
+      Dialogue.say(Dialogue.pick("nobag", [
+        "I have nothing to carry things in. My pockets are not a plan.",
+        "No bag, no satchel, nothing. If this house wants me to keep its things, it can provide somewhere to keep them.",
+      ]));
+      return;
+    }
     const el = document.createElement("div");
     const paint = () => {
       const bag = State.bagList();

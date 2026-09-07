@@ -1,5 +1,8 @@
-/* HOUSE 17 — FX layer: realistic moving lights (cones, slanted pools, motes),
-   smart flies, real rain, cobwebs and spiders. All hand authored, no canvas. */
+/* HOUSE 17 — FX layer: motivated light (cones, slanted pools, motes),
+   the fly engine v2 (personal space + states + spatial grid), real rain,
+   cobwebs and eight-legged spiders. All hand authored, no canvas.
+   See docs/ENVIRONMENTAL_STATE.md (flies/condition) and
+   docs/GRAPHICS_PIPELINE.md §debug for the debug overlays. */
 "use strict";
 
 const FX = (() => {
@@ -16,7 +19,12 @@ const FX = (() => {
     if (parent) parent.appendChild(n);
     return n;
   }
-  function rnd(a, b) { return a + Math.random() * (b - a); }
+  /* seedable RNG so fly QA is deterministic (FX._setFlySeed) */
+  let _seed = 987654321 >>> 0;
+  function rnd(a, b) {
+    _seed = (_seed * 1664525 + 1013904223) >>> 0;
+    return a + (_seed / 4294967296) * (b - a);
+  }
 
   /* ---------------- light definitions per room ----------------
      Every light is a cone (slanted trapezium meeting near the source,
@@ -53,6 +61,22 @@ const FX = (() => {
         cone: [[150, 235], [290, 235], [382, 560], [42, 560]],
         pool: [[42, 560], [382, 560], [358, 590], [66, 590]], op: 0.11, poolOp: 0.15, motes: 16,
         shadow: { pts: [[180, 560], [340, 560], [330, 592], [190, 592]], drift: 26 , core: false} },
+      /* firelight spilling in from the sitting room doorway */
+      { src: [115, 430], floorY: 560, spread: [20, 330], color: "#e8842a",
+        cone: [[70, 400], [170, 400], [300, 566], [10, 566]],
+        pool: [[10, 566], [300, 566], [280, 592], [26, 592]], op: 0.07, poolOp: 0.09, motes: 6, core: false,
+        when: () => !State.flag("roomDeleted_child") },
+    ],
+    sittingroom: [
+      /* the fire itself: warm, breathing, reaching the rug and the sofa */
+      { src: [270, 470], floorY: 560, spread: [60, 640], color: "#e8842a",
+        cone: [[210, 430], [330, 430], [560, 580], [40, 580]],
+        pool: [[40, 580], [560, 580], [520, 610], [70, 610]], op: 0.15, poolOp: 0.2, motes: 10, core: false },
+      /* a reading lamp beside the sofa */
+      { src: [700, 430], floorY: 560, spread: [600, 830], color: "#e8a04c",
+        cone: [[688, 428], [712, 428], [790, 566], [610, 566]],
+        pool: [[610, 566], [790, 566], [770, 590], [626, 590]], op: 0.1, poolOp: 0.14, motes: 8,
+        when: () => State.flag("sitLampOn") !== false },
     ],
     study: [
       { src: [520, 396], floorY: 560, spread: [330, 720], color: "#e8a04c",
@@ -109,170 +133,275 @@ const FX = (() => {
     ],
   };
 
-  /* Flies are everywhere the house is, small and loyal. The dining room
-     rots, so it keeps three hundred and more of them to itself; every other
-     room keeps its own smaller cloud. Each population is persistent: it is
-     built once per room per session, so switching a light on or off (which
-     re-renders the room) never makes the flies blink out and back in. */
-  const FLY_ROOMS = { hallway: 0.85, kitchen: 0.9, diningroom: 1.0, attic: 0.7, basement: 0.75, study: 0.5, childroom: 0.4, porch: 0.3, conservatory: 0.55, gallery: 0.5, bathroom: 0.3 };
+  /* =====================================================================
+     FLIES v2 — realistic behaviour with MANDATORY personal space.
+     ---------------------------------------------------------------------
+     Every fly owns: position, velocity, heading, a padded PERSONAL
+     DETECTOR BOX (radius pr), a state, an attractor and, for ~45% of the
+     room, a loose flock membership.
+
+     The one absolute: SEPARATION ALWAYS BEATS COHESION. Two detector
+     regions overlap -> repel; centres may never visually coincide. This
+     kills the old single-dot collapse.
+
+     Behaviour states: WANDER, ATTRACTED, DART, PAUSE, LAND, REST,
+     DISTURBED. Not every fly is permanently airborne: some land on the
+     table, the rubbish, the window sill, rest, then take off again.
+
+     Populations are sane per room (Condition + quality tier) and rolled
+     once per session so re-renders never blink them out.
+  ===================================================================== */
+  const FLY_ROOMS = { hallway: 0.8, kitchen: 0.85, diningroom: 1.0, attic: 0.7, basement: 0.7, study: 0.5, childroom: 0.4, porch: 0.3, conservatory: 0.55, gallery: 0.5, bathroom: 0.3, sittingroom: 0.18 };
   const FLY_COUNTS = {
-    diningroom: [150, 190], kitchen: [70, 95], attic: [55, 80], basement: [50, 75],
-    hallway: [40, 64], study: [30, 46], conservatory: [30, 46], childroom: [24, 36], porch: [18, 28], gallery: [24, 36], bathroom: [16, 26],
+    diningroom: [26, 34], kitchen: [14, 20], attic: [14, 20], basement: [12, 18],
+    hallway: [8, 14], study: [7, 11], conservatory: [8, 12], childroom: [5, 9],
+    porch: [6, 10], gallery: [6, 10], bathroom: [4, 8], sittingroom: [3, 6],
   };
-  /* Every room rolls its own fly population ONCE per session: a quarter of
-     rooms come out nearly empty, a third moderate, the rest swarming. Two
-     playthroughs of the same house never smell quite the same. */
   const flyRoll = {};
   function flyMultiplier(room) {
     if (flyRoll[room] == null) {
       const r = Math.random();
       flyRoll[room] = room === "diningroom"
-        ? rnd(1.0, 1.25)                       // the rot is always here, in quantity
-        : r < 0.25 ? rnd(0.08, 0.25) : r < 0.6 ? rnd(0.35, 0.7) : rnd(0.9, 1.4);
+        ? 0.9 + r * 0.35                     // the rot is always here, in quantity
+        : r < 0.25 ? 0.08 + r * 0.68 : r < 0.6 ? 0.35 + r * 0.35 : 0.9 + r * 0.5;
     }
     return flyRoll[room];
   }
 
-  /* places flies actually want to be: garbage, spoilt food, open wounds of light */
-  const FLY_ATTRACTORS = {
-    diningroom: [
-      { x: 390, y: 608, when: () => !State.flag("diningTidied") },  // the plate gone bad
-      { x: 955, y: 596, when: () => !State.flag("diningTidied") },  // the rubbish bags
-      { x: 640, y: 610 },                                            // the laid feast
-    ],
-    bathroom: [
-      { x: 660, y: 450 },    // the warm still water
-    ],
-    conservatory: [
-      { x: 1120, y: 556 },   // the gramophone, still warm
-      { x: 640, y: 560 },    // the iron bench
-    ],
+  /* places flies want: dirty things (Condition ledger), then warm lights */
+  function gatherAttractors(room) {
+    const out = [];
+    if (typeof Condition !== "undefined") Condition.attractors(room).forEach(a => out.push({ ...a }));
+    (LIGHTS[room] || []).forEach(s => {
+      if (s.color && s.color.startsWith("#e8") && (!s.when || s.when())) out.push({ x: s.src[0], y: s.src[1] + 30, s: 0.34, id: "light" });
+    });
+    if (room === "hallway") {
+      if (State.flag("mirrorShattered") || State.flag("mirrorCracked")) out.push({ x: 720, y: 256, s: 0.5, id: "mirrorHollow" });
+      if (State.flag("mirrorBlood")) out.push({ x: 460, y: 300, s: 0.9, id: "blood" });
+    }
+    if (!out.length) out.push({ x: 640, y: 240, s: 0.2, id: "room" });
+    return out;
+  }
+
+  /* landing spots per room (tabletops, sills, rubbish) — deterministic-ish */
+  const LAND_SPOTS = {
+    diningroom: [[368, 596], [640, 590], [900, 588], [1110, 580], [220, 480]],
+    kitchen: [[330, 414], [575, 580], [640, 430], [940, 540], [210, 560]],
+    hallway: [[720, 414], [420, 560]],
+    study: [[520, 452], [900, 560]],
+    attic: [[400, 560], [800, 540]],
+    basement: [[640, 520], [300, 540]],
   };
 
-  /* persistent fly populations, one per room */
   const flyStore = {};
+  let flyDebugEls = [];
 
-  function lightLayer(spec, i) {
-    const g = mk("g", { class: "fx-light", "data-fx": "light" });
-    const fl = "url(#fxblur8)";
-    const gradId = "fxcone" + i;
-    const poolId = "fxpool" + i;
-
-    const cg = mk("linearGradient", { id: gradId, x1: "0", y1: "0", x2: "0", y2: "1" });
-    mk("stop", { offset: "0", "stop-color": spec.color, "stop-opacity": "0.85" }, cg);
-    mk("stop", { offset: "0.5", "stop-color": spec.color, "stop-opacity": "0.32" }, cg);
-    mk("stop", { offset: "1", "stop-color": spec.color, "stop-opacity": "0" }, cg);
-    g.appendChild(cg);
-
-    const pg = mk("linearGradient", { id: poolId, x1: "0", y1: "0", x2: "1", y2: "0" });
-    mk("stop", { offset: "0", "stop-color": spec.color, "stop-opacity": "0" }, pg);
-    mk("stop", { offset: "0.5", "stop-color": spec.color, "stop-opacity": "0.9" }, pg);
-    mk("stop", { offset: "1", "stop-color": spec.color, "stop-opacity": "0" }, pg);
-    g.appendChild(pg);
-
-    // the beam: slanted trapezium, softened, breathing and drifting
-    const cone = mk("polygon", {
-      points: spec.cone.map(p => p.join(",")).join(" "),
-      fill: "url(#" + gradId + ")", filter: fl, opacity: spec.op, "mix-blend-mode": "screen",
-    }, g);
-    mk("animate", { attributeName: "opacity", values: `${spec.op};${spec.op * 0.72};${spec.op * 0.9};${spec.op}`, dur: `${rnd(4, 8)}s`, repeatCount: "indefinite" }, cone);
-    mk("animateTransform", { attributeName: "transform", type: "translate", values: "0,0;-6,0;0,0;6,0;0,0", dur: `${rnd(9, 16)}s`, repeatCount: "indefinite" }, cone);
-
-    // the floor pool: slanted parallelogram, never an oval
-    const pool = mk("polygon", {
-      points: spec.pool.map(p => p.join(",")).join(" "),
-      fill: "url(#" + poolId + ")", filter: "url(#fxblur10)", opacity: spec.poolOp, "mix-blend-mode": "screen",
-    }, g);
-    mk("animate", { attributeName: "opacity", values: `${spec.poolOp};${spec.poolOp * 0.7};${spec.poolOp}`, dur: `${rnd(5, 9)}s`, repeatCount: "indefinite" }, pool);
-
-    // an object shadow that slowly slides across the light: keeps the room breathing
-    if (spec.shadow) {
-      const sh = mk("polygon", {
-        points: spec.shadow.pts.map(p => p.join(",")).join(" "),
-        fill: "#0a0c10", filter: "url(#fxblur8)", opacity: 0.22,
-      }, g);
-      const d = spec.shadow.drift || 20;
-      mk("animateTransform", { attributeName: "transform", type: "translate", values: `0,0;${d},0;0,0;-${d},0;0,0`, dur: `${rnd(11, 18)}s`, repeatCount: "indefinite" }, sh);
-    }
-
-    // a small bright core near the source (small slanted quad, not a circle).
-    // window lights pass core:false: moonlight has no fixture to glow from.
-    if (spec.core === false) return g;
-    const core = mk("polygon", {
-      points: `${spec.src[0] - 5},${spec.src[1] - 4} ${spec.src[0] + 5},${spec.src[1] - 4} ${spec.src[0] + 4},${spec.src[1] + 5} ${spec.src[0] - 4},${spec.src[1] + 5}`,
-      fill: "#ffd894", filter: "url(#fxblur8)", opacity: 0.55,
-    }, g);
-    mk("animate", { attributeName: "opacity", values: "0.55;0.42;0.52;0.55", dur: `${rnd(3, 6)}s`, repeatCount: "indefinite" }, core);
-
-    // drifting dust motes inside the beam
-    const n = spec.motes || 10;
-    const bx = Math.min(spec.cone[0][0], spec.cone[3][0]);
-    const bw = Math.max(spec.cone[1][0], spec.cone[2][0]) - bx;
-    const by = Math.min(spec.cone[0][1], spec.cone[1][1]);
-    const bh = Math.max(spec.cone[2][1], spec.cone[3][1]) - by;
-    for (let k = 0; k < n; k++) {
-      const mx = bx + rnd(0, bw), my = by + rnd(0, bh), o = rnd(0.2, 0.7);
-      const m = mk("circle", {
-        class: "fx-mote", cx: mx, cy: my,
-        r: rnd(0.7, 1.5), fill: spec.color, opacity: o, filter: "url(#fxblur2)",
-      }, g);
-      motes.push({
-        el: m, x0: mx, y0: my, x: mx, y: my,
-        ph: rnd(0, Math.PI * 2), sp: rnd(0.12, 0.34), amp: rnd(3, 8), up: rnd(0.08, 0.2), o,
-      });
-    }
-    return g;
-  }
-
-  function buildLights(room) {
-    const root = svgEl.querySelector("#fx-lights");
-    (LIGHTS[room] || []).forEach((spec, i) => {
-      if (spec.when && !spec.when()) return;
-      root.appendChild(lightLayer(spec, i));
-    });
-  }
-
-  /* ---------------- smart flies (persistent per room) ---------------- */
   function buildFlyState(room) {
-    const specs = (LIGHTS[room] || []).map(s => ({ x: s.src[0], y: s.src[1] }));
-    // blood / night light / "concentration" attractors: mirror hollow + any blood wall
-    if (room === "hallway") {
-      if (State.flag("mirrorShattered") || State.flag("mirrorCracked")) specs.push({ x: 720, y: 256 });
-      if (State.flag("mirrorBlood")) specs.push({ x: 460, y: 300 });
-    }
-    (FLY_ATTRACTORS[room] || []).forEach(a => { if (!a.when || a.when()) specs.push({ x: a.x, y: a.y }); });
-    if (!specs.length) specs.push({ x: 640, y: 200 });
-    const base = (FLY_COUNTS[room] || [20, 30]);
-    const count = Math.max(4, Math.round((base[0] + rnd(0, base[1] - base[0])) * flyMultiplier(room)));
+    const attractors = gatherAttractors(room);
+    const base = (FLY_COUNTS[room] || [8, 12]);
+    let count = Math.max(3, Math.round((base[0] + rnd(0, base[1] - base[0])) * flyMultiplier(room)));
+    const q = (typeof Art !== "undefined") ? Art.tier() : "high";
+    if (q === "medium") count = Math.max(3, Math.round(count * 0.6));
+    if (q === "low") count = Math.max(2, Math.round(count * 0.35));
+    const spots = LAND_SPOTS[room] || [[640, 560], [320, 540], [960, 540]];
     const data = [];
     for (let i = 0; i < count; i++) {
+      /* weighted attractor pick by strength */
+      let tot = 0; attractors.forEach(a => tot += a.s);
+      let pick = attractors[0], roll = rnd(0, tot);
+      for (const a of attractors) { roll -= a.s; if (roll <= 0) { pick = a; break; } }
       data.push({
-        x: rnd(80, 1200), y: rnd(120, 520),
-        vx: rnd(-0.4, 0.4), vy: rnd(-0.4, 0.4),
-        ph: rnd(0, Math.PI * 2), r: rnd(0.9, 1.6),
-        attract: specs[Math.floor(rnd(0, specs.length))],
-        straggler: Math.random() < 0.22,
+        x: rnd(90, 1190), y: rnd(120, 520),
+        vx: rnd(-0.3, 0.3), vy: rnd(-0.3, 0.3),
+        r: rnd(0.9, 1.5),               // visual size
+        pr: rnd(8, 14),                 // personal detector radius (padded)
+        phase: rnd(0, Math.PI * 2),
+        state: "WANDER", t: rnd(1, 4),
+        attract: pick,
+        flock: rnd(0, 1) < 0.45,        // 45% loose flock membership
+        orbit: rnd(0, Math.PI * 2),
+        orbitR: rnd(14, 44),            // each fly circles its OWN point
+        home: { x: rnd(140, 1140), y: rnd(140, 500) },
+        spot: spots[Math.floor(rnd(0, spots.length))],
+        straggler: rnd(0, 1) < 0.2,
+        landed: false,
       });
     }
-    return data;
+    return { data, attractors };
   }
 
+  const FLY_QA = () => (typeof window !== "undefined" && !!window.__QA__);
   function spawnFlies(room) {
-    if (Settings.get("reducedMotion")) { flies = []; return; }
-    if (Math.random() > (FLY_ROOMS[room] || 0)) { flies = []; return; }
+    if ((FLY_QA() ? rnd(0, 1) : Math.random()) > (FLY_ROOMS[room] || 0)) { flies = []; return; }
     const group = svgEl.querySelector("#fx-flies");
-    // a room's flies are built once and kept; only the dining room rebuilds
-    // when its mess is tidied away, since the flies lose their shrine.
+    /* populations persist per session; the dining room rebuilds when the
+       house tidies (its attractors die and the flies disperse) */
     const sig = room === "diningroom" ? !!State.flag("diningTidied") : 0;
     if (!flyStore[room] || flyStore[room].sig !== sig) {
-      flyStore[room] = { sig, data: buildFlyState(room) };
+      flyStore[room] = { sig, ...buildFlyState(room) };
     }
-    const data = flyStore[room].data;
-    flies = data.map(f => {
-      const el = mk("circle", { class: "fx-fly", cx: f.x, cy: f.y, r: f.r, fill: "#0c0a08", opacity: 0.55 }, group);
+    const st = flyStore[room];
+    const reduced = Settings.get("reducedMotion");
+    flies = st.data.map(f => {
+      /* reduced motion: still flies, pre-separated by construction */
+      let fx2 = f.x, fy2 = f.y;
+      if (reduced) {
+        for (let tries = 0; tries < 24; tries++) {
+          fx2 = 80 + ((f.x * 7 + tries * 173) % 1100);
+          fy2 = 110 + ((f.y * 11 + tries * 97) % 440);
+          if (flies.every(o => Math.hypot(o.x - fx2, o.y - fy2) > 22)) break;
+        }
+      }
+      const el = mk("circle", { class: "fx-fly", cx: fx2, cy: fy2, r: f.r, fill: "#0c0a08", opacity: 0.55 }, group);
       el.style.animationDuration = rnd(0.35, 0.95).toFixed(2) + "s";
-      return { el, x: f.x, y: f.y, vx: f.vx, vy: f.vy, ph: f.ph, attract: f.attract, straggler: f.straggler };
+      return { el, x: fx2, y: fy2, vx: reduced ? 0 : f.vx, vy: reduced ? 0 : f.vy, r: f.r, pr: f.pr, phase: f.phase, state: reduced ? "REST" : f.state, t: f.t, attract: f.attract, flock: f.flock, orbit: f.orbit, orbitR: f.orbitR, home: f.home, spot: f.spot, straggler: f.straggler, landed: false };
     });
+    st.attractors && (flyStore[room].attractors = st.attractors);
+  }
+
+  /* spatial hash: a fly only checks its own cell + neighbours */
+  const CELL = 34;
+  function stepFlies(dt, px, py) {
+    if (!flies.length) return;
+    const grid = new Map();
+    for (let i = 0; i < flies.length; i++) {
+      const f = flies[i];
+      const key = ((f.x / CELL) | 0) + "," + ((f.y / CELL) | 0);
+      const b = grid.get(key); if (b) b.push(i); else grid.set(key, [i]);
+    }
+    /* flock centres (weak cohesion targets) */
+    let fcx = 0, fcy = 0, fn = 0, fvx = 0, fvy = 0;
+    for (const f of flies) if (f.flock && !f.landed) { fcx += f.x; fcy += f.y; fvx += f.vx; fvy += f.vy; fn++; }
+    if (fn) { fcx /= fn; fcy /= fn; fvx /= fn; fvy /= fn; }
+
+    for (let i = 0; i < flies.length; i++) {
+      const f = flies[i];
+      if (f.landed) {
+        f.t -= dt / 60;
+        if (f.t <= 0) {                       // take off with a dart
+          f.landed = false; f.state = "DART"; f.t = rnd(0.4, 0.9);
+          f.vx = rnd(-1.4, 1.4); f.vy = rnd(-1.6, -0.4);
+          f.el.setAttribute("opacity", 0.55);
+        } else continue;
+      }
+      f.phase += 0.05 * dt;
+
+      /* ---- separation from overlapping detector boxes (grid lookup) ---- */
+      const gx = (f.x / CELL) | 0, gy = (f.y / CELL) | 0;
+      let sepX = 0, sepY = 0;
+      for (let ox = -1; ox <= 1; ox++) for (let oy = -1; oy <= 1; oy++) {
+        const bucket = grid.get((gx + ox) + "," + (gy + oy));
+        if (!bucket) continue;
+        for (const j of bucket) {
+          if (j === i) continue;
+          const o = flies[j]; // landed neighbours still occupy their spot
+          const dx = f.x - o.x, dy = f.y - o.y;
+          const min = f.pr + o.pr;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < min * min && d2 > 0.0001) {
+            const d = Math.sqrt(d2);
+            const push = (min - d) / min;                 // 0..1 overlap
+            const k = push > 0.5 ? 0.5 : 0.22;            // severe overlap: harder turn
+            sepX += (dx / d) * push * k; sepY += (dy / d) * push * k;
+          }
+        }
+      }
+      f.vx += sepX * dt; f.vy += sepY * dt;
+
+      /* ---- state machine ---- */
+      f.t -= dt / 60;
+      if (f.t <= 0) {
+        const roll = FLY_QA() ? rnd(0, 1) : Math.random();
+        if (f.state === "WANDER") {
+          if (roll < 0.3 && f.attract) f.state = "ATTRACTED";
+          else if (roll < 0.42) f.state = "DART";
+          else if (roll < 0.5) { f.state = "LAND"; }
+          else if (roll < 0.62) f.state = "PAUSE";
+          f.t = rnd(1.2, 3.4);
+        } else if (f.state === "ATTRACTED") {
+          f.orbit += rnd(-1.2, 1.2);
+          f.t = rnd(1.5, 4);
+          if (roll < 0.25) f.state = "WANDER";
+        } else if (f.state === "DART") { f.state = "WANDER"; f.t = rnd(1, 3); }
+        else if (f.state === "PAUSE") { f.state = "WANDER"; f.t = rnd(1, 3); }
+        else if (f.state === "LAND") {
+          f.landed = true; f.state = "REST"; f.t = rnd(2, 9);
+          /* a resting fly still keeps personal space: pick a free spot */
+          let lx = f.spot[0] + rnd(-14, 14), ly = f.spot[1] + rnd(-6, 6);
+          for (let tries = 0; tries < 8; tries++) {
+            let clear = true;
+            for (const o of flies) if (o !== f && o.landed && Math.hypot(o.x - lx, o.y - ly) < 7) { clear = false; break; }
+            if (clear) break;
+            lx = f.spot[0] + rnd(-16, 16); ly = f.spot[1] + rnd(-8, 8);
+          }
+          f.x = lx; f.y = ly;
+          f.vx = 0; f.vy = 0;
+          f.el.setAttribute("cx", f.x.toFixed(1)); f.el.setAttribute("cy", f.y.toFixed(1));
+          f.el.setAttribute("opacity", 0.75);
+          continue;
+        }
+      }
+
+      /* ---- steering per state ---- */
+      if (f.state === "ATTRACTED" && f.attract && !f.straggler) {
+        /* circle a personal offset point near the attractor — they gather,
+           they never converge to one dot */
+        f.orbit += 0.03 * dt;
+        const tx = f.attract.x + Math.cos(f.orbit) * f.orbitR;
+        const ty = f.attract.y + Math.sin(f.orbit * 0.8) * f.orbitR * 0.6;
+        f.vx += (tx - f.x) * 0.0022 * dt;
+        f.vy += (ty - f.y) * 0.0022 * dt;
+      } else if (f.state === "DART") {
+        if (Math.hypot(f.vx, f.vy) < 0.5) { const a = rnd(0, Math.PI * 2); f.vx = Math.cos(a) * 1.8; f.vy = Math.sin(a) * 1.2; }
+      } else if (f.state === "PAUSE") {
+        f.vx *= 0.86; f.vy *= 0.86;
+      } else { /* WANDER around home */
+        f.vx += Math.sin(f.phase) * 0.02 * dt + (f.home.x - f.x) * 0.00035 * dt;
+        f.vy += Math.cos(f.phase * 0.7) * 0.02 * dt + (f.home.y - f.y) * 0.00035 * dt;
+      }
+
+      /* ---- loose flocking for the 45%: weak cohesion, weaker alignment ---- */
+      if (f.flock && fn > 1 && f.state !== "DART") {
+        const dcx = fcx - f.x, dcy = fcy - f.y, dc = Math.hypot(dcx, dcy);
+        if (dc > 90) { f.vx += (dcx / dc) * 0.028 * dt; f.vy += (dcy / dc) * 0.028 * dt; }
+        f.vx += (fvx - f.vx) * 0.006 * dt; f.vy += (fvy - f.vy) * 0.006 * dt;
+      }
+
+      /* ---- avoid the cursor ---- */
+      const dxc = f.x - px, dyc = f.y - py, d2c = dxc * dxc + dyc * dyc;
+      if (px > -999 && d2c < 110 * 110 && d2c > 0.01) {
+        const d = Math.sqrt(d2c), push = (110 - d) * 0.09 * dt;
+        f.vx += (dxc / d) * push; f.vy += (dyc / d) * push;
+        if (f.state === "PAUSE") { f.state = "DART"; f.t = 0.6; }
+      }
+
+      f.vx *= 0.965; f.vy *= 0.965;
+      const sp = Math.hypot(f.vx, f.vy);
+      const max = f.state === "DART" ? 2.4 : 1.15;
+      if (sp > max) { f.vx = f.vx / sp * max; f.vy = f.vy / sp * max; }
+
+      f.x += f.vx * dt; f.y += f.vy * dt;
+      if (f.x < 30) f.vx += 0.15; if (f.x > 1250) f.vx -= 0.15;
+      if (f.y < 60) f.vy += 0.15; if (f.y > 660) f.vy -= 0.15;
+      f.el.setAttribute("cx", f.x.toFixed(1)); f.el.setAttribute("cy", f.y.toFixed(1));
+    }
+  }
+
+  /* QA hooks: measure the population; used by scripts/qa/fly_sim.js */
+  function flyStats() {
+    if (!flies.length) return { count: 0, minDist: Infinity, bboxArea: 0, landed: 0 };
+    let minD = Infinity, minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9, landed = 0;
+    for (let i = 0; i < flies.length; i++) {
+      const f = flies[i]; if (f.landed) landed++;
+      minX = Math.min(minX, f.x); maxX = Math.max(maxX, f.x);
+      minY = Math.min(minY, f.y); maxY = Math.max(maxY, f.y);
+      for (let j = i + 1; j < flies.length; j++) {
+        const o = flies[j];
+        const d = Math.hypot(f.x - o.x, f.y - o.y);
+        if (d < minD) minD = d;
+      }
+    }
+    return { count: flies.length, minDist: minD, bboxArea: (maxX - minX) * (maxY - minY), landed };
   }
 
   /* ---------------- rain (real falling drops, behind the glass) ----------------
@@ -288,7 +417,6 @@ const FX = (() => {
   function buildRain() {
     const group = svgEl.querySelector("#fx-rain");
     const defs = svgEl.querySelector("defs") || mk("defs", {}, svgEl);
-    /* vertical fade = motion blur on a falling stick */
     if (!svgEl.querySelector("#fxraingrad")) {
       const g = mk("linearGradient", { id: "fxraingrad", x1: "0", y1: "0", x2: "0", y2: "1" }, defs);
       mk("stop", { offset: "0", "stop-color": "#dcecf6", "stop-opacity": "0" }, g);
@@ -317,8 +445,6 @@ const FX = (() => {
       return;
     }
 
-    /* the fall: every drop loops top to bottom of the glass, clipped away at
-       both ends so the rain never touches the room */
     const fall = (el, dur, begin, dx) => {
       mk("animateTransform", {
         attributeName: "transform", type: "translate",
@@ -327,9 +453,6 @@ const FX = (() => {
       }, el);
     };
 
-    /* each drop is a small group: a bright head and a fainter, thinner tail
-       above it. The tail is the fake motion blur: no filters, no gradients
-       (a gradient stroke on a zero width bbox would vanish), just two sticks. */
     const drop = (x, y, dx, dy, w, o) => {
       const g = mk("g", {}, inner);
       mk("line", { x1: x, y1: y, x2: x + dx, y2: y + dy, stroke: "#d5e8f4", "stroke-width": w, opacity: o, "stroke-linecap": "round" }, g);
@@ -345,19 +468,16 @@ const FX = (() => {
       const kind = roll();
       const dur = rnd(1.15, 1.9), begin = -rnd(0, 2);
       if (kind < 2) {
-        /* a dot: the smallest rain there is, with a whisper of a tail */
         const g = mk("g", {}, inner);
         mk("circle", { cx: x, cy: y, r: rnd(0.5, 1.0), fill: "#d5e8f4", opacity: rnd(0.3, 0.55) }, g);
         mk("line", { x1: x, y1: y - rnd(2.5, 5), x2: x, y2: y - 1, stroke: "#d5e8f4", "stroke-width": 0.5, opacity: 0.18 }, g);
         fall(g, dur, begin, rnd(-2, 2));
       } else if (kind < 4) {
-        /* a leaning stick: a different angle every time, both directions */
         const len = rnd(6, 14), ang = rnd(6, 18) * (n % 2 ? 1 : -1);
         const rad = ang * Math.PI / 180;
         const g = drop(x, y, Math.sin(rad) * len, Math.cos(rad) * len, rnd(0.5, 1.0), rnd(0.35, 0.62));
         fall(g, dur, begin, rnd(-4, 4));
       } else {
-        /* a straight stick: most of the rain, short and thin */
         const len = rnd(5, 13);
         const g = drop(x, y, 0, len, rnd(0.5, 1.1), rnd(0.35, 0.68));
         fall(g, dur, begin, rnd(-2, 2));
@@ -376,42 +496,84 @@ const FX = (() => {
       }, w);
       mk("animate", { attributeName: "opacity", values: "0.05;0.1;0.05", dur: rnd(18, 30).toFixed(0) + "s", repeatCount: "indefinite" }, w);
     }
-
-    /* the birds behind this glass and the water ON the glass are drawn by
-       the room itself (rooms.js windowBirds / glassDrops - see alwaysDo.md),
-       so the FX layer only supplies the falling rain and the ground fog. */
   }
 
-  /* ---------------- cobwebs + spiders ---------------- */
+  /* ---------------- cobwebs + spiders ----------------
+     Webs only where neglect would realistically produce them (attic,
+     basement, the opened linen closet). Spiders are anatomically coherent:
+     cephalothorax + abdomen + EIGHT jointed legs. */
   function buildCobwebs(room) {
     const group = svgEl.querySelector("#fx-cobwebs");
-    const web = (x, y, s) => {
+    const web = (x, y, s, seed = 1) => {
       const g = mk("g", { class: "fx-web", opacity: 0.16 });
+      /* radial threads from the anchor, then a sagging spiral */
+      let radials = "";
+      for (let i = 0; i < 5; i++) {
+        const a = (0.2 + i * 0.16) * Math.PI;
+        radials += `M${x},${y} L${(x + Math.cos(a) * s * 1.3).toFixed(1)},${(y + Math.sin(a) * s * 1.1).toFixed(1)} `;
+      }
+      mk("path", { d: radials, fill: "none", stroke: "#cfc9bc", "stroke-width": 0.7 }, g);
       mk("path", { d: `M${x},${y} q${-s},${s * 0.4} ${-s * 1.2},${s} M${x},${y} q${s},${s * 0.4} ${s * 1.2},${s}`, fill: "none", stroke: "#cfc9bc", "stroke-width": 0.8 }, g);
-      mk("path", { d: `M${x - s * 0.5},${y + s * 0.42} q${s * 0.2},${s * 0.2} ${s * 0.5},0 M${x - s * 0.9},${y + s * 0.75} q${s * 0.3},${s * 0.2} ${s * 0.6},0`, fill: "none", stroke: "#cfc9bc", "stroke-width": 0.7 }, g);
+      mk("path", { d: `M${x - s * 0.5},${y + s * 0.42} q${s * 0.2},${s * 0.2 + (seed % 3)} ${s * 0.5},0 M${x - s * 0.9},${y + s * 0.75} q${s * 0.3},${s * 0.2} ${s * 0.6},0 M${x + s * 0.2},${y + s * 0.6} q${s * 0.3},${s * 0.16} ${s * 0.62},-0.05`, fill: "none", stroke: "#cfc9bc", "stroke-width": 0.7 }, g);
       return g;
     };
     const spider = (x, y) => {
       const g = mk("g", { class: "fx-spider" });
       const inner = mk("g", {}, g);
-      mk("ellipse", { cx: x, cy: y, rx: 2.4, ry: 1.7, fill: "#171210" }, inner);
-      mk("circle", { cx: x, cy: y - 1.7, r: 1.1, fill: "#0c0a08" }, inner);
-      for (let i = 0; i < 4; i++) {
-        const dx = (i % 2 ? 1 : -1) * 2.6, dy = (i < 2 ? -1 : 1) * 2;
-        mk("line", { x1: x + dx * 0.3, y1: y + dy * 0.3, x2: x + dx, y2: y + dy, stroke: "#171210", "stroke-width": 0.7 }, inner);
-      }
+      /* abdomen + cephalothorax */
+      mk("ellipse", { cx: x, cy: y, rx: 2.6, ry: 1.9, fill: "#171210" }, inner);
+      mk("circle", { cx: x, cy: y - 2, r: 1.15, fill: "#0c0a08" }, inner);
+      mk("circle", { cx: x - 0.4, cy: y - 2.3, r: 0.28, fill: "#8a9094", opacity: 0.8 }, inner);
+      /* eight jointed legs: four a side, two segments each, uneven pose */
+      const legs = [[-1, -0.9], [-1.25, -0.3], [-1.2, 0.35], [-0.85, 0.9], [1, -0.9], [1.25, -0.3], [1.2, 0.35], [0.85, 0.9]];
+      legs.forEach(([dx, dy], i) => {
+        const kx = x + dx * 2.1, ky = y - 1 + dy * 1.6 - 0.8;
+        const fx = x + dx * 4.1, fy = y - 1 + dy * 3.1 + (i % 2 ? 0.5 : 0);
+        mk("path", { d: `M${x + dx * 0.6},${y - 1.2} L${kx.toFixed(1)},${ky.toFixed(1)} L${fx.toFixed(1)},${fy.toFixed(1)}`, fill: "none", stroke: "#171210", "stroke-width": 0.55 }, inner);
+      });
       if (!Settings.get("reducedMotion")) {
-        const a = mk("animateTransform", { attributeName: "transform", type: "translate", values: "0,0;2,2;0,0", dur: `${rnd(3, 6)}s`, repeatCount: "indefinite" }, inner);
+        /* tiny leg repositioning: a small shift, a long stillness */
+        mk("animateTransform", { attributeName: "transform", type: "translate", values: "0,0;0.8,0.6;0.8,0.6;0,0;0,0", keyTimes: "0;0.06;0.1;0.16;1", dur: `${rnd(9, 16).toFixed(0)}s`, repeatCount: "indefinite" }, inner);
       }
       return g;
     };
     if (room === "landing" && State.flag("closetOpen")) {
-      group.appendChild(web(980, 200, 40));
-      group.appendChild(web(1020, 260, 30));
+      group.appendChild(web(980, 200, 40, 2));
+      group.appendChild(web(1020, 260, 30, 5));
       group.appendChild(spider(990, 235));
     }
-    if (room === "attic") { group.appendChild(web(180, 240, 70)); group.appendChild(web(360, 200, 50)); group.appendChild(spider(210, 300)); }
-    if (room === "basement") { group.appendChild(web(70, 120, 60)); group.appendChild(web(240, 90, 44)); group.appendChild(spider(90, 150)); }
+    if (room === "attic") { group.appendChild(web(180, 240, 70, 3)); group.appendChild(web(360, 200, 50, 8)); group.appendChild(spider(210, 300)); }
+    if (room === "basement") { group.appendChild(web(70, 120, 60, 4)); group.appendChild(web(240, 90, 44, 9)); group.appendChild(spider(90, 150)); }
+  }
+
+  /* ---------------- debug overlay (fly detectors + attractors) ---------- */
+  function buildDebug() {
+    const fx = svgEl.querySelector("#fx-root");
+    let d = svgEl.querySelector("#fx-debug");
+    if (d) d.remove();
+    flyDebugEls = [];
+    const wantD = typeof Debug !== "undefined" && Debug.on("flyDetectors");
+    const wantA = typeof Debug !== "undefined" && Debug.on("attractors");
+    const wantC = typeof Debug !== "undefined" && Debug.on("dirtyState");
+    if (!wantD && !wantA && !wantC) return;
+    d = mk("g", { id: "fx-debug", "pointer-events": "none" }, fx);
+    const room = fx.dataset.room;
+    if ((wantA || wantC) && typeof Condition !== "undefined" && room) {
+      Condition.elements(room).forEach(e => {
+        const col = e.level === "clean" ? "#3fbf5f" : e.level === "slight" ? "#c9c35f" : e.level === "dirty" ? "#e8942a" : "#e83a2a";
+        mk("circle", { cx: e.x, cy: e.y, r: 7, fill: "none", stroke: col, "stroke-width": 1.4, "stroke-dasharray": "3 3" }, d);
+        const t = mk("text", { x: e.x + 9, y: e.y - 6, "font-size": 10, fill: col, "font-family": "monospace" }, d);
+        t.textContent = `${e.id}:${e.level}`;
+      });
+    }
+    if (wantA && flyStore[room] && flyStore[room].attractors) {
+      flyStore[room].attractors.forEach(a => {
+        mk("path", { d: `M${a.x - 6},${a.y} L${a.x + 6},${a.y} M${a.x},${a.y - 6} L${a.x},${a.y + 6}`, stroke: "#ff5df0", "stroke-width": 1.4 }, d);
+        const t = mk("text", { x: a.x + 8, y: a.y + 12, "font-size": 10, fill: "#ff5df0", "font-family": "monospace" }, d);
+        t.textContent = `att ${a.s.toFixed(2)}`;
+      });
+    }
+    if (wantD) flyDebugEls = flies.map(f => mk("circle", { cx: f.x, cy: f.y, r: f.pr, fill: "none", stroke: "#00e5ff", "stroke-width": 0.8, opacity: 0.6 }, d));
   }
 
   /* ---------------- mount / unmount ---------------- */
@@ -427,6 +589,7 @@ const FX = (() => {
       const hs = svgEl.querySelector("#hotspots");
       if (hs) svgEl.insertBefore(fx, hs); else svgEl.appendChild(fx);
     }
+    fx.dataset.room = room;
     fx.innerHTML = "";
     mk("g", { id: "fx-lights" }, fx);
     mk("g", { id: "fx-cobwebs" }, fx);
@@ -437,12 +600,85 @@ const FX = (() => {
     buildCobwebs(room);
     if (room === "childroom") buildRain();
     spawnFlies(room);
+    buildDebug();
 
-    // room label text: hidden unless the surveyor's lens is found and switched on.
-    // The toggle is a body class so the CSS cascade (not inline styles) decides.
     syncLabels();
-
     start();
+  }
+
+  function lightLayer(spec, i) {
+    const g = mk("g", { class: "fx-light", "data-fx": "light" });
+    const fl = "url(#fxblur8)";
+    const gradId = "fxcone" + i;
+    const poolId = "fxpool" + i;
+
+    const cg = mk("linearGradient", { id: gradId, x1: "0", y1: "0", x2: "0", y2: "1" });
+    mk("stop", { offset: "0", "stop-color": spec.color, "stop-opacity": "0.85" }, cg);
+    mk("stop", { offset: "0.5", "stop-color": spec.color, "stop-opacity": "0.32" }, cg);
+    mk("stop", { offset: "1", "stop-color": spec.color, "stop-opacity": "0" }, cg);
+    g.appendChild(cg);
+
+    const pg = mk("linearGradient", { id: poolId, x1: "0", y1: "0", x2: "1", y2: "0" });
+    mk("stop", { offset: "0", "stop-color": spec.color, "stop-opacity": "0" }, pg);
+    mk("stop", { offset: "0.5", "stop-color": spec.color, "stop-opacity": "0.9" }, pg);
+    mk("stop", { offset: "1", "stop-color": spec.color, "stop-opacity": "0" }, pg);
+    g.appendChild(pg);
+
+    const flick = spec.color === "#e8842a" ? 0.55 : 0.72;  // firelight breathes harder
+    const cone = mk("polygon", {
+      points: spec.cone.map(p => p.join(",")).join(" "),
+      fill: "url(#" + gradId + ")", filter: fl, opacity: spec.op, "mix-blend-mode": "screen",
+    }, g);
+    mk("animate", { attributeName: "opacity", values: `${spec.op};${spec.op * flick};${spec.op * 0.9};${spec.op}`, dur: `${rnd(spec.color === "#e8842a" ? 1.6 : 4, spec.color === "#e8842a" ? 3 : 8)}s`, repeatCount: "indefinite" }, cone);
+    mk("animateTransform", { attributeName: "transform", type: "translate", values: "0,0;-6,0;0,0;6,0;0,0", dur: `${rnd(9, 16)}s`, repeatCount: "indefinite" }, cone);
+
+    const pool = mk("polygon", {
+      points: spec.pool.map(p => p.join(",")).join(" "),
+      fill: "url(#" + poolId + ")", filter: "url(#fxblur10)", opacity: spec.poolOp, "mix-blend-mode": "screen",
+    }, g);
+    mk("animate", { attributeName: "opacity", values: `${spec.poolOp};${spec.poolOp * 0.7};${spec.poolOp}`, dur: `${rnd(5, 9)}s`, repeatCount: "indefinite" }, pool);
+
+    if (spec.shadow) {
+      const sh = mk("polygon", {
+        points: spec.shadow.pts.map(p => p.join(",")).join(" "),
+        fill: "#0a0c10", filter: "url(#fxblur8)", opacity: 0.22,
+      }, g);
+      const d = spec.shadow.drift || 20;
+      mk("animateTransform", { attributeName: "transform", type: "translate", values: `0,0;${d},0;0,0;-${d},0;0,0`, dur: `${rnd(11, 18)}s`, repeatCount: "indefinite" }, sh);
+    }
+
+    if (spec.core === false) return g;
+    const core = mk("polygon", {
+      points: `${spec.src[0] - 5},${spec.src[1] - 4} ${spec.src[0] + 5},${spec.src[1] - 4} ${spec.src[0] + 4},${spec.src[1] + 5} ${spec.src[0] - 4},${spec.src[1] + 5}`,
+      fill: "#ffd894", filter: "url(#fxblur8)", opacity: 0.55,
+    }, g);
+    mk("animate", { attributeName: "opacity", values: "0.55;0.42;0.52;0.55", dur: `${rnd(3, 6)}s`, repeatCount: "indefinite" }, core);
+
+    const n = spec.motes || 10;
+    const bx = Math.min(spec.cone[0][0], spec.cone[3][0]);
+    const bw = Math.max(spec.cone[1][0], spec.cone[2][0]) - bx;
+    const by = Math.min(spec.cone[0][1], spec.cone[1][1]);
+    const bh = Math.max(spec.cone[2][1], spec.cone[3][1]) - by;
+    for (let k = 0; k < n; k++) {
+      const mx = bx + rnd(0, bw), my = by + rnd(0, bh), o = rnd(0.2, 0.7);
+      const m = mk("circle", {
+        class: "fx-mote", cx: mx, cy: my,
+        r: rnd(0.7, 1.5), fill: spec.color, opacity: o, filter: "url(#fxblur2)",
+      }, g);
+      motes.push({
+        el: m, x0: mx, y0: my, x: mx, y: my,
+        ph: rnd(0, Math.PI * 2), sp: rnd(0.12, 0.34), amp: rnd(3, 8), up: rnd(0.08, 0.2), o,
+      });
+    }
+    return g;
+  }
+
+  function buildLights(room) {
+    const root = svgEl.querySelector("#fx-lights");
+    (LIGHTS[room] || []).forEach((spec, i) => {
+      if (spec.when && !spec.when()) return;
+      root.appendChild(lightLayer(spec, i));
+    });
   }
 
   /* ---------------- animation loop ---------------- */
@@ -458,7 +694,6 @@ const FX = (() => {
     fxFrame++;
     const half = fxFrame & 1;
 
-    // local pointer coords inside the scaled svg
     let px = -9999, py = -9999;
     if (pointer.active && rect) {
       const sx = 1280 / rect.width, sy = 720 / rect.height;
@@ -467,45 +702,21 @@ const FX = (() => {
 
     for (let mi = 0; mi < motes.length; mi++) {
       const m = motes[mi];
-      if ((mi & 1) !== half) continue;   // motes update in alternating halves
+      if ((mi & 1) !== half) continue;
       m.ph += 0.008 * dt; m.y -= m.up * dt;
       m.x = m.x0 + Math.sin(m.ph) * m.amp;
       if (m.y < m.y0 - 40) { m.y = m.y0; m.x0 = m.x; m.ph = rnd(0, Math.PI * 2); }
       m.el.setAttribute("cx", m.x.toFixed(1)); m.el.setAttribute("cy", m.y.toFixed(1));
     }
 
-    for (let fi = 0; fi < flies.length; fi++) {
-      const f = flies[fi];
-      if ((fi & 1) !== half) continue;   // flies update in alternating halves
-      // wander
-      f.ph += 0.05 * dt;
-      f.vx += Math.sin(f.ph) * 0.02; f.vy += Math.cos(f.ph * 0.7) * 0.02;
-      f.vx *= 0.96; f.vy *= 0.96;
+    if (!Settings.get("reducedMotion") && (typeof AnimReg === "undefined" || AnimReg.on("flyWander"))) stepFlies(dt, px, py);
 
-      // attract toward light / blood / night light unless it is a straggler
-      if (!f.straggler && f.attract) {
-        f.vx += (f.attract.x - f.x) * 0.0016 * dt;
-        f.vy += (f.attract.y - f.y) * 0.0016 * dt;
-      } else if (f.straggler) {
-        f.vx += Math.sin(f.ph * 0.5) * 0.03;
+    /* keep the detector overlay seated on the flies */
+    if (flyDebugEls.length) {
+      for (let i = 0; i < flyDebugEls.length && i < flies.length; i++) {
+        flyDebugEls[i].setAttribute("cx", flies[i].x.toFixed(1));
+        flyDebugEls[i].setAttribute("cy", flies[i].y.toFixed(1));
       }
-
-      // avoid the cursor
-      const dxc = f.x - px, dyc = f.y - py, d2 = dxc * dxc + dyc * dyc;
-      if (px > -999 && d2 < 110 * 110 && d2 > 0.01) {
-        const d = Math.sqrt(d2), push = (110 - d) * 0.09 * dt;
-        f.vx += (dxc / d) * push; f.vy += (dyc / d) * push;
-      }
-
-      // speed clamp
-      const sp = Math.hypot(f.vx, f.vy);
-      const max = f.straggler ? 1.6 : 1.1;
-      if (sp > max) { f.vx = f.vx / sp * max; f.vy = f.vy / sp * max; }
-
-      f.x += f.vx * dt; f.y += f.vy * dt;
-      if (f.x < 30) f.vx += 0.15; if (f.x > 1250) f.vx -= 0.15;
-      if (f.y < 60) f.vy += 0.15; if (f.y > 660) f.vy -= 0.15;
-      f.el.setAttribute("cx", f.x.toFixed(1)); f.el.setAttribute("cy", f.y.toFixed(1));
     }
   }
 
@@ -523,5 +734,14 @@ const FX = (() => {
     syncLabels();
   }
 
-  return { apply, trackPointer, labelsOn, _flyMult: (r) => flyMultiplier(r) };
+  return {
+    apply, trackPointer, labelsOn,
+    _flyMult: (r) => flyMultiplier(r),
+    _flyStats: flyStats,
+    _flyStateCounts: () => { const o = {}; flies.forEach(f => { o[f.state] = (o[f.state] || 0) + 1; }); return o; },
+    _step: (dt, px, py) => stepFlies(dt || 1, px || -9999, py || -9999),
+    _setFlySeed: n => { _seed = n >>> 0; },
+    _respawn: (room) => { delete flyStore[room]; spawnFlies(room); },
+    _attractors: gatherAttractors,
+  };
 })();

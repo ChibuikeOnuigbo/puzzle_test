@@ -3,3 +3,8 @@ artifacts/
 
 # AI image-search reference downloads (not game assets; birds are procedural)
 image-search/
+
+# AI-generated reference imagery: offline pipeline input only (see
+# docs/GRAPHICS_PIPELINE.md). Never shipped, never loaded at runtime.
+art/generated/
+art/references/

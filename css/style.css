@@ -448,6 +448,28 @@ body.reduced #fatigue.f3, body.reduced #fatigue.f4 { backdrop-filter: none; anim
   padding-bottom:6px;
 }
 .nav-arrow:hover{ opacity:1; background:rgba(30,22,15,.7); color:#e8c87a; }
+/* available exits breathe: a soft amber pulse (idle) that strengthens on
+   hover, telling the player "there is a place beyond this view" */
+.nav-arrow{ animation:nav-glow 3.4s ease-in-out infinite; }
+.nav-arrow:hover{ animation:none; box-shadow:0 0 18px rgba(201,163,95,.45), inset 0 0 10px rgba(201,163,95,.2); }
+@keyframes nav-glow{
+  0%,100%{ box-shadow:0 0 4px rgba(201,163,95,.12); }
+  50%{ box-shadow:0 0 12px rgba(201,163,95,.30); }
+}
+body.reduced .nav-arrow{ animation:none; }
+/* tooltip: the TRUE destination, straight from EXIT_DESCRIPTORS */
+.nav-arrow::after{
+  content:attr(data-tip);
+  position:absolute; top:50%; transform:translateY(-50%);
+  white-space:nowrap; pointer-events:none;
+  font-family:var(--font-ui); font-size:12px; letter-spacing:.12em; text-transform:uppercase;
+  color:#c9bb9b; background:rgba(12,9,6,.88); border:1px solid rgba(201,163,95,.3);
+  padding:6px 10px; border-radius:4px;
+  opacity:0; transition:opacity .18s;
+}
+#nav-left::after{ left:calc(100% + 12px); }
+#nav-right::after{ right:calc(100% + 12px); }
+.nav-arrow:hover::after{ opacity:1; }
 #nav-left{ left:10px; }
 #nav-right{ right:10px; }
 #nav-left[hidden], #nav-right[hidden]{ display:none; }

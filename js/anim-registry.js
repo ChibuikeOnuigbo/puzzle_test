@@ -32,8 +32,12 @@
     { id: "motes",        name: "Dust in light",    def: true,  desc: "Specks of dust drifting through the beams of light." },
     { id: "parallax",     name: "Depth drift",      def: true,  desc: "Background layers shifting as you move the cursor." },
     { id: "ripples",      name: "Ripples",          def: true,  desc: "Small ripples where the cursor crosses water." },
-    { id: "lampFlicker",  name: "Lantern flicker",  def: true,  desc: "The porch lantern's flame wavering in a draught." },
-    { id: "windowGlow",   name: "Window shimmer",   def: true,  desc: "The warm window light breathing very softly." },
+    { id: "lampFlicker",  name: "Lantern flicker", def: true,  desc: "The porch lantern's flame wavering in a draught." },
+    { id: "windowGlow",   name: "Window shimmer",  def: true,  desc: "The warm window light breathing very softly." },
+    { id: "windowClouds", name: "Clouds at windows", def: true, desc: "Thin clouds drifting behind the glass of every window." },
+    { id: "fireFlicker",  name: "Sitting-room fire", def: true, desc: "The fire in the sitting room breathing and splitting into tongues." },
+    { id: "ropeSway",     name: "Hatch cord sway", def: true,  desc: "The attic hatch's pull cord oscillating like a small pendulum." },
+    { id: "flyWander",    name: "Flies",           def: true,  desc: "Flies keeping their distance and circling the room's dirty things." },
   ];
 
   const FALLBACK = {};   // overrides set during this session

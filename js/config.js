@@ -16,6 +16,7 @@ const ROOM_CONFIG = {
   porch:    { ripple: "#8ea4b8", name: "The Porch" },
   hallway:  { ripple: "#c9a35f", name: "The Hallway" },
   diningroom: { ripple: "#b8a888", name: "The Dining Room" },
+  sittingroom: { ripple: "#c98f5f", name: "The Sitting Room" },
   kitchen:  { ripple: "#b8c98f", name: "The Kitchen" },
   conservatory: { ripple: "#a8c9b8", name: "The Conservatory" },
   bathroom: { ripple: "#7fa8b8", name: "The Small Bathroom" },
@@ -167,7 +168,8 @@ const HOUSE_GRAPH = {
   porch:     ["hallway"],
   hallway:   ["porch", "kitchen", "landing", "basement"],
   kitchen:   ["hallway", "diningroom"],
-  diningroom: ["kitchen"],
+  diningroom: ["kitchen", "sittingroom"],
+  sittingroom: ["diningroom"],
   conservatory: ["gallery"],
   landing:   ["hallway", "study", "childroom", "attic", "gallery"],
   gallery:   ["landing", "conservatory", "bathroom"],
@@ -179,27 +181,109 @@ const HOUSE_GRAPH = {
   memory:    ["basement"],
 };
 
-/* Edge arrows: fast navigation. Each entry maps a screen edge to the
-   hotspot action that performs that travel. An arrow only appears if
-   the hotspot exists in the current render (locks, deletions, torch
-   gating and every other rule stay in force automatically). */
-/* Edge arrows: fast navigation along real graph edges only. An arrow only
-   appears when its exit exists AND the direction is not already a door the
-   player clicks directly. The landing's left arrow is disabled because two
-   doors (child room, study) face the player; the porch door faces the
-   player so it is clicked, not arrowed. */
-const NAV_ARROWS = {
-  porch:      {},
-  hallway:    { left: "gokitchen", right: "goup" },
-  kitchen:    { left: "godining", right: "goback" },
-  diningroom: { right: "dback" },
-  conservatory: { left: "cback" },
-  gallery:    { right: "gback" },
-  bathroom:   { left: "bback" },
-  landing:    { left: "gogallery", right: "godown" },
-  study:      { left: "sback" },
-  childroom:  { right: "cback" },
-  attic:      { right: "aback" },
-  basement:   { left: "goup" },
-  memory:     {},
+/* Which storey each room sits on. Navigation tooltips may never claim a
+   destination on a different floor than the arrow actually leads to. */
+const ROOM_FLOORS = {
+  porch: 0, hallway: 0, kitchen: 0, diningroom: 0, sittingroom: 0,
+  basement: -1, memory: -1,
+  landing: 1, gallery: 1, conservatory: 1, bathroom: 1, study: 1,
+  childroom: 1, attic: 1,
 };
+
+/* =====================================================================
+   EXIT DESCRIPTORS — the single source of truth for navigation.
+   Each edge declares: source room, destination, screen direction, the
+   hotspot that performs it, whether it is a visible doorway or an
+   off-screen edge exit, and the exact tooltip. NAV_ARROWS is DERIVED
+   from this table (see bottom of file), so tooltip, arrow, hotspot and
+   graph edge can never disagree.  See docs/DOORWAY_CONTINUITY.md.
+===================================================================== */
+const EXIT_DESCRIPTORS = {
+  hallway: [
+    /* the kitchen faces the player through an OPEN doorway, so it is
+       clicked directly. The left ARROW is the way back OUTSIDE. */
+    { id: "hallway_to_porch", from: "hallway", destination: "porch", screenSide: "left",
+      hotspot: "leave", type: "edge_exit", tooltip: "Step back outside" },
+    { id: "hallway_to_landing", from: "hallway", destination: "landing", screenSide: "right",
+      hotspot: "goup", type: "stairs", tooltip: "Up the stairs" },
+  ],
+  kitchen: [
+    { id: "kitchen_to_diningroom", from: "kitchen", destination: "diningroom", screenSide: "left",
+      hotspot: "godining", type: "edge_exit", tooltip: "Through to the dining room" },
+    { id: "kitchen_to_hallway", from: "kitchen", destination: "hallway", screenSide: "right",
+      hotspot: "goback", type: "edge_exit", tooltip: "Back to the hallway" },
+  ],
+  diningroom: [
+    { id: "diningroom_to_kitchen", from: "diningroom", destination: "kitchen", screenSide: "right",
+      hotspot: "dback", type: "edge_exit", tooltip: "Back to the kitchen" },
+    /* the sitting room is a real OPEN DOORWAY on the left wall: clicked,
+       not arrowed */
+  ],
+  sittingroom: [
+    { id: "sittingroom_to_diningroom", from: "sittingroom", destination: "diningroom", screenSide: "right",
+      hotspot: "sitback", type: "edge_exit", tooltip: "Back to the dining room" },
+  ],
+  conservatory: [
+    { id: "conservatory_to_gallery", from: "conservatory", destination: "gallery", screenSide: "left",
+      hotspot: "cback", type: "edge_exit", tooltip: "Back to the corridor" },
+  ],
+  gallery: [
+    { id: "gallery_to_landing", from: "gallery", destination: "landing", screenSide: "right",
+      hotspot: "gback", type: "edge_exit", tooltip: "Back along the corridor" },
+  ],
+  bathroom: [
+    { id: "bathroom_to_gallery", from: "bathroom", destination: "gallery", screenSide: "left",
+      hotspot: "bback", type: "edge_exit", tooltip: "Back to the corridor" },
+  ],
+  landing: [
+    { id: "landing_to_gallery", from: "landing", destination: "gallery", screenSide: "left",
+      hotspot: "gogallery", type: "edge_exit", tooltip: "The corridor bends left" },
+    { id: "landing_to_hallway", from: "landing", destination: "hallway", screenSide: "right",
+      hotspot: "godown", type: "stairs", tooltip: "Down the stairs" },
+  ],
+  study: [
+    { id: "study_to_landing", from: "study", destination: "landing", screenSide: "left",
+      hotspot: "sback", type: "edge_exit", tooltip: "Back to the corridor" },
+  ],
+  childroom: [
+    { id: "childroom_to_landing", from: "childroom", destination: "landing", screenSide: "right",
+      hotspot: "cback", type: "edge_exit", tooltip: "Back to the corridor" },
+  ],
+  attic: [
+    { id: "attic_to_landing", from: "attic", destination: "landing", screenSide: "right",
+      hotspot: "aback", type: "edge_exit", tooltip: "Climb back down" },
+  ],
+  basement: [
+    { id: "basement_to_hallway", from: "basement", destination: "hallway", screenSide: "left",
+      hotspot: "goup", type: "stairs", tooltip: "Up the stairs" },
+  ],
+};
+
+/* Screen-safe door zone (1280x720): usable doorways stay inside this
+   rectangle so a door is never glued to the viewport edge. Off-screen
+   destinations use the glowing edge arrows instead. */
+const DOOR_SAFE = { minX: 140, maxX: 1140, minY: 90, maxY: 660 };
+
+/* Edge arrows: fast navigation along real graph edges only. DERIVED from
+   EXIT_DESCRIPTORS so the arrow, its tooltip, its hotspot and the graph
+   edge can never disagree. An arrow only appears when its exit hotspot
+   exists in the current render (locks, deletions, torch gating and every
+   other rule stay in force automatically). Rooms with no descriptor (porch,
+   memory) get no arrows: their exits face the player and are clicked. */
+const NAV_ARROWS = (() => {
+  const map = {};
+  Object.keys(ROOM_CONFIG).forEach(r => { map[r] = {}; });
+  Object.keys(EXIT_DESCRIPTORS).forEach(room => {
+    EXIT_DESCRIPTORS[room].forEach(e => {
+      map[room] = map[room] || {};
+      map[room][e.screenSide] = e.hotspot;
+    });
+  });
+  return map;
+})();
+
+/* look up the descriptor for a room + screen side (used by tooltips) */
+function exitDescriptor(room, side) {
+  const list = EXIT_DESCRIPTORS[room] || [];
+  return list.find(e => e.screenSide === side) || null;
+}
