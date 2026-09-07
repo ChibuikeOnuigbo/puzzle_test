@@ -413,3 +413,19 @@ Verified: jsdom_check.js and jsdom_check2.js (flood timeline rescaled) 0
 failures; offline resvg renders of every changed room inspected by eye
 (scripts/qa/render.mjs). Playwright harnesses updated for the new route but
 not runnable in this sandbox (Chromium download is blocked here).
+
+## Windows pass (bedroom garden, birds at every window, water on the glass)
+- The child room's window no longer paints the WINDOW_VIEW pixel grid; it is
+  now bedroomGarden() (rooms.js): four depth planes, near trees grown from the
+  shared limb grower, per-plane sway, an 11s gust with loose leaves, a wet
+  lawn/path/fence and ground mist, all tiered by graphics quality. The
+  generated js/window-data.js and scripts/gen/windowview.js remain in the
+  repo (windowView() is still defined) but are unused by any room.
+- Every outward window now calls windowBirds(); the rule is written down in
+  alwaysDo.md at the repo root. The FX layer's old single oval bird and its
+  three drips in the child room were removed (rooms.js glassDrops replaces
+  them).
+- Verified offline with resvg stills only (scripts/qa/render_still.mjs, added
+  this pass); SMIL flapping / animateMotion / the running drops were checked
+  by reading the generated markup, not in a browser (Chromium is unavailable
+  in the sandbox).
