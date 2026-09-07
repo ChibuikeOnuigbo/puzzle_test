@@ -24,9 +24,9 @@ const FX = (() => {
      cluster of drifting motes. No oval light shapes anywhere. */
   const LIGHTS = {
     porch: [
-      { src: [445, 322], floorY: 552, spread: [250, 620], color: "#e8a04c",
-        cone: [[432, 320], [458, 320], [560, 552], [320, 552]],
-        pool: [[320, 552], [560, 552], [540, 574], [344, 574]], op: 0.16, poolOp: 0.22, motes: 12 },
+      { src: [475, 340], floorY: 552, spread: [360, 620], color: "#e8a04c",
+        cone: [[466, 344], [484, 344], [566, 552], [366, 552]],
+        pool: [[350, 552], [566, 552], [546, 576], [372, 576]], op: 0.16, poolOp: 0.22, motes: 12 },
     ],
     hallway: [
       { src: [720, 384], floorY: 560, spread: [560, 900], color: "#e8a04c",
@@ -199,10 +199,10 @@ const FX = (() => {
     // window lights pass core:false: moonlight has no fixture to glow from.
     if (spec.core === false) return g;
     const core = mk("polygon", {
-      points: `${spec.src[0] - 8},${spec.src[1] - 6} ${spec.src[0] + 8},${spec.src[1] - 7} ${spec.src[0] + 6},${spec.src[1] + 8} ${spec.src[0] - 6},${spec.src[1] + 7}`,
-      fill: "#fff7e6", filter: "url(#fxblur4)", opacity: 0.9,
+      points: `${spec.src[0] - 5},${spec.src[1] - 4} ${spec.src[0] + 5},${spec.src[1] - 4} ${spec.src[0] + 4},${spec.src[1] + 5} ${spec.src[0] - 4},${spec.src[1] + 5}`,
+      fill: "#ffd894", filter: "url(#fxblur8)", opacity: 0.55,
     }, g);
-    mk("animate", { attributeName: "opacity", values: "0.9;0.7;0.85;0.9", dur: `${rnd(3, 6)}s`, repeatCount: "indefinite" }, core);
+    mk("animate", { attributeName: "opacity", values: "0.55;0.42;0.52;0.55", dur: `${rnd(3, 6)}s`, repeatCount: "indefinite" }, core);
 
     // drifting dust motes inside the beam
     const n = spec.motes || 10;

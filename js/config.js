@@ -53,6 +53,11 @@ const DEFAULT_SETTINGS = {
   reducedMotion: false, textSize: 1, parallax: true,
   subtitles: true, tiredness: true,
   fog: true, fogDensity: 0.7,
+  quality: "high",   // "high" | "medium" | "low" — realism vs. flat 2D
+  shadows: true,     // soft shadows / ambient occlusion under objects
+  // per-animation toggles for reduced-motion customization (null = use defaults).
+  // Non-gameplay ambiance only; gameplay-critical motion is never listed.
+  animToggles: null,
   labelsOn: false,   // room label text, toggled by the surveyor's lens
   keys: {},          // player key overrides (see Controls)
 };

@@ -336,9 +336,17 @@ const Game = (() => {
     { id: "labels", name: "Room labels" },
   ];
 
+  /* Settings — grouped sections with an info popup on each. */
+  const SETTINGS_PAGES = [
+    { id: "sound",    title: "SOUND",    info: "Every sound in HOUSE 17 is synthesised live in your browser — nothing was recorded. Master, effects and ambience are mixed separately." },
+    { id: "controls", title: "CONTROLS", info: "Click any action, then press the key you want it bound to. Escape cancels. Every key on the keyboard is available." },
+    { id: "graphics", title: "GRAPHICS", info: "Graphics quality trades painterly detail (shadows, blur, texture) for a flatter, faster 2D look. Fog is the house's own weather; switching it off removes every wisp." },
+    { id: "motion",   title: "MOTION",   info: "Reduced motion stills the night. Choose Customize to switch individual ambient animations on or off — puzzles and doors always keep moving." },
+    { id: "game",     title: "GAME",     info: "Text and helper options, plus save data. Turning tiredness off means the night never weighs on you." },
+  ];
+
   function openSettings() {
     let page = 0;
-    const pages = ["SOUND", "MOTION & TEXT", "GAME", "CONTROLS"];
     const el = document.createElement("div");
 
     const slider = (key, label) => `
@@ -347,34 +355,26 @@ const Game = (() => {
     const tog = (key, label, sub) => `
       <div class="set-row"><label>${label}${sub ? `<span class="sub">${sub}</span>` : ""}</label>
       <button class="toggle ${Settings.get(key) ? "on" : ""}" data-tog="${key}" aria-label="${label}"></button></div>`;
+    const seg = (key, options) => `
+      <div class="set-row"><label>Graphics quality</label>
+        <div class="seg" data-seg="${key}">
+          ${options.map(o => `<button class="seg-btn ${Settings.get(key) === o.v ? "on" : ""}" data-val="${o.v}">${o.label}</button>`).join("")}
+        </div></div>`;
+    const section = (label) => `<div class="set-section">${label}</div>`;
 
     el.innerHTML = `
       <div class="settings-pages">
-        <div class="spage active">
+        <!-- SOUND -->
+        <div class="spage">
+          ${section("Volume")}
           ${slider("master", "Master volume")}
           ${slider("sfx", "Effects")}
           ${slider("ambient", "Ambience")}
           <p class="small-note">All sound in HOUSE 17 is synthesized live. Nothing was recorded in the house. We checked.</p>
         </div>
+        <!-- CONTROLS -->
         <div class="spage">
-          ${tog("reducedMotion", "Reduced motion", "disables parallax, ripples and typewriter text")}
-          ${tog("parallax", "Parallax depth")}
-          <div class="set-row"><label>Text size</label>
-            <div style="display:flex;gap:8px">
-              <button class="btn small" data-tx="0.9">A</button>
-              <button class="btn small" data-tx="1" style="font-size:16px">A</button>
-              <button class="btn small" data-tx="1.15" style="font-size:18px">A</button>
-            </div></div>
-        </div>
-        <div class="spage">
-          ${tog("subtitles", "Describe sounds in text", "important audio clues always appear as text")}
-          ${tog("tiredness", "Tiredness", "late in the game, staying awake becomes something you do")}
-          ${tog("fog", "Fog", "the house keeps its own weather in every room")}
-          ${slider("fogDensity", "Fog density")}
-          <div class="set-row"><label>Erase save data<span class="sub">removes progress and discoveries</span></label>
-            <button class="btn small danger" id="wipe">Erase</button></div>
-        </div>
-        <div class="spage">
+          ${section("Key bindings")}
           ${CONTROL_ACTIONS.map(a => `
             <div class="set-row key-row" data-action="${a.id}">
               <label>${a.name}</label>
@@ -383,22 +383,60 @@ const Game = (() => {
           <div class="set-row"><label>Restore default keys</label><button class="btn small" id="resetkeys">Reset</button></div>
           <p class="small-note">Click a key to rebind it. Press the new key, or Escape to cancel. Every key on the keyboard is on the table.</p>
         </div>
+        <!-- GRAPHICS -->
+        <div class="spage">
+          ${section("Rendering")}
+          ${seg("quality", [{v:"high",label:"High"},{v:"medium",label:"Medium"},{v:"low",label:"Low"}])}
+          ${tog("shadows", "Shadows", "soft shading under and inside objects")}
+          ${tog("parallax", "Parallax depth", "layers shift as you move the cursor")}
+          ${section("Atmosphere")}
+          ${tog("fog", "Fog", "the house keeps its own weather in every room")}
+          ${slider("fogDensity", "Fog density")}
+          <p class="small-note">Lower quality removes blur and soft shading for a simpler, flatter 2D look and a lighter load. Turning fog off removes every wisp, indoors and out.</p>
+        </div>
+        <!-- MOTION -->
+        <div class="spage">
+          ${section("Accessibility")}
+          ${tog("reducedMotion", "Reduced motion", "stills the night: branches, birds, mist, the moon")}
+          <div class="set-row"><label>Customize animations<span class="sub">switch individual ambient motions on or off</span></label>
+            <button class="btn small" id="animcustom">Customize…</button></div>
+          <div class="set-row"><label>Text size</label>
+            <div style="display:flex;gap:8px">
+              <button class="btn small" data-tx="0.9">A</button>
+              <button class="btn small" data-tx="1" style="font-size:16px">A</button>
+              <button class="btn small" data-tx="1.15" style="font-size:18px">A</button>
+            </div></div>
+          <p class="small-note">Reduced motion never freezes anything you need to play — doors, the cursor, puzzles and dialogue keep their motion.</p>
+        </div>
+        <!-- GAME -->
+        <div class="spage">
+          ${section("Helpfulness")}
+          ${tog("subtitles", "Describe sounds in text", "important audio clues always appear as text")}
+          ${tog("tiredness", "Tiredness", "late in the game, staying awake becomes something you do")}
+          ${section("Data")}
+          <div class="set-row"><label>Erase save data<span class="sub">removes progress and discoveries</span></label>
+            <button class="btn small danger" id="wipe">Erase</button></div>
+        </div>
       </div>
       <div class="spager">
-        <button class="btn small" id="sprev">← Back</button>
-        <div class="dots">${pages.map((_, i) => `<span class="dot${i === 0 ? " on" : ""}"></span>`).join("")}</div>
-        <button class="btn small" id="snext">Next →</button>
+        <button class="btn small" id="sprev">&larr; Back</button>
+        <button class="btn small" id="spinfo" title="About this section">?</button>
+        <button class="btn small" id="snext">Next &rarr;</button>
       </div>`;
 
     const paint = () => {
       el.querySelectorAll(".spage").forEach((p, i) => p.classList.toggle("active", i === page));
-      el.querySelectorAll(".dot").forEach((d, i) => d.classList.toggle("on", i === page));
       el.querySelector("#sprev").disabled = page === 0;
-      el.querySelector("#snext").disabled = page === pages.length - 1;
-      handle.panel.querySelector(".popup-head h2").textContent = "SETTINGS · " + pages[page];
+      el.querySelector("#snext").disabled = page === SETTINGS_PAGES.length - 1;
+      handle.panel.querySelector(".popup-head h2").textContent = "SETTINGS \u00b7 " + SETTINGS_PAGES[page].title;
     };
+    let handle;
     el.querySelector("#sprev").addEventListener("click", () => { page = Math.max(0, page - 1); paint(); });
-    el.querySelector("#snext").addEventListener("click", () => { page = Math.min(pages.length - 1, page + 1); paint(); });
+    el.querySelector("#snext").addEventListener("click", () => { page = Math.min(SETTINGS_PAGES.length - 1, page + 1); paint(); });
+    el.querySelector("#spinfo").addEventListener("click", () => {
+      Popups.open({ title: SETTINGS_PAGES[page].title, bodyHTML: `<p>${SETTINGS_PAGES[page].info}</p>` });
+    });
+
     el.querySelectorAll("input[data-set]").forEach(inp => inp.addEventListener("input", () => {
       Settings.set(inp.dataset.set, parseFloat(inp.value));
       if (inp.dataset.set === "fogDensity") {
@@ -414,7 +452,22 @@ const Game = (() => {
         if (typeof Fog !== "undefined") Fog.setEnabled(Settings.get("fog"));
         if (playing) Rooms.render();
       }
+      if (k === "shadows" && playing) Rooms.render();
+      if (k === "reducedMotion") {
+        // entering reduced motion: clear any custom picks so the night stills;
+        // the player can then re-enable individual motions via Customize.
+        if (Settings.get(k)) Settings.set("animToggles", null);
+        if (playing) Rooms.render();
+      }
     }));
+    el.querySelectorAll("[data-seg]").forEach(segEl => segEl.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+      const key = segEl.dataset.seg;
+      Settings.set(key, b.dataset.val);
+      document.body.classList.toggle("q-medium", b.dataset.val === "medium");
+      document.body.classList.toggle("q-low", b.dataset.val === "low");
+      segEl.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+      if (playing) Rooms.render();
+    })));
     el.querySelectorAll("button[data-tx]").forEach(b => b.addEventListener("click", () => {
       Settings.set("textSize", parseFloat(b.dataset.tx));
     }));
@@ -438,7 +491,7 @@ const Game = (() => {
     };
     const bindKey = (btn) => {
       btn.classList.add("capturing");
-      btn.querySelector(".keycap").textContent = "press…";
+      btn.querySelector(".keycap").textContent = "press\u2026";
       const handler = (e) => {
         e.preventDefault(); e.stopPropagation();
         window.removeEventListener("keydown", handler, true);
@@ -452,7 +505,37 @@ const Game = (() => {
     el.querySelectorAll(".keybind").forEach(b => b.addEventListener("click", () => bindKey(b)));
     el.querySelector("#resetkeys").addEventListener("click", () => { Controls.reset(); repaintKeys(); });
 
-    const handle = Popups.open({ title: "SETTINGS · SOUND", bodyEl: el });
+    /* reduced-motion customization: the ambient animation registry */
+    el.querySelector("#animcustom").addEventListener("click", () => openAnimCustomize());
+
+    handle = Popups.open({ title: "SETTINGS \u00b7 SOUND", bodyEl: el });
+    paint();
+  }
+
+  /* The ambient-animation picker: every non-gameplay motion as a short row. */
+  function openAnimCustomize() {
+    const regs = (typeof AnimReg !== "undefined") ? AnimReg.list() : [];
+    const box = document.createElement("div");
+    const rows = () => regs.map(r => `
+      <div class="set-row anim-row">
+        <label>${r.name}<span class="sub">${r.desc}</span></label>
+        <button class="toggle ${AnimReg.on(r.id) ? "on" : ""}" data-anim="${r.id}"></button>
+      </div>`).join("");
+    box.innerHTML = `
+      ${rows()}
+      <div class="set-row"><label>Quick choices</label>
+        <div style="display:flex;gap:8px">
+          <button class="btn small" id="anim-all">All on</button>
+          <button class="btn small" id="anim-none">All off</button>
+        </div></div>
+      <p class="small-note">Only atmosphere is listed here. Doors, the cursor, puzzles and dialogue always keep their motion.</p>`;
+    const h = Popups.open({ title: "CUSTOMIZE MOTION", bodyEl: box });
+    const refresh = () => { box.querySelectorAll("[data-anim]").forEach(t => t.classList.toggle("on", AnimReg.on(t.dataset.anim))); if (playing) Rooms.render(); };
+    box.querySelectorAll("[data-anim]").forEach(t => t.addEventListener("click", () => {
+      AnimReg.set(t.dataset.anim, !AnimReg.on(t.dataset.anim)); refresh();
+    }));
+    box.querySelector("#anim-all").addEventListener("click", () => { AnimReg.setAll(true); refresh(); });
+    box.querySelector("#anim-none").addEventListener("click", () => { AnimReg.setAll(false); refresh(); });
   }
 
   /* ---------- how to play / credits ---------- */

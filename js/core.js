@@ -24,6 +24,9 @@ const Settings = (() => {
   function apply() {
     document.body.classList.toggle("reduced", !!s.reducedMotion);
     document.documentElement.style.setProperty("--tx", s.textSize);
+    document.body.classList.toggle("q-medium", s.quality === "medium");
+    document.body.classList.toggle("q-low", s.quality === "low");
+    document.body.classList.toggle("no-shadows", s.shadows === false);
     AudioM.setVolumes({ master: s.master, sfx: s.sfx, ambient: s.ambient });
   }
   return {
