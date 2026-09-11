@@ -37,6 +37,7 @@
     { id: "windowClouds", name: "Clouds at windows", def: true, desc: "Thin clouds drifting behind the glass of every window." },
     { id: "fireFlicker",  name: "Sitting-room fire", def: true, desc: "The fire in the sitting room breathing and splitting into tongues." },
     { id: "ropeSway",     name: "Hatch cord sway", def: true,  desc: "The attic hatch's pull cord oscillating like a small pendulum." },
+    { id: "steam",        name: "Steam and breath", def: true, desc: "Steam rising off the bath and anything else hot enough to breathe." },
     { id: "flyWander",    name: "Flies",           def: true,  desc: "Flies keeping their distance and circling the room's dirty things." },
   ];
 

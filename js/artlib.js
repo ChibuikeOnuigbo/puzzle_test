@@ -27,78 +27,82 @@ const Art = (() => {
      are passed in so the COUNTING PUZZLE art stays authoritative.
   ===================================================================== */
   function fridge(x, y, opt = {}) {
-    const q = tier(), open = !!opt.open, w = opt.w || 170, h = opt.h || 360;
-    const sideW = q === "low" ? 0 : 26;
-    const bx = x, by = y;                       // body top-left
+    /* TWO doors, two hinges of behaviour: the freezer leaf and the fridge
+       leaf open INDEPENDENTLY (opt.freezerOpen / opt.open), each swinging on
+       the left hinge at its own angle. The stance is near-frontal: a shallow
+       right side plane and a thin top plane, no lean. */
+    const q = tier(), open = !!opt.open, fOpen = !!opt.freezerOpen;
+    const w = opt.w || 170, h = opt.h || 360;
+    const sideW = q === "low" ? 0 : 14;
+    const bx = x, by = y;
     const R = rng(opt.seed || 17);
     let s = "";
-    /* floor contact shadow */
     s += `<ellipse cx="${F(bx + w / 2)}" cy="${F(by + h + 6)}" rx="${w * 0.62}" ry="11" fill="#0d0a08" opacity="0.5"/>`;
-    /* right side plane (depth) */
     if (sideW) {
-      s += `<polygon points="${bx + w},${by + 8} ${bx + w + sideW},${by + 18} ${bx + w + sideW},${by + h - 6} ${bx + w},${by + h}" fill="#6a716c"/>`;
-      s += `<polygon points="${bx + w},${by + 8} ${bx + w + sideW},${by + 18} ${bx + w + sideW},${by + h - 6} ${bx + w},${by + h}" fill="#241a11" opacity="0.25"/>`;
-      if (q === "high") s += `<line x1="${bx + w + sideW * 0.5}" y1="${by + 26}" x2="${bx + w + sideW * 0.5}" y2="${by + h - 14}" stroke="#7d847f" stroke-width="1.4" opacity="0.5"/>`;
-      /* top plane */
-      s += `<polygon points="${bx + 6},${by} ${bx + w},${by + 8} ${bx + w + sideW},${by + 18} ${bx + 6 + sideW},${by + 10}" fill="#9aa19b"/>`;
+      s += `<polygon points="${bx + w},${by + 3} ${bx + w + sideW},${by + 8} ${bx + w + sideW},${by + h - 3} ${bx + w},${by + h}" fill="#6a716c"/>`;
+      s += `<polygon points="${bx + w},${by + 3} ${bx + w + sideW},${by + 8} ${bx + w + sideW},${by + h - 3} ${bx + w},${by + h}" fill="#241a11" opacity="0.25"/>`;
+      s += `<polygon points="${bx + 3},${by} ${bx + w},${by + 3} ${bx + w + sideW},${by + 8} ${bx + 3 + sideW},${by + 5}" fill="#9aa19b"/>`;
     }
-    /* body front */
-    s += `<rect x="${bx}" y="${by}" width="${w}" height="${h}" rx="10" fill="#8f9691" stroke="#5d635f" stroke-width="3.4"/>`;
-    /* vertical brushed sheen */
-    if (q === "high") {
-      for (let i = 0; i < 5; i++) {
-        const lx = bx + 14 + i * (w - 28) / 5;
-        s += `<line x1="${F(lx)}" y1="${by + 10}" x2="${F(lx)}" y2="${by + h - 12}" stroke="#a7ada8" stroke-width="${1 + R()}" opacity="0.28"/>`;
+    /* carcase behind the doors */
+    s += `<rect x="${bx}" y="${by}" width="${w}" height="${h}" rx="10" fill="#7d847f" stroke="#5d635f" stroke-width="3.4"/>`;
+    const splitY = F(by + h * 0.33);
+    const doors = [
+      { top: by + 4, bot: splitY - 2, open: fOpen, handleH: h * 0.14, leaf: 54 },
+      { top: splitY + 2, bot: by + h - 6, open: open, handleH: h * 0.28, leaf: 66 },
+    ];
+    doors.forEach((d, di) => {
+      const dh = d.bot - d.top;
+      if (!d.open) {
+        /* closed leaf: own rounded panel, gasket seam, brushed sheen */
+        s += `<rect x="${bx + 3}" y="${F(d.top)}" width="${w - 6}" height="${F(dh)}" rx="8" fill="#8f9691" stroke="#5d635f" stroke-width="2.6"/>`;
+        if (q === "high") {
+          for (let i = 0; i < 4; i++) {
+            const lx = bx + 16 + i * (w - 32) / 4;
+            s += `<line x1="${F(lx)}" y1="${F(d.top + 8)}" x2="${F(lx)}" y2="${F(d.bot - 8)}" stroke="#a7ada8" stroke-width="${(1 + R()).toFixed(1)}" opacity="0.26"/>`;
+          }
+          s += `<rect x="${bx + 8}" y="${F(d.top + 5)}" width="${w * 0.26}" height="${F(dh - 10)}" rx="7" fill="#cfd4d0" opacity="0.10"/>`;
+        } else if (q === "medium") {
+          s += `<rect x="${bx + 8}" y="${F(d.top + 5)}" width="${w * 0.22}" height="${F(dh - 10)}" rx="7" fill="#cfd4d0" opacity="0.12"/>`;
+        }
+        /* handle, hinge-left */
+        s += `<rect x="${bx + 10}" y="${F(d.top + 10)}" width="9" height="${F(d.handleH)}" rx="4.5" fill="#5d635f"/>`;
+        if (q !== "low") s += `<line x1="${bx + 12.5}" y1="${F(d.top + 14)}" x2="${bx + 12.5}" y2="${F(d.top + 8 + d.handleH)}" stroke="#8b928d" stroke-width="1.6" opacity="0.8"/>`;
+      } else {
+        /* OPEN leaf: cavity first, then the swung door panel */
+        const cav = { x: bx + 8, y: F(d.top + 4), w: w - 16, h: F(dh - 8) };
+        s += `<rect x="${cav.x}" y="${cav.y}" width="${cav.w}" height="${cav.h}" rx="4" fill="#1c2226"/>`;
+        s += `<rect x="${cav.x}" y="${cav.y}" width="${cav.w}" height="${cav.h}" rx="4" fill="url(#lampglow)" opacity="0.34"/>`;
+        s += `<rect x="${cav.x}" y="${cav.y}" width="7" height="${cav.h}" fill="#0f1417" opacity="0.8"/>`;
+        s += `<rect x="${cav.x + cav.w - 7}" y="${cav.y}" width="7" height="${cav.h}" fill="#0f1417" opacity="0.6"/>`;
+        const shelves = di === 0 ? [0.55] : [0.34, 0.62, 0.88];
+        shelves.forEach((fr, i) => {
+          const sy = cav.y + cav.h * fr;
+          s += `<rect x="${cav.x + 5}" y="${F(sy)}" width="${cav.w - 10}" height="5" rx="2" fill="#39434c"/>`;
+          if (q !== "low") s += `<line x1="${cav.x + 6}" y1="${F(sy)}" x2="${cav.x + cav.w - 6}" y2="${F(sy)}" stroke="#515d66" stroke-width="1.2"/>`;
+          if (q === "high") s += `<rect x="${cav.x + 6}" y="${F(sy + 5)}" width="${cav.w - 12}" height="5" fill="#0d1114" opacity="0.5"/>`;
+        });
+        if (di === 0 && q !== "low") {
+          /* freezer: two frost boxes on the single shelf */
+          s += `<rect x="${cav.x + 12}" y="${F(cav.y + cav.h * 0.55 - 16)}" width="26" height="16" rx="2" fill="#dfe6ea" opacity="0.8"/>`;
+          s += `<rect x="${cav.x + 44}" y="${F(cav.y + cav.h * 0.55 - 12)}" width="20" height="12" rx="2" fill="#c8d2d8" opacity="0.8"/>`;
+        }
+        /* the swung leaf: its own angle per door (freezer stiffer) */
+        const swing = di === 0 ? 46 : 66, drop = di === 0 ? 22 : 34;
+        s += `<polygon points="${bx},${F(d.top)} ${bx - swing},${F(d.top + drop)} ${bx - swing},${F(d.bot + drop + 8)} ${bx},${F(d.bot)}" fill="#7a817c" stroke="#5d635f" stroke-width="3"/>`;
+        s += `<polygon points="${bx - swing},${F(d.top + drop)} ${bx - swing + 7},${F(d.top + drop + 3)} ${bx - swing + 7},${F(d.bot + drop + 4)} ${bx - swing},${F(d.bot + drop + 8)}" fill="#a7ada8"/>`;
+        s += `<polygon points="${bx - swing + 7},${F(d.top + drop + 3)} ${bx - 7},${F(d.top + 6)} ${bx - 7},${F(d.bot - 4)} ${bx - swing + 7},${F(d.bot + drop + 4)}" fill="#c9ceca" opacity="0.9"/>`;
+        if (q !== "low") {
+          s += `<rect x="${bx - swing + 12}" y="${F(d.top + drop + 14)}" width="${swing - 20}" height="${F(dh * 0.5)}" rx="4" fill="none" stroke="#9aa19b" stroke-width="2" opacity="0.7"/>`;
+        }
+        s += `<ellipse cx="${bx + w * 0.3}" cy="${by + h + 4}" rx="${w * 0.5}" ry="9" fill="#a8c8da" opacity="0.08"/>`;
       }
-      s += `<rect x="${bx + 4}" y="${by + 4}" width="${w * 0.28}" height="${h - 8}" rx="8" fill="#cfd4d0" opacity="0.10"/>`;
-    } else if (q === "medium") {
-      s += `<rect x="${bx + 5}" y="${by + 5}" width="${w * 0.22}" height="${h - 10}" rx="7" fill="#cfd4d0" opacity="0.12"/>`;
-    }
-    /* freezer split + gasket seams */
-    const splitY = by + h * 0.33;
-    s += `<line x1="${bx + 3}" y1="${F(splitY)}" x2="${bx + w - 3}" y2="${F(splitY)}" stroke="#5d635f" stroke-width="3.4"/>`;
-    if (q !== "low") {
-      s += `<line x1="${bx + 3}" y1="${F(splitY - 3.4)}" x2="${bx + w - 3}" y2="${F(splitY - 3.4)}" stroke="#3f443f" stroke-width="1.6" opacity="0.8"/>`;
-      s += `<rect x="${bx + 7}" y="${by + 7}" width="${w - 14}" height="${h - 14}" rx="7" fill="none" stroke="#767d78" stroke-width="1.4" opacity="0.55"/>`;
-    }
-    /* handle */
-    s += `<rect x="${bx + 10}" y="${by + 26}" width="9" height="${h * 0.16}" rx="4.5" fill="#5d635f"/>`;
-    s += `<rect x="${bx + 10}" y="${F(splitY + 16)}" width="9" height="${h * 0.30}" rx="4.5" fill="#5d635f"/>`;
-    if (q !== "low") {
-      s += `<line x1="${bx + 12.5}" y1="${by + 30}" x2="${bx + 12.5}" y2="${by + 26 + h * 0.16 - 4}" stroke="#8b928d" stroke-width="1.6" opacity="0.8"/>`;
-      s += `<line x1="${bx + 12.5}" y1="${splitY + 20}" x2="${bx + 12.5}" y2="${splitY + 16 + h * 0.30 - 4}" stroke="#8b928d" stroke-width="1.6" opacity="0.8"/>`;
-    }
+    });
+    /* the split seam between the two doors */
+    s += `<line x1="${bx + 3}" y1="${splitY}" x2="${bx + w - 3}" y2="${splitY}" stroke="#3f443f" stroke-width="3"/>`;
     /* kick grille + feet */
-    s += `<rect x="${bx + 10}" y="${by + h - 16}" width="${w - 20}" height="9" rx="3" fill="#4c514d"/>`;
-    if (q === "high") for (let i = 0; i < 6; i++) s += `<line x1="${F(bx + 18 + i * (w - 36) / 6)}" y1="${by + h - 14}" x2="${F(bx + 18 + i * (w - 36) / 6)}" y2="${by + h - 9}" stroke="#333835" stroke-width="1.6"/>`;
+    s += `<rect x="${bx + 10}" y="${by + h - 14}" width="${w - 20}" height="8" rx="3" fill="#4c514d"/>`;
+    if (q === "high") for (let i = 0; i < 6; i++) s += `<line x1="${F(bx + 18 + i * (w - 36) / 6)}" y1="${by + h - 12}" x2="${F(bx + 18 + i * (w - 36) / 6)}" y2="${by + h - 8}" stroke="#333835" stroke-width="1.6"/>`;
     s += `<rect x="${bx + 12}" y="${by + h - 2}" width="16" height="8" fill="#3f443f"/><rect x="${bx + w - 28}" y="${by + h - 2}" width="16" height="8" fill="#3f443f"/>`;
-
-    /* OPEN state: the door swings toward the viewer on its LEFT hinge,
-       interior cavity with shelves; milk is seated ON a shelf, never floating */
-    if (open) {
-      const cav = { x: bx + 8, y: F(splitY + 6), w: w - 16, h: by + h - 10 - (splitY + 6) };
-      s += `<rect x="${cav.x}" y="${cav.y}" width="${cav.w}" height="${cav.h}" rx="4" fill="#1c2226"/>`;
-      s += `<rect x="${cav.x}" y="${cav.y}" width="${cav.w}" height="${cav.h}" rx="4" fill="url(#lampglow)" opacity="0.34"/>`;
-      /* inner walls shading */
-      s += `<rect x="${cav.x}" y="${cav.y}" width="7" height="${cav.h}" fill="#0f1417" opacity="0.8"/>`;
-      s += `<rect x="${cav.x + cav.w - 7}" y="${cav.y}" width="7" height="${cav.h}" fill="#0f1417" opacity="0.6"/>`;
-      const shelfYs = [cav.y + cav.h * 0.34, cav.y + cav.h * 0.62, cav.y + cav.h * 0.88];
-      shelfYs.forEach((sy, i) => {
-        s += `<rect x="${cav.x + 5}" y="${F(sy)}" width="${cav.w - 10}" height="5" rx="2" fill="#39434c"/>`;
-        if (q !== "low") s += `<line x1="${cav.x + 6}" y1="${F(sy)}" x2="${cav.x + cav.w - 6}" y2="${F(sy)}" stroke="#515d66" stroke-width="1.2"/>`;
-        if (q === "high" && i < 2) s += `<rect x="${cav.x + 6}" y="${F(sy + 5)}" width="${cav.w - 12}" height="6" fill="#0d1114" opacity="0.5"/>`;
-      });
-      /* the opened door leaf: thickness edge + inner liner, hinged left */
-      s += `<polygon points="${bx},${by + 4} ${bx - 66},${by + 34} ${bx - 66},${by + h + 12} ${bx},${by + h}" fill="#7a817c" stroke="#5d635f" stroke-width="3"/>`;
-      s += `<polygon points="${bx - 66},${by + 34} ${bx - 58},${by + 38} ${bx - 58},${by + h + 6} ${bx - 66},${by + h + 12}" fill="#a7ada8"/>`;
-      s += `<polygon points="${bx - 58},${by + 38} ${bx - 8},${by + 12} ${bx - 8},${by + h - 4} ${bx - 58},${by + h + 6}" fill="#c9ceca" opacity="0.9"/>`;
-      if (q !== "low") {
-        s += `<rect x="${bx - 52}" y="${by + 60}" width="38" height="${h * 0.4}" rx="4" fill="none" stroke="#9aa19b" stroke-width="2" opacity="0.7"/>`;
-        s += `<line x1="${bx - 4}" y1="${by + 20}" x2="${bx - 4}" y2="${by + h - 8}" stroke="#5d635f" stroke-width="2.4"/>`;
-      }
-      /* cold spill on the floor */
-      s += `<ellipse cx="${bx + w * 0.3}" cy="${by + h + 4}" rx="${w * 0.5}" ry="9" fill="#a8c8da" opacity="0.08"/>`;
-    }
     return s;
   }
 

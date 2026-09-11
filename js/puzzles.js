@@ -875,6 +875,32 @@ const RoomActions = {
       }
       Rooms.render();
     },
+    freezer() {
+      if (!State.flag("freezerOpen")) {
+        State.setFlag("freezerOpen");
+        AudioM.open();
+        Dialogue.say(Dialogue.pick("freezerO", [
+          "The freezer door opens on its own hinge. Frost on the boxes inside; the cold smells like nothing at all.",
+          "Freezer, open. A thin rime of ice on everything, and a stillness that the kitchen never has.",
+        ]));
+      } else {
+        State.setFlag("freezerOpen", false);
+        AudioM.close();
+        Dialogue.say(Dialogue.pick("freezerC", [
+          "I press the freezer door shut. The frost will keep.",
+          "Closed. The little cold stays to itself.",
+        ]));
+      }
+      Rooms.render();
+    },
+    bin() {
+      Dialogue.say(Dialogue.pick("bin", [
+        "The kitchen bin, lid cocked open. It smells of nothing at all, which is wrong for a bin that has a bag edge spilling over the rim.",
+        "I lift the lid an inch. Empty, clean, dry. The flies do not land here because there is anything to eat. They land here because this is where they were told to.",
+        "Dented steel, one pedal bent. Whatever this bin has swallowed over the years, it has swallowed without leaving a stain.",
+      ]));
+      State.addAware(1);
+    },
     milk() {
       const C = State.get().counts || { milk: 3 };
       if (State.flag("act2") && State.flag("lockboxOpen")) {
@@ -1436,6 +1462,8 @@ const RoomActions = {
         "A grey towel on a brass rail, damp at the hem. Damp. In a house where the feast stays hot and the bath stays warm, the towel stays damp.",
         "It has been wrung out and hung with care, as if the person who used it meant to come back for it in the morning.",
       ]));
+      /* the towel answers a touch with a slow swing on the rail */
+      try { const t = document.getElementById("towelsway"); if (t && t.beginElement) t.beginElement(); } catch (e) {}
     },
     bmat() {
       Dialogue.say(Dialogue.pick("bmat", [

@@ -216,8 +216,10 @@ const EXIT_DESCRIPTORS = {
   diningroom: [
     { id: "diningroom_to_kitchen", from: "diningroom", destination: "kitchen", screenSide: "right",
       hotspot: "dback", type: "edge_exit", tooltip: "Back to the kitchen" },
-    /* the sitting room is a real OPEN DOORWAY on the left wall: clicked,
-       not arrowed */
+    /* the sitting room is around the left wall, NOT facing the player, so it
+       is carried by the left edge arrow (no door drawn in the scene) */
+    { id: "diningroom_to_sittingroom", from: "diningroom", destination: "sittingroom", screenSide: "left",
+      hotspot: "gositting", type: "edge_exit", tooltip: "Through to the sitting room" },
   ],
   sittingroom: [
     { id: "sittingroom_to_diningroom", from: "sittingroom", destination: "diningroom", screenSide: "right",

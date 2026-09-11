@@ -134,7 +134,7 @@ const Rooms = (() => {
     /* one bird, facing +x, unit size ~ 16px span; the wings foreshorten
        (scale y) and sweep (rotate) = a flap seen from underneath, with a
        glide held at the end of every cycle */
-    const bird = (s, flapDur, glides) => {
+    const bird = (s, flapDur, glides, kind) => {
       const holds = "1 1;".repeat(glides);
       const sweeps = "0;".repeat(glides);
       const flap = on
@@ -143,18 +143,42 @@ const Rooms = (() => {
         : "";
       // wings root at the shoulder (just behind the head) and sweep BACK
       // toward the tail; the outer half is cut into three primaries
-      const wing = `M1.6,-0.4 L-0.6,-6.2 L-2.4,-10.4 L-3.2,-9.6 L-3.4,-7.4 L-4.6,-9.0 L-5.0,-8.0 L-4.6,-6.0 L-5.8,-7.0 L-5.8,-5.6 Q-5.0,-2.6 -3.0,-0.6 Z`;
-      const wingDn = `M1.6,0.4 L-0.6,6.2 L-2.4,10.4 L-3.2,9.6 L-3.4,7.4 L-4.6,9.0 L-5.0,8.0 L-4.6,6.0 L-5.8,7.0 L-5.8,5.6 Q-5.0,2.6 -3.0,0.6 Z`;
+      const wing = kind === 1
+        ? `M1.8,-0.4 L-0.2,-5.4 L-1.6,-11.2 L-2.6,-9.8 L-3.0,-7.2 L-4.2,-8.6 L-4.6,-6.6 L-5.4,-5.2 Q-4.6,-2.2 -2.6,-0.5 Z`   // swallow: scythe wings
+        : `M1.6,-0.4 L-0.6,-6.2 L-2.4,-10.4 L-3.2,-9.6 L-3.4,-7.4 L-4.6,-9.0 L-5.0,-8.0 L-4.6,-6.0 L-5.8,-7.0 L-5.8,-5.6 Q-5.0,-2.6 -3.0,-0.6 Z`;
+      const wingDn = kind === 1
+        ? `M1.8,0.4 L-0.2,5.4 L-1.6,11.2 L-2.6,9.8 L-3.0,7.2 L-4.2,8.6 L-4.6,6.6 L-5.4,5.2 Q-4.6,2.2 -2.6,0.5 Z`
+        : `M1.6,0.4 L-0.6,6.2 L-2.4,10.4 L-3.2,9.6 L-3.4,7.4 L-4.6,9.0 L-5.0,8.0 L-4.6,6.0 L-5.8,7.0 L-5.8,5.6 Q-5.0,2.6 -3.0,0.6 Z`;
+      const tail = kind === 1
+        ? `M-4.2,0 L-8.6,-2.6 L-7.0,0 L-8.6,2.6 Z`   // deep fork
+        : `M-4.4,0 L-7.6,-2 L-6.6,0 L-7.6,2 Z`;
+      const bodyD = kind === 1
+        ? `M-4.2,0 Q-1,-1.4 3.6,-0.6 Q5.6,-0.2 6.4,0 Q5.6,0.2 3.6,0.6 Q-1,1.4 -4.2,0 Z`
+        : `M-4.6,0 Q-1,-1.7 3.4,-0.7 Q5.5,-0.2 6.2,0 Q5.5,0.2 3.4,0.7 Q-1,1.7 -4.6,0 Z`;
       // a faint moonlit rim so a dark bird still reads against a dark sky
       const rim = opt.rim === false ? "" : ` stroke="${opt.rimColor || "#93a6ba"}" stroke-width="0.45" stroke-opacity="0.42" stroke-linejoin="round" paint-order="stroke"`;
       return `<g class="wb-bird" transform="scale(${s.toFixed(2)})" fill="${col}"${rim}>
         <g class="wb-w">${flap}<path d="${wing}"/></g>
         <g class="wb-w">${flap}<path d="${wingDn}"/></g>
-        <path d="M-4.6,0 Q-1,-1.7 3.4,-0.7 Q5.5,-0.2 6.2,0 Q5.5,0.2 3.4,0.7 Q-1,1.7 -4.6,0 Z"/>
-        <path d="M-4.4,0 L-7.6,-2 L-6.6,0 L-7.6,2 Z"/>
+        <path d="${bodyD}"/>
+        ${tail}
         <circle cx="5.3" cy="0" r="1.25"/>
         <path d="M6.3,-0.5 L8.3,0 L6.3,0.5 Z"/>
       </g>`;
+    };
+
+    /* a sun or moon in the pane is a no-fly zone: paths are re-rolled until
+       they clear the disc (a bird silhouette crossing the disc reads as a
+       rendering error, not as nature) */
+    const av = opt.avoid ? { x: gx + gw * opt.avoid.u, y: gy + gh * opt.avoid.v, r: gw * opt.avoid.r } : null;
+    const bez = (p0, p1, p2, p3, t) => { const u = 1 - t; return u*u*u*p0 + 3*u*u*t*p1 + 3*u*t*t*p2 + t*t*t*p3; };
+    const clears = (x0, y0, c1x, c1y, c2x, c2y, x1, y1) => {
+      if (!av) return true;
+      for (let t = 0; t <= 1.001; t += 0.08) {
+        const px = bez(x0, c1x, c2x, x1, t), py = bez(y0, c1y, c2y, y1, t);
+        if (Math.hypot(px - av.x, py - av.y) < av.r) return false;
+      }
+      return true;
     };
 
     let out = `<clipPath id="${clipId}">${clipShape}</clipPath>`;
@@ -163,17 +187,21 @@ const Rooms = (() => {
       const s = (opt.scale || 1) * 1.35 * (0.6 + R() * 0.5) * (i === 0 && opt.flock ? 0.85 : 1);
       const ltr = R() < 0.5;
       const m = 18 * s + 6;
-      const y0 = gy + gh * (band[0] + R() * (band[1] - band[0]));
-      const y1 = gy + gh * (band[0] + R() * (band[1] - band[0]));
-      const x0 = ltr ? gx - m : gx + gw + m, x1 = ltr ? gx + gw + m : gx - m;
-      const dx = x1 - x0;
-      const c1y = y0 + (R() - 0.5) * gh * 0.5, c2y = y1 + (R() - 0.5) * gh * 0.5;
+      let y0, y1, c1y, c2y, x0, x1, dx, tries = 0;
+      do {
+        y0 = gy + gh * (band[0] + R() * (band[1] - band[0]));
+        y1 = gy + gh * (band[0] + R() * (band[1] - band[0]));
+        x0 = ltr ? gx - m : gx + gw + m; x1 = ltr ? gx + gw + m : gx - m;
+        dx = x1 - x0;
+        c1y = y0 + (R() - 0.5) * gh * 0.5; c2y = y1 + (R() - 0.5) * gh * 0.5;
+      } while (!clears(x0, y0, x0 + dx * 0.33, c1y, x0 + dx * 0.66, c2y, x1, y1) && ++tries < 9);
       const path = `M${x0.toFixed(1)},${y0.toFixed(1)} C${(x0 + dx * 0.33).toFixed(1)},${c1y.toFixed(1)} ${(x0 + dx * 0.66).toFixed(1)},${c2y.toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}`;
       const flapDur = (0.9 + R() * 0.6) / Math.max(0.6, s);
       const glides = 1 + Math.floor(R() * 4);
+      const kind = R() < 0.45 ? 1 : 0;
       const body = (i === 0 && opt.flock)
-        ? `<g>${bird(s, flapDur, glides)}<g transform="translate(-13,-8)">${bird(s * 0.9, flapDur * 1.07, glides)}</g><g transform="translate(-12,9)">${bird(s * 0.92, flapDur * 0.95, glides)}</g></g>`
-        : bird(s, flapDur, glides);
+        ? `<g>${bird(s, flapDur, glides, kind)}<g transform="translate(-13,-8)">${bird(s * 0.9, flapDur * 1.07, glides, kind)}</g><g transform="translate(-12,9)">${bird(s * 0.92, flapDur * 0.95, glides, kind)}</g></g>`
+        : bird(s, flapDur, glides, kind);
       if (!on) {
         // still night: one bird, wings spread, hanging mid-pane
         if (i > 0) break;
@@ -845,7 +873,9 @@ const Rooms = (() => {
         else dark += rect;
       }
     }
-    let out = dark ? `<path d="${dark}" fill="${night}"/>` : "";
+    /* the night side never paints a solid disc: a faint earthshine tint over
+       the real sky, so no circle edge can ever show against the gradient */
+    let out = dark ? `<path d="${dark}" fill="${night}" opacity="0.07"/>` : "";
     out += acc.map((d, i) => d ? `<path d="${d}" fill="${MOON_BANDS[i]}"/>` : "").join("");
     return out;
   }
@@ -1358,17 +1388,10 @@ const Rooms = (() => {
            room itself is visible — the same world you enter
            (docs/DOORWAY_CONTINUITY.md). The small oval mirror that hung here
            is GONE: a mirror does not belong on a wall that was just opened. -->
+      <!-- the sitting room is around the left wall, not facing the player:
+           no door drawn here — the left edge arrow carries that exit -->
       <g id="v_sitdoor">
-        <rect x="24" y="168" width="186" height="356" fill="none" stroke="#3f342a" stroke-width="12"/>
-        ${(typeof Previews !== "undefined")
-          ? Previews.through("sittingroom", { x: 34, y: 178, w: 166, h: 336 })
-          : `<rect x="34" y="178" width="166" height="336" fill="#171310"/>`}
-        <!-- firelight breathing out across the dining floor -->
-        <polygon points="34,514 200,514 260,560 6,560" fill="#e8842a" opacity="0.07">
-          ${Settings.get("reducedMotion") ? "" : `<animate attributeName="opacity" values="0.07;0.045;0.065;0.07" dur="2.6s" repeatCount="indefinite"/>`}
-        </polygon>
-        <!-- threshold -->
-        <rect x="24" y="520" width="186" height="8" fill="#241a11"/>
+        <rect x="0" y="490" width="60" height="12" fill="#1c1610"/>
       </g>
       <!-- a warm domestic still life over the sideboard (generated reference,
            JS-reconstructed; art/manifests/painting-dining.json) -->
@@ -1412,7 +1435,7 @@ const Rooms = (() => {
       ${State.flag("diningTidied") ? "" : hs("spoilt", 336, 572, 116, 64, "A plate gone bad", "v_spoilt")}
       ${State.flag("diningTidied") ? "" : hs("garbage", 1048, 540, 160, 112, "Rubbish bags", "v_garbage")}
       ${hs("smallchair", moved ? 570 : 820, 548, 96, 140, "A small chair with a cushion", "v_smallchair")}`}
-      ${hs("gositting", 20, 160, 200, 370, "The warm sitting room", "v_sitdoor")}
+      ${hs("gositting", 0, 150, 44, 380, "Through to the sitting room", "")}
       ${hs("dback", 1210, 140, 70, 420, "Back to the kitchen", "")}
     </g>
     </svg>`;
@@ -2535,6 +2558,7 @@ const Rooms = (() => {
     const drawerOpen = State.flag("drawerOpen");
     const boxOpen = State.flag("lockboxOpen");
     const fridgeOpen = State.flag("fridgeOpen");
+    const freezerOpen = State.flag("freezerOpen");
     const tapOn = State.flag("tapOn");
     const stoveOn = State.flag("stoveOn");
     const tapOverflow = State.flag("tapOverflow");
@@ -2592,7 +2616,7 @@ const Rooms = (() => {
            milk bottles sit ON a shelf, and their COUNT stays the puzzle's
            source of truth -->
       <g id="v_fridge">
-        ${(typeof Art !== "undefined") ? Art.fridge(990, 180, { open: fridgeOpen, w: 170, h: 360 }) : `
+        ${(typeof Art !== "undefined") ? Art.fridge(990, 180, { open: fridgeOpen, freezerOpen, w: 170, h: 360 }) : `
         <ellipse cx="1075" cy="549" rx="96" ry="10" fill="#0d0a08" opacity="0.5"/>
         <rect x="990" y="180" width="170" height="360" rx="8" fill="#8f9691" stroke="#5d635f" stroke-width="4"/>`}
         ${fridgeOpen ? `
@@ -2672,14 +2696,18 @@ const Rooms = (() => {
         <circle cx="592" cy="416" r="5.4" fill="${tapOn ? "#c9a35f" : "#8f9691"}" ${tapOn ? 'transform="rotate(-28 592 416)"' : ""}/>
         <path d="M586.5,416 L597.5,416 M592,410.5 L592,421.5" stroke="#3f443f" stroke-width="1.8" ${tapOn ? 'transform="rotate(-28 592 416)"' : ""}/>
         ${tapOn && !tapHouseOff ? `
+          <!-- the pour ramps in: a thin trickle widening to a full stream -->
           <rect x="642" y="424" width="7" height="21" rx="1.5" fill="#a8c8da" opacity="0.7">
-            <animate attributeName="opacity" values="0.7;0.5;0.7" dur="0.5s" repeatCount="indefinite"/>
+            <animate attributeName="width" values="1.6;7" dur="1.6s" fill="freeze" calcMode="spline" keySplines="0.3 0 0.4 1"/>
+            <animate attributeName="opacity" values="0;0.7" dur="0.9s" fill="freeze"/>
           </rect>
           <line x1="645.5" y1="424" x2="645.5" y2="445" stroke="#e4f0f6" stroke-width="2" stroke-dasharray="3 5" opacity="0.8">
+            <animate attributeName="stroke-width" values="0.5;2" dur="1.6s" fill="freeze"/>
             <animate attributeName="stroke-dashoffset" values="0;-16" dur="0.35s" repeatCount="indefinite"/>
           </line>
           <ellipse cx="646" cy="446" rx="12" ry="3.4" fill="#a8c8da" opacity="0.5">
             <animate attributeName="rx" values="9;14;9" dur="0.7s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0;0.5" dur="1.2s" fill="freeze"/>
           </ellipse>` : ""}
         ${tapOverflow && !tapDrained ? `
           <rect x="598" y="446" width="94" height="5" rx="2" fill="#a8c8da" opacity="0.5">
@@ -2742,34 +2770,44 @@ const Rooms = (() => {
           </g>` : ""}
       </g>
       ${wetFloor && !tapMoist ? `
-      <g id="v_puddle">
-        <path d="M560,664 q80,-26 176,-8 q66,12 148,-4 q56,-10 104,2 q28,8 8,22 q-64,30 -178,28 q-130,-2 -220,-10 q-46,-4 -38,-30 Z" fill="#7fa8c9" opacity="0.26" filter="url(#fxblur2)"/>
-        ${tapFloodFast ? `
+      <g id="v_puddle" transform="translate(700,658)">
+        <g>
+          <!-- the water arrives small and spreads; no frameskip to a full puddle -->
+          <animateTransform attributeName="transform" type="scale" values="0.18;1" dur="8s" fill="freeze" calcMode="spline" keySplines="0.25 0.1 0.3 1"/>
+          <path d="M-140,6 q80,-26 176,-8 q66,12 148,-4 q56,-10 104,2 q28,8 8,22 q-64,30 -178,28 q-130,-2 -220,-10 q-46,-4 -38,-30 Z" fill="#7fa8c9" opacity="0.26" filter="url(#fxblur2)"/>
+          <!-- first droplets: tiny, growing, staggered around the wet patch -->
+          ${[[-112,-6,1.0],[-64,14,2.4],[-14,-10,3.6],[42,22,4.8],[96,-2,5.8],[128,16,6.8]].map(([dx, dy, b]) => `
+            <circle cx="${dx}" cy="${dy}" r="0.4" fill="#cfe6f2" opacity="0">
+              <animate attributeName="r" values="0.4;2.6" dur="2.2s" begin="${b}s" fill="freeze"/>
+              <animate attributeName="opacity" values="0;0.55" dur="2.2s" begin="${b}s" fill="freeze"/>
+            </circle>`).join("")}
+          ${tapFloodFast ? `
           <g stroke="#cfe6f2" fill="none" opacity="0.55">
-            <ellipse cx="700" cy="650" rx="30" ry="8">
+            <ellipse cx="0" cy="-8" rx="30" ry="8">
               <animate attributeName="rx" values="20;120" dur="1.1s" repeatCount="indefinite"/>
               <animate attributeName="ry" values="6;26" dur="1.1s" repeatCount="indefinite"/>
               <animate attributeName="opacity" values="0.6;0" dur="1.1s" repeatCount="indefinite"/>
             </ellipse>
-            <ellipse cx="760" cy="654" rx="20" ry="6">
+            <ellipse cx="60" cy="-4" rx="20" ry="6">
               <animate attributeName="rx" values="16;90" dur="1.4s" repeatCount="indefinite"/>
               <animate attributeName="ry" values="5;20" dur="1.4s" repeatCount="indefinite"/>
               <animate attributeName="opacity" values="0.5;0" dur="1.4s" repeatCount="indefinite"/>
             </ellipse>
           </g>` : `
           <g stroke="#cfe6f2" fill="none" opacity="0.35">
-            <ellipse cx="720" cy="652" rx="30" ry="8">
+            <ellipse cx="20" cy="-6" rx="30" ry="8">
               <animate attributeName="rx" values="24;110" dur="6s" repeatCount="indefinite"/>
               <animate attributeName="ry" values="7;24" dur="6s" repeatCount="indefinite"/>
               <animate attributeName="opacity" values="0.4;0" dur="6s" repeatCount="indefinite"/>
             </ellipse>
           </g>
-          <path d="M620,650 q30,-8 66,-6 q30,2 56,0" stroke="#d8ecf6" stroke-width="2.4" fill="none" opacity="0.4">
+          <path d="M-80,-8 q30,-8 66,-6 q30,2 56,0" stroke="#d8ecf6" stroke-width="2.4" fill="none" opacity="0.4">
             <animateTransform attributeName="transform" type="translate" values="0,0;10,0;0,0" dur="12s" repeatCount="indefinite"/>
           </path>
-          <path d="M740,656 q24,-6 50,-4" stroke="#d8ecf6" stroke-width="2" fill="none" opacity="0.3">
+          <path d="M40,-2 q24,-6 50,-4" stroke="#d8ecf6" stroke-width="2" fill="none" opacity="0.3">
             <animateTransform attributeName="transform" type="translate" values="0,0;-8,0;0,0" dur="14s" repeatCount="indefinite"/>
           </path>`}
+        </g>
       </g>` : ""}
       ${tapMoist ? `
       <g id="v_moist">
@@ -2919,9 +2957,11 @@ const Rooms = (() => {
     <g id="layer-front">${falseK ? `<rect width="1280" height="720" fill="#4a2a3a" opacity="0.08"/>` : ""}</g>
     <g id="hotspots">
       ${hs("list", 1018, 204, 92, 100, "A shopping list", "v_list")}
+      ${hs("freezer", freezerOpen ? 912 : 984, freezerOpen ? 158 : 174, freezerOpen ? 254 : 182, freezerOpen ? 148 : 122, "The freezer door", "v_fridge")}
+      ${hs("fridge", fridgeOpen ? 912 : 984, fridgeOpen ? 314 : 300, fridgeOpen ? 254 : 182, fridgeOpen ? 262 : 246, "The refrigerator door", "v_fridge")}
       ${fridgeOpen ? hs("milk", 1004, 340, 148, 100, "Bottles of milk", "v_milk") : ""}
-      ${hs("fridge", fridgeOpen ? 912 : 984, fridgeOpen ? 294 : 174, fridgeOpen ? 254 : 182, fridgeOpen ? 282 : 372, "The refrigerator", "v_fridge")}
       ${hs("stove", 64, 378, 180, 200, "The stove", "v_stove")}
+      ${hs("bin", 916, 528, 84, 92, "The kitchen bin", "v_bin")}
       ${hs("godining", 0, 156, 66, 406, "Through to the dining room", "")}
       ${hs("tap", 552, 392, 176, 64, "The tap", "v_tap")}
       ${hs("bread", 276, 392, 120, 56, "The bread board", "v_bread")}
@@ -3736,15 +3776,17 @@ const Rooms = (() => {
     })();
     /* moonlight lying on the bath water: short dashes, quieter each row */
     const glints = (() => {
+      /* glints live ON the water ellipse only — clipped so no water line can
+         ever sit on the tub's rim or body (z-order rule) */
       let out = "";
-      const rows = [[470, 0.5], [482, 0.38], [494, 0.28], [506, 0.2]];
+      const rows = [[456, 0.5], [464, 0.4], [471, 0.3], [477, 0.22]];
       rows.forEach(([y, o], ri) => {
         for (let i = 0; i < 7 - ri; i++) {
           const x = 560 + i * 44 + (ri % 2) * 20 + ((i * 37 + ri * 53) % 17);
-          out += `<rect x="${x}" y="${y}" width="${16 + ((i * 13) % 12)}" height="2.4" rx="1.2" fill="#cfd8de" opacity="${o * (0.6 + ((i * 29) % 40) / 100)}"/>`;
+          out += `<rect x="${x}" y="${y}" width="${16 + ((i * 13) % 12)}" height="2.2" rx="1.1" fill="#cfd8de" opacity="${o * (0.6 + ((i * 29) % 40) / 100)}"/>`;
         }
       });
-      return out;
+      return `<g clip-path="url(#bwater)">${out}</g>`;
     })();
     return `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
@@ -3758,6 +3800,10 @@ const Rooms = (() => {
       <linearGradient id="btub" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="#5d656b"/><stop offset="0.5" stop-color="#414a50"/><stop offset="1" stop-color="#2b3238"/>
       </linearGradient>
+      <linearGradient id="bwaterg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#1b2a34"/><stop offset="0.4" stop-color="#12202a"/><stop offset="1" stop-color="#0a141c"/>
+      </linearGradient>
+      <clipPath id="bwater"><path d="M424,458 q236,-22 472,0 q-20,26 -236,26 q-216,0 -236,-26 Z"/></clipPath>
     </defs>
     <g id="layer-back">
       <rect width="1280" height="720" fill="url(#bwall)"/>
@@ -3811,18 +3857,36 @@ const Rooms = (() => {
         <ellipse cx="660" cy="612" rx="270" ry="16" fill="#0a0d0f" opacity="0.55"/>
         <path d="M420,452 q-16,80 22,120 q30,30 90,34 l256,0 q60,-4 90,-34 q38,-40 22,-120 Z" fill="url(#btub)"/>
         <path d="M420,452 q-16,80 22,120 q30,30 90,34 l40,0 q-52,-8 -78,-40 q-30,-38 -20,-114 Z" fill="#3d4348" opacity="0.6"/>
+        <!-- water FIRST: it sits below the rim in z-order, never covering it -->
+        <path d="M424,458 q236,-22 472,0 q-20,26 -236,26 q-216,0 -236,-26 Z" fill="url(#bwaterg)"/>
+        <!-- meniscus: a bright lip where water meets the tub, darker behind -->
+        <path d="M424,458 q236,-22 472,0" stroke="#3d5260" stroke-width="2.2" fill="none" opacity="0.8"/>
+        <path d="M436,462 q224,-20 448,0" stroke="#0a141c" stroke-width="2" fill="none" opacity="0.6"/>
+        <!-- the high window's moonlight lying on the water, breathing slowly -->
+        <g clip-path="url(#bwater)">
+          <path d="M940,452 q30,-6 60,0 l-14,26 q-18,4 -34,0 Z" fill="#cfd8de" opacity="0.10">
+            ${reduced ? "" : `<animate attributeName="opacity" values="0.10;0.16;0.08;0.10" dur="7s" repeatCount="indefinite"/>`}
+          </path>
+          <path d="M500,470 q60,8 120,2" stroke="#2a3a44" stroke-width="2" fill="none" opacity="0.5"/>
+        </g>
+        ${glints}
+        <!-- the rim LAST: it stays in front of the waterline -->
         <path d="M404,446 q256,-26 512,0 q10,2 10,10 q0,8 -10,10 q-256,26 -512,0 q-10,-2 -10,-10 q0,-8 10,-10 Z" fill="#7d848a"/>
         <path d="M404,446 q256,-26 512,0" stroke="#c9cdd0" stroke-width="3" fill="none" opacity="0.35"/>
         <path d="M884,452 q14,60 -18,104" stroke="#c9cdd0" stroke-width="3" fill="none" opacity="0.22"/>
-        <path d="M424,458 q236,-22 472,0 q-20,26 -236,26 q-216,0 -236,-26 Z" fill="#101a22"/>
-        ${glints}
         <!-- four claw feet, brass gone brown -->
         ${[452, 560, 760, 868].map(x => `<path d="M${x},600 q-4,18 6,22 q10,4 14,-4 q4,-10 -4,-18 Z" fill="#6b5a3a"/><path d="M${x + 2},606 q6,4 10,10" stroke="#4a3d26" stroke-width="2" fill="none"/>`).join("")}
         <!-- the chain and plug, laid on the rim like a served utensil -->
         <path d="M880,452 q14,10 10,26" stroke="#8a8378" stroke-width="2" fill="none"/>
         <circle cx="890" cy="482" r="5" fill="#8a8378"/>
-        <!-- steam that the fog layer will carry; a hint left here to read -->
-        ${reduced ? "" : `<path d="M560,436 q10,-18 0,-34 q-8,-14 2,-28 M660,432 q12,-20 2,-38 q-8,-14 2,-26 M760,436 q10,-18 0,-34 q-8,-14 2,-28" stroke="#9cc3dc" stroke-width="2.4" fill="none" opacity="0.14"/>`}
+        <!-- steam: three wisps that rise, lean and fade on their own clocks -->
+        ${(reduced || !animOn("steam")) ? `<path d="M560,436 q10,-18 0,-34 q-8,-14 2,-28 M660,432 q12,-20 2,-38 q-8,-14 2,-26 M760,436 q10,-18 0,-34 q-8,-14 2,-28" stroke="#9cc3dc" stroke-width="2.4" fill="none" opacity="0.14"/>` : [560, 660, 760].map((x, i) => `
+        <g opacity="0">
+          <animate attributeName="opacity" values="0;0.22;0.16;0" dur="${(5 + i * 1.3).toFixed(1)}s" begin="${(i * 1.7).toFixed(1)}s" repeatCount="indefinite"/>
+          <path d="M${x},438 q10,-16 2,-30 q-8,-14 2,-26" stroke="#9cc3dc" stroke-width="2.4" fill="none">
+            <animateTransform attributeName="transform" type="translate" values="0 6;-4 -26" dur="${(5 + i * 1.3).toFixed(1)}s" begin="${(i * 1.7).toFixed(1)}s" repeatCount="indefinite"/>
+          </path>
+        </g>`).join("")}
       </g>
       <!-- a washstand: jug full, basin clean, towel folded beneath -->
       <g id="v_bstand">
@@ -3858,13 +3922,23 @@ const Rooms = (() => {
         <path d="M178,232 q-6,52 2,104" stroke="#26374a" stroke-width="2" fill="none" opacity="0.4"/>
         <circle cx="152" cy="294" r="3" fill="#8a7148"/>
       </g>
-      <!-- towel rail and a grey towel, damp at the hem -->
+      <!-- towel rail and a grey towel, damp at the hem; it swings when touched -->
       <g id="v_btowel">
         <rect x="946" y="376" width="150" height="7" rx="3.5" fill="#6b5a3a"/>
         <circle cx="946" cy="379" r="5" fill="#4a3d26"/><circle cx="1096" cy="379" r="5" fill="#4a3d26"/>
-        <path d="M972,382 l96,0 l6,120 q-52,10 -108,0 Z" fill="#4a4f54"/>
-        <path d="M986,382 l4,116 M1016,382 l2,120 M1046,382 l-2,118" stroke="#3d4247" stroke-width="3" fill="none" opacity="0.8"/>
-        <path d="M966,486 q54,10 110,0 l2,16 q-56,10 -114,0 Z" fill="#3d4247"/>
+        <g id="towel-swing">
+          <animateTransform id="towelsway" attributeName="transform" type="rotate"
+            values="0 1020 382;5 1020 382;-4 1020 382;3 1020 382;-1.5 1020 382;0 1020 382"
+            dur="1.8s" begin="indefinite" calcMode="spline"
+            keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1"/>
+          <path d="M972,382 l96,0 l6,120 q-52,10 -108,0 Z" fill="#4a4f54"/>
+          <path d="M972,382 l10,0 l6,118 q-8,2 -16,2 Z" fill="#565b60" opacity="0.7"/>
+          <path d="M1058,382 l10,0 l6,116 q-8,3 -18,3 Z" fill="#3d4247" opacity="0.8"/>
+          <path d="M986,382 l4,116 M1016,382 l2,120 M1046,382 l-2,118" stroke="#3d4247" stroke-width="3" fill="none" opacity="0.8"/>
+          <path d="M966,486 q54,10 110,0 l2,16 q-56,10 -114,0 Z" fill="#3d4247"/>
+          <path d="M968,496 q52,9 108,0" stroke="#2a2f33" stroke-width="2" fill="none" opacity="0.7"/>
+          <path d="M976,470 q48,8 96,0" stroke="#565b60" stroke-width="1.6" fill="none" opacity="0.5"/>
+        </g>
       </g>
       <!-- a bath mat, wrung out and laid straight -->
       <g id="v_bmat">

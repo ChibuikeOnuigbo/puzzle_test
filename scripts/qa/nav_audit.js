@@ -35,7 +35,7 @@ const w = dom.window, wait = ms => new Promise(r => setTimeout(r, ms)), ev = c =
     porch: {},
     hallway: { left: "leave", right: "goup" },
     kitchen: { left: "godining", right: "goback" },
-    diningroom: { right: "dback" },
+    diningroom: { left: "gositting", right: "dback" },
     sittingroom: { right: "sitback" },
     landing: { left: "gogallery", right: "godown" },
     gallery: { right: "gback" },

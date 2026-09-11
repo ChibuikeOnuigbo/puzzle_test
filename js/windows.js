@@ -213,9 +213,17 @@ const Windows = (() => {
       }
     }
 
-    /* birds: inside the clip, between scenery and glass */
+    /* birds: inside the clip, between scenery and glass; the sun/moon disc
+       is automatically a no-fly zone */
     if (birdFn && opt.birds) {
-      ext += birdFn(id + "-ext", glass, opt.birds);
+      const b = { ...opt.birds };
+      if (!b.avoid) {
+        const cel = opt.sun ? { u: opt.sun.u, v: opt.sun.v, r: opt.sun.r != null ? opt.sun.r : Math.min(glass.w, glass.h) * 0.10 }
+          : opt.moon ? { u: opt.moon.u, v: opt.moon.v, r: opt.moon.r != null ? opt.moon.r : Math.min(glass.w, glass.h) * 0.09 }
+          : null;
+        if (cel) b.avoid = { u: cel.u != null ? cel.u : 0.72, v: cel.v != null ? cel.v : 0.24, r: (cel.r * 2.4) / glass.w };
+      }
+      ext += birdFn(id + "-ext", glass, b);
     }
 
     /* atmospheric depth veil: cooler toward the horizon */
