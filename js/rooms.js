@@ -2443,9 +2443,12 @@ const Rooms = (() => {
       <!-- family photo -->
       <g id="v_photo">
         <rect x="470" y="200" width="150" height="110" fill="#221a12" stroke="#4a3826" stroke-width="7"/>
-        <rect x="482" y="211" width="126" height="88" fill="#c9bb9b"/>
-        ${person(510, 292, 52, "#5a4a3a")}${person(545, 292, 50, "#6b5544")}${person(575, 294, 38, "#4a5568")}${person(596, 296, 30, "#7a5a50")}
-        ${act2 ? person(492, 293, 46, "#8f8778", true) : ""}
+        <rect x="482" y="211" width="126" height="88" fill="#aebcc2"/>
+        <path d="M482,286 q40,-10 63,-6 q40,6 63,2 L608,299 L482,299 Z" fill="#5a6a72"/>
+        <polygon points="516,268 545,248 574,268" fill="#42505a"/>
+        <rect x="524" y="268" width="42" height="22" fill="#57666f"/>
+        <rect x="540" y="274" width="9" height="16" fill="${act2 ? "#e8a04c" : "#313d47"}"/>
+        <path d="M482,222 q30,8 62,3 q34,-5 66,2" stroke="#dfe7ea" stroke-width="3" fill="none" opacity="0.5"/>
       </g>
       ${State.flag("mirrorBlood") ? `
       <!-- the wall writes back: STOP, covering a third of the plaster -->
@@ -3117,7 +3120,7 @@ const Rooms = (() => {
         <rect x="80" y="140" width="8" height="352" fill="#241d16"/>
         <rect x="0" y="132" width="88" height="10" fill="#241d16"/>
       </g>
-      <!-- child room door, ajar, crayon marks low on the wood; the house can take this room away -->
+      <!-- small room door, ajar, pencil marks low on the wood; the house can take this room away -->
       ${childGone ? `
       <g id="v_cdoor">
         <rect x="112" y="142" width="166" height="356" fill="url(#wallg)"/>
@@ -3187,12 +3190,12 @@ const Rooms = (() => {
       <!-- three frames: the middle one is empty -->
       <g id="v_frames" transform="translate(-470,0)">
         <rect x="800" y="180" width="64" height="80" fill="#221a12" stroke="#4a3826" stroke-width="5"/>
-        <rect x="808" y="188" width="48" height="64" fill="#c9bb9b"/>${person(832, 246, 34, "#5a4a3a")}
+        <rect x="808" y="188" width="48" height="64" fill="#aebcc2"/><path d="M810,236 q14,-12 24,-4 q12,-10 20,-2 L856,252 L808,252 Z" fill="#57666f"/><circle cx="842" cy="200" r="5" fill="#dfe7ea" opacity="0.7"/>
         <rect x="800" y="286" width="64" height="80" fill="#221a12" stroke="#4a3826" stroke-width="5"/>
         <rect x="808" y="294" width="48" height="64" fill="${act2 ? "#171310" : "#c9bb9b"}"/>
-        ${act2 ? "" : person(832, 352, 32, "#6b5544")}
+        ${act2 ? "" : `<path d="M810,342 q14,-12 24,-4 q12,-10 20,-2 L856,358 L808,358 Z" fill="#57666f"/><circle cx="820" cy="306" r="5" fill="#dfe7ea" opacity="0.7"/>`}
         <rect x="800" y="392" width="64" height="80" fill="#221a12" stroke="#4a3826" stroke-width="5"/>
-        <rect x="808" y="400" width="48" height="64" fill="#c9bb9b"/>${person(832, 458, 30, "#4a5568")}
+        <rect x="808" y="400" width="48" height="64" fill="#aebcc2"/><path d="M810,448 q14,-12 24,-4 q12,-10 20,-2 L856,464 L808,464 Z" fill="#57666f"/><line x1="812" y1="414" x2="852" y2="414" stroke="#dfe7ea" stroke-width="2" opacity="0.5"/>
       </g>
       <!-- a small scratch in the skirting board -->
       <g id="v_scratch" transform="translate(-88,0)">
@@ -3204,7 +3207,7 @@ const Rooms = (() => {
       <rect width="1280" height="720" fill="#0b0806" opacity="${act2 ? "0.16" : "0.07"}"/>
     </g>
     <g id="hotspots">
-      ${childGone ? hs("chwall", 108, 140, 175, 360, "A wall that remembers being a door", "v_cdoor") : hs("gochild", 108, 140, 175, 360, "A small door with crayon marks", "v_cdoor")}
+      ${childGone ? hs("chwall", 108, 140, 175, 360, "A wall that remembers being a door", "v_cdoor") : hs("gochild", 108, 140, 175, 360, "A small door with pencil marks", "v_cdoor")}
       ${State.flag("closetOpen") && !hasTorch ? hs("torch", 972, 308, 88, 32, "Something metal", "v_torch") : ""}
       ${hs("closet", 938, 168, 144, 335, "The linen closet", "v_closet")}
       ${hs("ahatch", 348, 0, 214, 170, "A hatch in the ceiling", "v_ahatch")}
@@ -3289,8 +3292,7 @@ const Rooms = (() => {
           <rect x="${p[0]}" y="${p[1]}" width="78" height="96" fill="#d8c9a8" transform="rotate(${p[2]} ${p[0] + 39} ${p[1] + 48})"/>
           <rect x="${p[0] + 30}" y="${p[1] - 6}" width="18" height="12" fill="#b8ab92" opacity="0.8" transform="rotate(${p[2]} ${p[0] + 39} ${p[1] + 48})"/>`).join("")}
         <path d="M580,220 l20,-22 l20,22 Z M584,220 l32,0 l0,26 l-32,0 Z" fill="none" stroke="#8a4a3a" stroke-width="2.5" transform="rotate(-4 599 218)"/>
-        ${[0, 1, 2, 3, act2 ? -1 : 4].filter(i => i >= 0).map(i => `<g transform="translate(${672 + i * 12},252)"><circle r="4" fill="none" stroke="#4a5568" stroke-width="2"/><line x1="0" y1="4" x2="0" y2="16" stroke="#4a5568" stroke-width="2"/></g>`).join("")}
-        ${act2 ? `<g transform="translate(788,236)"><circle r="4" fill="none" stroke="#8a4a3a" stroke-width="2"/><line x1="0" y1="4" x2="0" y2="16" stroke="#8a4a3a" stroke-width="2"/></g>` : ""}
+        <g transform="rotate(3 700 240)"><circle cx="700" cy="238" r="20" fill="none" stroke="#4a5568" stroke-width="2.5"/><line x1="700" y1="238" x2="700" y2="226" stroke="#4a5568" stroke-width="2.5"/><line x1="700" y1="238" x2="709" y2="242" stroke="#4a5568" stroke-width="2.5"/>${act2 ? `<circle cx="700" cy="238" r="3" fill="#8a4a3a"/>` : ""}</g>
       </g>
       <!-- music box on the dresser -->
       <g id="v_musicbox">
@@ -3466,22 +3468,22 @@ const Rooms = (() => {
       <!-- three photographs above desk -->
       <g id="v_photoA">
         <rect x="430" y="140" width="110" height="86" fill="#1e1710" stroke="#4a3826" stroke-width="6"/>
-        <rect x="440" y="149" width="90" height="68" fill="#c9bb9b"/>
-        ${person(470, 210, 40, "#5a4a3a")}
+        <rect x="440" y="149" width="90" height="68" fill="#8a7f6c"/>
+        <rect x="462" y="168" width="34" height="34" fill="#3a2f22"/><path d="M470,198 q9,-16 18,0 Z" fill="#c96a2e" opacity="0.8"/>
         <rect x="500" y="164" width="22" height="34" fill="#6b3f33"/>
         ${clockFace(514, 158, 8, 248, 102)}
       </g>
       <g id="v_photoB">
         <rect x="570" y="132" width="110" height="86" fill="#1e1710" stroke="#4a3826" stroke-width="6"/>
-        <rect x="580" y="141" width="90" height="68" fill="#c9bb9b"/>
-        ${person(636, 202, 38, "#6b5544")}
+        <rect x="580" y="141" width="90" height="68" fill="#aebcc2"/>
+        <rect x="612" y="152" width="30" height="40" fill="#57666f"/><line x1="627" y1="152" x2="627" y2="192" stroke="#313d47" stroke-width="3"/>
         <rect x="590" y="150" width="26" height="30" fill="#39434c"/>
         ${clockFace(600, 192, 8, 251, 138)}
       </g>
       <g id="v_photoC">
         <rect x="710" y="142" width="110" height="86" fill="#1e1710" stroke="#4a3826" stroke-width="6"/>
-        <rect x="720" y="151" width="90" height="68" fill="#c9bb9b"/>
-        ${person(750, 212, 32, "#4a5568")}${person(772, 212, 28, "#7a5a50")}
+        <rect x="720" y="151" width="90" height="68" fill="#8a7f6c"/>
+        <path d="M736,214 l14,-14 l0,-22 M764,214 l0,-36 l14,-10" stroke="#4a3826" stroke-width="4" fill="none"/>
         ${clockFace(800, 164, 8, 255, 186)}
       </g>
       <!-- desk -->
@@ -3655,7 +3657,7 @@ const Rooms = (() => {
           ${[...Array(4)].map((_, l) => `<line x1="${m.x + 10}" y1="${306 + l * 18}" x2="${m.x + 110}" y2="${306 + l * 18}" stroke="#7fa89a" stroke-width="1" opacity="0.12"/>`).join("")}
           <text x="${m.x + 16}" y="${314}" font-family="monospace" font-size="10" fill="#9ec7a8">CAM ${m.cam}</text>
           <text x="${m.x + 104}" y="${366}" text-anchor="end" font-family="monospace" font-size="12" fill="#9ec7a8">${m.t}</text>
-          ${i === 2 ? person(m.x + 60, 368, 34, "#233028") : ""}
+          ${i === 2 ? `<rect x="${m.x + 52}" y="330" width="26" height="42" fill="#233028" opacity="0.5"/><line x1="${m.x + 20}" y1="372" x2="${m.x + 100}" y2="372" stroke="#233028" stroke-width="2" opacity="0.6"/>` : ""}
         ` : ""}
         <rect x="${m.x + 46}" y="390" width="28" height="12" fill="#33363a"/>
       </g>`).join("")}
@@ -3775,7 +3777,8 @@ const Rooms = (() => {
       </ellipse>
       <!-- faint figure at the back -->
       <g id="v_figure" filter="url(#blurf2)" opacity="0.28">
-        ${person(1050, 470, 120, "#8f8778")}
+        <line x1="1050" y1="360" x2="1050" y2="470" stroke="#57503f" stroke-width="4"/>
+        <path d="M1032,380 q18,-14 36,0 l-4,88 q-14,8 -28,0 Z" fill="#8f8778"/>
       </g>
     </g>
     <g id="layer-mid">
@@ -3802,7 +3805,7 @@ const Rooms = (() => {
         <rect x="880" y="180" width="80" height="60" fill="#d8c9a8" transform="rotate(-4 920 210)"/>
         <rect x="975" y="190" width="80" height="60" fill="#d8c9a8" transform="rotate(3 1015 220)"/>
         <path d="M900,225 l14,-18 l14,18 Z M932,225 h-46" stroke="#6b5b45" stroke-width="2.5" fill="none" transform="rotate(-4 920 210)"/>
-        ${[0,1,2,3,4].map(i => `<line x1="${988 + i * 12}" y1="238" x2="${988 + i * 12}" y2="222" stroke="#6b5b45" stroke-width="2.5" transform="rotate(3 1015 220)"/><circle cx="${988 + i * 12}" cy="217" r="3.4" fill="none" stroke="#6b5b45" stroke-width="2" transform="rotate(3 1015 220)"/>`).join("")}
+        <g transform="rotate(3 1015 220)"><rect x="986" y="204" width="58" height="40" fill="none" stroke="#6b5b45" stroke-width="2.5"/><line x1="1012" y1="204" x2="1012" y2="228" stroke="#6b5b45" stroke-width="2"/><line x1="1012" y1="228" x2="1044" y2="228" stroke="#6b5b45" stroke-width="2"/><path d="M996,244 l8,0" stroke="#8a4a3a" stroke-width="3"/></g>
       </g>
       <!-- small camera in corner -->
       <g id="v_smallcam">
@@ -3815,7 +3818,7 @@ const Rooms = (() => {
     <g id="hotspots">
       ${hs("machine", 520, 330, 260, 122, "The master recording", "v_machine")}
       ${hs("figure", 990, 330, 130, 170, "Someone at the edge of the light", "v_figure")}
-      ${hs("drawings", 866, 168, 210, 100, "Children's drawings", "v_drawings")}
+      ${hs("drawings", 866, 168, 210, 100, "Pinned sketches", "v_drawings")}
       ${hs("smallcam", 168, 106, 76, 60, "A small camera. It is on.", "v_smallcam")}
       ${hs("bed", 78, 368, 272, 142, "A small bed", "")}
     </g>

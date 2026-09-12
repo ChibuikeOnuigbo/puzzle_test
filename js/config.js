@@ -29,7 +29,7 @@ const ROOM_CONFIG = {
   basement: { ripple: "#7fa89a", name: "The Basement" },
   memory:   { ripple: "#d8c9a8", name: "The Fifth Room" },
   landing:  { ripple: "#a89a7f", name: "The Upstairs Corridor" },
-  childroom:{ ripple: "#c9b8d8", name: "The Child's Room" },
+  childroom:{ ripple: "#c9b8d8", name: "The Small Room" },
   attic:    { ripple: "#8f8778", name: "The Attic" },
 };
 
@@ -139,7 +139,7 @@ const HINTS = {
   page_gone: [
     "You read the page before the satchel took it. The words are still yours. You need something to write with, and something blank to write on.",
     "A pen sleeps where the napkins sleep. The dining room sideboard, through the kitchen.",
-    "Blank paper waits at the bottom of the drawing stack in the child's room. If that room is gone, the archive downstairs has filed its things. Then open the satchel and rewrite the page.",
+    "Blank paper waits at the bottom of the drawing stack in the small room. If that room is gone, the archive downstairs has filed its things. Then open the satchel and rewrite the page.",
   ],
   after_notebook: [
     "The hallway is not the same as when you arrived. Look at what hangs on its wall, and what lies in its floor.",

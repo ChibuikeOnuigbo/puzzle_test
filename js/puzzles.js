@@ -88,7 +88,7 @@ const Puzzles = (() => {
       } else {
         AudioM.error();
         Dialogue.say(Dialogue.pick("nb_fail", [
-          "The clasp holds. The symbols must mean something to this family.",
+          "The clasp holds. The symbols must mean something to whoever built this box.",
           "No. Three symbols… I've seen symbols like these somewhere in this room.",
           "Still locked. “As the evening passed.” Evenings are measured in what, exactly?",
           "The clasp doesn't move. The photographs above the desk keep drawing my eye.",
@@ -371,7 +371,7 @@ const HouseTricks = (() => {
       ]);
       return;
     }
-    /* the child's room can be unwritten from the corridor */
+    /* the small room can be unwritten from the corridor */
     if (room === "landing" && State.flag("act2") && State.flag("visitedChild")
         && !State.flag("roomDeleted_child") && !State.flag("childRestored") && !QA()) {
       const n = (State.flag("landingAct2") || 0) + 1;
@@ -379,7 +379,7 @@ const HouseTricks = (() => {
       if (n === 1) {
         AudioM.whisperTone();
         Dialogue.say([
-          "The crayon marks on the small door have changed. There is a new drawing. A house, with one room scratched out in heavy black lines.",
+          "The pencil marks on the small door have changed. There is a new drawing. A house, with one room scratched out in heavy black lines.",
           "The scratched room has a window and a small bed. I know which room that is. It was not crossed out before.",
         ]);
         State.addAware(2);
@@ -392,7 +392,7 @@ const HouseTricks = (() => {
         State.addAware(6);
         Dialogue.say([
           "The door is gone.",
-          "Not locked. Not boarded. Gone. There is wallpaper where the child's door stood, and the wallpaper is old, faded, as if it had always been there.",
+          "Not locked. Not boarded. Gone. There is wallpaper where the small door stood, and the wallpaper is old, faded, as if it had always been there.",
           "The faint outline of a frame is still pressed into the wall. The house is a bad liar in exactly one way.",
         ]);
         return;
@@ -625,7 +625,7 @@ function seventeenSense() {
   else if (n === 12) { AudioM.whisperTone(); Dialogue.say(['"You taught me to count."']); State.addAware(6); }
 }
 
-/* the child room realization: signs of a life, no evidence of a person */
+/* the small room realization: signs of a life, no evidence of a person */
 function maybeFakeRealization() {
   if (State.flag("fakeReal")) return;
   if (State.flag("sawCBed") && State.flag("sawCBooks") && State.flag("sawCDrawings")) {
@@ -634,7 +634,7 @@ function maybeFakeRealization() {
     AudioM.dread();
     Dialogue.say([
       "Wait. A made bed nobody slept in. Books nobody opened. Drawings with no fingerprints.",
-      "This has to be fake. It is a set dressed for a childhood.",
+      "This has to be fake. It is a set dressed for a guest who never came.",
       "There are signs of someone living here everywhere, and no evidence that person ever existed.",
     ]);
   }
@@ -705,9 +705,9 @@ const RoomActions = {
     mat() {
       if (State.foundSecret("drawing")) {
         AudioM.discover();
-        toast("Discovery · A child's drawing");
+        toast("Discovery · A folded drawing");
         Puzzles.paperPopup("UNDER THE DOORMAT", `
-          <p>A child's drawing, folded eight times. A house with a big <b>17</b> on it. Five stick figures stand in front of it.</p>
+          <p>A drawing, folded eight times. A house with a big <b>17</b> on it. The lines are careful, patient, wrong.</p>
           <p>Four hold hands. The fifth stands apart, drawn smaller, near the edge of the paper.</p>
           <p class="dim" style="margin-top:8px">Under the fifth figure, in pencil: <em>“the visitor”</em>.</p>`);
       } else {
@@ -741,8 +741,8 @@ const RoomActions = {
     gokitchen() { Rooms.goto("kitchen", State.flag("visitedKitchen") ? null : ["The kitchen. Someone was interrupted here. Years ago, or minutes ago."]); State.setFlag("visitedKitchen"); },
     photo() {
       if (State.flag("act2")) {
-        Puzzles.paperPopup("THE FAMILY PHOTOGRAPH", `
-          <p>Four people: parents, a boy, a little girl. In front of this very staircase.</p>
+        Puzzles.paperPopup("THE FRAMED VIEW", `
+          <p>The house, seen from the path. The frame is older than the print.</p>
           <p style="color:#a5503c">And now a fifth. Standing at the left edge. Blurred, as if it moved during the exposure.</p>
           <p class="dim">There were four people in this photograph when I arrived. I counted. I know I counted.</p>`);
         Dialogue.say(Dialogue.pick("photo2", [
@@ -751,9 +751,9 @@ const RoomActions = {
           "I could take it off the wall. I could turn it around. I'm not going to.",
         ]));
       } else {
-        Puzzles.paperPopup("THE FAMILY PHOTOGRAPH", `
-          <p>Four people in front of this staircase. Parents, a boy of maybe twelve, a little girl.</p>
-          <p>They are smiling. The little girl is looking away from the lens, at something to the photographer's left.</p>
+        Puzzles.paperPopup("THE FRAMED VIEW", `
+          <p>The same house. In this print the front door stands open.</p>
+          <p>It was shut when I came in.</p>
           <p class="dim">The frame is the only thing in this hallway without dust.</p>`);
       }
     },
@@ -815,7 +815,7 @@ const RoomActions = {
     },
     rack() {
       Dialogue.say(Dialogue.pick("rack", [
-        "One coat, left behind. A child's size.",
+        "One coat, left behind. Nobody's size. Nobody's anything.",
         "The coat is dry. It rained this evening. Fine. It's been inside for eleven years. Obviously.",
         "There are four hooks and one coat. The other three hooks are worn shiny.",
       ]));
@@ -880,7 +880,7 @@ const RoomActions = {
       } else if (!State.flag("visitedDining")) {
         msg = [
           "A dining room. A long table laid with care, and eleven years of dust lying on the care.",
-          "Five chairs. This family kept counting to five when they thought no one was watching.",
+          "Five chairs. The house kept counting to five when it thought no one was watching.",
         ];
       }
       State.setFlag("visitedDining");
@@ -1169,7 +1169,7 @@ const RoomActions = {
       } else {
         Dialogue.say(Dialogue.pick("chair1", [
           "A kitchen chair, tucked in neatly.",
-          "Two chairs for a family of four. The photograph had four people. Where are the other chairs?",
+          "Two chairs by the fire, and a table laid for more. The arithmetic never comes out even.",
           "The seat is worn pale in the middle. Sat in a thousand times, or made to look that way.",
         ]));
       }
@@ -1203,7 +1203,7 @@ const RoomActions = {
       Dialogue.say(Dialogue.pick("dtable", [
         "The table is laid for five. Four plates. The fifth place has a mat, a fork, a cup, and no plate. Set for someone who was invited but not expected to eat.",
         "Nobody has touched this table in eleven years, and nobody has cleared it either. Some dinners refuse to end.",
-        "Four plates, five settings. The arithmetic of this family never comes out even.",
+        "Four plates, five settings. The arithmetic of this house never comes out even.",
         "And the meal itself is a study in contradictions. A roast still steaming at one end, and at the other, a plate gone green and wrong. The house keeps some things and lets others rot, and I do not know which is worse.",
       ]));
     },
@@ -1296,7 +1296,7 @@ const RoomActions = {
         "And a fifth mark, lower than all of them, scratched out with something sharp.",
       ] : Dialogue.pick("marks2", [
         "The scratched mark has a date beside it. November. The year is gouged away.",
-        "Four children measured with pride. One measured once, and then unmeasured.",
+        "Marks on the frame, year after year, measured with pride. The last one stops mid-line.",
         "The gouge is deeper than the pencil ever was. Erasing takes more force than writing.",
       ]));
       State.addAware(1);
@@ -1345,13 +1345,13 @@ const RoomActions = {
       Rooms.render();
       Puzzles.paperPopup("A LETTER, NEVER SENT", `
         <p style="font-style:italic;line-height:2">To the house on Wren Street.</p>
-        <p style="font-style:italic;line-height:2">Your boy left his coat. I am sorry. We tell ourselves it was nobody's fault, and the telling gets easier every year, and that is the part I cannot forgive.</p>
+        <p style="font-style:italic;line-height:2">Your coat is still here. I am sorry. We tell ourselves it was nobody's fault, and the telling gets easier every year, and that is the part I cannot forgive.</p>
         <p style="font-style:italic;line-height:2">We still set his place at dinner. Four plates and his mat. My husband says the house remembers harder than we do. He means it kindly. He is wrong to mean it kindly.</p>
         <p style="font-style:italic;line-height:2">Do not write back. It answers.</p>
         <p class="small-note">No stamp. No address beyond the first line. It was never going anywhere. It was a confession, dressed as a letter.</p>`);
       Dialogue.say([
-        "The coat on the rack downstairs. A child's size. His.",
-        "Do not write back. It answers. She knew. Years before the end, the mother knew what the house was.",
+        "The coat on the rack downstairs. Still damp, year after year.",
+        "Do not write back. It answers. Someone knew. Years before the end, someone knew what the house was.",
       ]);
       State.addAware(3);
     },
@@ -1361,7 +1361,7 @@ const RoomActions = {
           State.addItem("paper");
           AudioM.pickup();
           Dialogue.say([
-            "The NOV box holds the child's room in miniature. Blocks, drawings, and one blank sheet, filed like evidence.",
+            "The NOV box holds the small room in miniature. Blocks, drawings, and one blank sheet, filed like evidence.",
             "The house archived my paper supply along with everything else. I am taking a sheet back.",
           ]);
           return;
@@ -1378,7 +1378,7 @@ const RoomActions = {
     },
     mbox2() {
       Dialogue.say(Dialogue.pick("mbox2", [
-        "The music box from the child's room. Filed on a shelf between the years, wound tight and waiting.",
+        "The music box from the small room. Filed on a shelf between the years, wound tight and waiting.",
         "It is really here. Which means the room upstairs was really there. I am keeping this fact where the house cannot reach it.",
         "If I knock the room back into the wall upstairs, I think this goes home too.",
       ]));
@@ -1624,7 +1624,7 @@ const RoomActions = {
         if (State.get().objective === "find_study") State.setObjective("study_locked");
         Dialogue.say(Dialogue.pick("sdoor_locked", [
           "Locked. Of course. The one room I was sent up here to find.",
-          "The study needs a key. A family that hides its study key hides it somewhere they would remember. Somewhere they used every day.",
+          "The study needs a key. A house that hides a key hides it somewhere it would remember. Somewhere used every day.",
           "Locked tight. The kitchen looked like the most loved room in this house. If I were hiding a key, I would hide it among things I counted.",
           "Still locked. The keyhole is warm. I'm choosing not to think about that.",
         ]));
@@ -1668,7 +1668,7 @@ const RoomActions = {
               Rooms.render();
               Dialogue.say([
                 "The wallpaper split along a seam of light, and the seam remembered how to be a door.",
-                "The crayon marks are back. Every one of them, exactly where they were. The room behind it will be exactly as I left it too. The house keeps what it steals.",
+                "The pencil marks are back. Every one of them, exactly where they were. The room behind it will be exactly as I left it too. The house keeps what it steals.",
                 State.flag("sawArchive") ? "And the shelves downstairs will be gone, and the long table back under its dust. The archive returns what it files. If you know how to ask." : "",
               ].filter(Boolean));
             } else {
@@ -1689,7 +1689,7 @@ const RoomActions = {
       const first = !State.flag("visitedChild");
       State.setFlag("visitedChild");
       Rooms.goto("childroom", first ? [
-        "A child's room. The door was already open a hand's width, like an invitation.",
+        "A small room. The door was already open a hand's width, like an invitation.",
         "It smells of nothing. Not dust, not toys, not sleep. Nothing.",
       ] : null);
     },
@@ -1767,7 +1767,7 @@ const RoomActions = {
         ]));
       } else {
         Dialogue.say(Dialogue.pick("frames1", [
-          "Three small photographs. A man, a woman, a child squinting at the camera.",
+          "Three small photographs. The fireplace. The window seat. The staircase. Each one waiting.",
           "The frames are dusted. In an abandoned house, somebody dusts.",
         ]));
       }
@@ -1775,7 +1775,7 @@ const RoomActions = {
     scratch() {
       seventeenSense();
       Dialogue.say(Dialogue.pick("scratch", [
-        "A one and a seven, scratched into the skirting board. Low down. Child height.",
+        "A one and a seven, scratched into the skirting board. Low down, as if the house signed it itself.",
         "Seventeen again, carved small, hidden where only someone crawling would find it.",
       ]));
     },
@@ -1843,7 +1843,7 @@ const RoomActions = {
     bed() {
       State.setFlag("sawCBed");
       Dialogue.say(Dialogue.pick("cbed", [
-        "The bed is made with impossible neatness. Hospital corners. On a child's bed.",
+        "The bed is made with impossible neatness. Hospital corners. On a bed nobody sleeps in.",
         "I press the mattress. It sighs and reforms instantly, like it has never held a shape overnight.",
         "The pillow is cold on both sides. It has always been cold on both sides.",
       ]));
@@ -1854,7 +1854,7 @@ const RoomActions = {
       Dialogue.say(Dialogue.pick("cbooks", [
         "Picture books, lined up by height. Every spine is stiff. Not one of these has ever been opened.",
         "I flip one open. The pages crack apart like they were printed yesterday and glued shut eleven years ago.",
-        "Books bought for a child, or books bought to suggest a child.",
+        "Books bought for a guest, or books bought to suggest one.",
       ]));
       maybeFakeRealization();
     },
@@ -1864,7 +1864,7 @@ const RoomActions = {
           State.addItem("paper");
           AudioM.pickup();
           Dialogue.say([
-            "At the bottom of the drawing stack: one blank sheet. The only page in this room nobody drew a family on.",
+            "At the bottom of the drawing stack: one blank sheet. The only page in this room nobody drew on.",
             "Pen. Paper. Now somewhere the house is not looking over my shoulder, and I write.",
           ]);
           return;
@@ -1877,12 +1877,12 @@ const RoomActions = {
       const act2 = State.flag("act2");
       Puzzles.paperPopup("DRAWINGS ON THE WALL", act2 ? `
         <p>The same three drawings. Almost.</p>
-        <p>The house. The garden. The family, holding hands in crayon.</p>
+        <p>The house. The clock, at twenty past eight. And a blank sheet.</p>
         <p><b>Four figures now.</b> There were five. The smallest one has been redrawn <b>outside the house</b>, in a different red.</p>
         <p class="small-note">The tape has not been disturbed. The paper has not been changed. Only the drawing.</p>` : `
-        <p>Three drawings in crayon, taped with care.</p>
-        <p>A house with a steep roof. A garden with a sun in the corner. A family holding hands: <b>five figures</b>, one much smaller than the rest.</p>
-        <p class="small-note">The paper is bright. Crayon fades in a year of daylight. This has not faded.</p>`);
+        <p>Three drawings, taped with care.</p>
+        <p>A house with a steep roof. A clock face stopped at <b>8:17</b>. And one blank sheet, waiting.</p>
+        <p class="small-note">The paper is bright. Pencil fades in a year of daylight. This has not faded.</p>`);
       maybeFakeRealization();
     },
     blocks() {
@@ -2011,7 +2011,7 @@ const RoomActions = {
       State.setFlag("pageInBag");
       State.setFlag("bagRooms", 0);
       Dialogue.say([
-        "A school satchel, child sized. Five pockets, five buckles, the leather kept soft by a house that keeps everything.",
+        "A school satchel, small and soft. Five pockets, five buckles, the leather kept soft by a house that keeps everything.",
         "And a loose page from the notebook, pinned underneath it. Entry seventeen.",
         "The page goes straight into the satchel. Safest place in the house for it.",
       ]);
@@ -2031,19 +2031,19 @@ const RoomActions = {
     },
     photoA() {
       Puzzles.paperPopup("PHOTOGRAPH: THE FIREPLACE", `
-        <p>The father stands beside the fireplace, caught in the middle of a laugh.</p>
+        <p>The fireplace, caught mid-burn. The flame is the shape of the one downstairs.</p>
         <p>On the mantel behind him, a clock reads <b>8:17</b>.</p>
         <p style="text-align:center;margin-top:10px">In the corner of the frame, inked small: <b style="font-size:22px;color:#c9a35f">☀</b> <span class="dim">(a sun)</span></p>`);
     },
     photoB() {
       Puzzles.paperPopup("PHOTOGRAPH: THE WINDOW SEAT", `
-        <p>The mother reads by the window. She isn't looking at the book. She's looking at the camera. Not smiling.</p>
+        <p>The window seat. The curtain is drawn back for someone who isn't in the frame.</p>
         <p>The clock on the sill reads <b>8:23</b>.</p>
         <p style="text-align:center;margin-top:10px">In the corner, inked small: <b style="font-size:22px;color:#c9a35f">★</b> <span class="dim">(a star)</span></p>`);
     },
     photoC() {
       Puzzles.paperPopup("PHOTOGRAPH: THE STAIRCASE", `
-        <p>The two children on the stairs. The boy is looking up, toward the study. This room.</p>
+        <p>The staircase. Two sets of shoes at the bottom, and nobody on the steps. The study door is open a hand's width.</p>
         <p>The hallway clock behind them reads <b>8:31</b>.</p>
         <p style="text-align:center;margin-top:10px">In the corner, inked small: <b style="font-size:22px;color:#c9a35f">☾</b> <span class="dim">(a moon)</span></p>`);
     },
@@ -2108,7 +2108,7 @@ const RoomActions = {
         AudioM.discover();
         toast("Discovery · The dated photograph");
         Puzzles.paperPopup("A SMALL FRAMED PHOTO", `
-          <p>A child stands on the porch of this house, squinting at the sun. Not one of the family. The clothes are wrong, the face is wrong.</p>
+          <p>Someone stands on the porch of this house, squinting at the sun. The clothes are wrong for the year. The posture is wrong for the path.</p>
           <p>On the back, in pencil: <em>“the visitor, Nov 14”</em>, dated <b>eleven years ago</b>.</p>
           <p style="color:#a5503c;margin-top:8px">I know that face. I see it every morning while brushing my teeth.</p>`);
       } else {
@@ -2162,12 +2162,12 @@ const RoomActions = {
     mon0() {
       Puzzles.paperPopup("CAM 01: THE PORCH, 6:52", `
         <p>The porch, in grainy green. Daylight fading. The timestamp reads <b>6:52 PM</b> and never advances.</p>
-        <p>A car pulls up. A child gets out. The child waves at someone the camera can't see.</p>
-        <p class="dim">The feed loops. The child waves forever.</p>`);
+        <p>A car pulls up. The door opens. Nobody gets out, and the gate still swings.</p>
+        <p class="dim">The feed loops. The gate swings forever.</p>`);
     },
     mon1() {
       Puzzles.paperPopup("CAM 02: THE KITCHEN, 7:46", `
-        <p>The kitchen at <b>7:46 PM</b>. The mother sets the table. Four plates. Then, after a pause, she adds a fifth.</p>
+        <p>The kitchen at <b>7:46 PM</b>. The table sets itself. Four plates. Then, after a pause, a fifth.</p>
         <p>She looks at the fifth plate for a long time.</p>`);
     },
     mon2() {
@@ -2178,7 +2178,7 @@ const RoomActions = {
     },
     mon3() {
       Puzzles.paperPopup("CAM 04: THE STUDY, 9:03", `
-        <p>The study at <b>9:03 PM</b>. The father feeds papers into the fireplace that the study does not have.</p>
+        <p>The study at <b>9:03 PM</b>. Papers feed themselves into a fireplace the study does not have.</p>
         <p>He stops. He looks directly into the camera. He mouths two words.</p>
         <p style="text-align:center;font-style:italic;margin-top:6px">“look again”</p>`);
     },
@@ -2247,16 +2247,16 @@ const RoomActions = {
     },
     figure() {
       Dialogue.say(Dialogue.pick("figure", [
-        "A child, at the edge of the lamplight. Made of the light's leftovers. It doesn't come closer.",
+        "A figure, at the edge of the lamplight. Made of the light's leftovers. It doesn't come closer.",
         "It's the fifth figure from the photograph. From the drawing under the doormat. From eleven years ago.",
-        "It's me. The visitor. The part of the evening the family tried hardest to erase, to protect.",
+        "It's me. The visitor. The part of the evening the house tried hardest to keep.",
         "It isn't angry. It's been waiting to be finished for eleven years.",
       ]));
     },
     drawings() {
       Dialogue.say(Dialogue.pick("mdraw", [
-        "A house. A family of four. And a small fifth figure, added in different pencil. Added later, and carefully.",
-        "Five tally marks, counted and circled. The little girl kept better records than her parents.",
+        "A house. A floor plan, rooms counted and circled. One room added later, in heavier pencil.",
+        "Marks on the beam, counted and circled. Whoever kept them kept better records than the house.",
       ]));
     },
     smallcam() {
@@ -2380,7 +2380,7 @@ const RoomActions = {
     lvback() { Rooms.goto("attic", null); },
     lbasin() {
       Dialogue.say(Dialogue.pick("lbasin", [
-        "The basin is deep enough to bathe a child in. The thought arrives uninvited. I let the water run over my hands instead.",
+        "The basin is deep enough to drown a morning in. The thought arrives uninvited. I let the water run over my hands instead.",
         "Stone worn to a shine at the rim. A hundred years of hands. Or eleven, doing the work of a hundred.",
       ]));
     },
