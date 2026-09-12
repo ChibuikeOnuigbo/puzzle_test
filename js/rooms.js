@@ -142,18 +142,27 @@ const Rooms = (() => {
           + `<animateTransform attributeName="transform" type="rotate" additive="sum" values="0;-14;5;-12;0;${sweeps}0" dur="${flapDur}s" repeatCount="indefinite"/>`
         : "";
       // wings root at the shoulder (just behind the head) and sweep BACK
-      // toward the tail; the outer half is cut into three primaries
+      // toward the tail; three species: 0 corvid, 1 swallow (scythe wings,
+      // deep fork), 2 finch (short round wings, plump body, notched tail)
       const wing = kind === 1
         ? `M1.8,-0.4 L-0.2,-5.4 L-1.6,-11.2 L-2.6,-9.8 L-3.0,-7.2 L-4.2,-8.6 L-4.6,-6.6 L-5.4,-5.2 Q-4.6,-2.2 -2.6,-0.5 Z`   // swallow: scythe wings
+        : kind === 2
+        ? `M1.4,-0.4 L-0.4,-4.8 L-1.8,-8.4 L-3.2,-7.2 L-3.6,-4.8 Q-3.4,-1.8 -2.2,-0.4 Z`                                     // finch: short round wing
         : `M1.6,-0.4 L-0.6,-6.2 L-2.4,-10.4 L-3.2,-9.6 L-3.4,-7.4 L-4.6,-9.0 L-5.0,-8.0 L-4.6,-6.0 L-5.8,-7.0 L-5.8,-5.6 Q-5.0,-2.6 -3.0,-0.6 Z`;
       const wingDn = kind === 1
         ? `M1.8,0.4 L-0.2,5.4 L-1.6,11.2 L-2.6,9.8 L-3.0,7.2 L-4.2,8.6 L-4.6,6.6 L-5.4,5.2 Q-4.6,2.2 -2.6,0.5 Z`
+        : kind === 2
+        ? `M1.4,0.4 L-0.4,4.8 L-1.8,8.4 L-3.2,7.2 L-3.6,4.8 Q-3.4,1.8 -2.2,0.4 Z`
         : `M1.6,0.4 L-0.6,6.2 L-2.4,10.4 L-3.2,9.6 L-3.4,7.4 L-4.6,9.0 L-5.0,8.0 L-4.6,6.0 L-5.8,7.0 L-5.8,5.6 Q-5.0,2.6 -3.0,0.6 Z`;
       const tail = kind === 1
         ? `M-4.2,0 L-8.6,-2.6 L-7.0,0 L-8.6,2.6 Z`   // deep fork
+        : kind === 2
+        ? `M-3.6,0 L-6.2,-1.6 L-5.4,0 L-6.2,1.6 Z`   // short notch
         : `M-4.4,0 L-7.6,-2 L-6.6,0 L-7.6,2 Z`;
       const bodyD = kind === 1
         ? `M-4.2,0 Q-1,-1.4 3.6,-0.6 Q5.6,-0.2 6.4,0 Q5.6,0.2 3.6,0.6 Q-1,1.4 -4.2,0 Z`
+        : kind === 2
+        ? `M-3.8,0 Q-0.8,-1.9 3.0,-0.9 Q5.0,-0.3 5.6,0 Q5.0,0.3 3.0,0.9 Q-0.8,1.9 -3.8,0 Z`   // plumper
         : `M-4.6,0 Q-1,-1.7 3.4,-0.7 Q5.5,-0.2 6.2,0 Q5.5,0.2 3.4,0.7 Q-1,1.7 -4.6,0 Z`;
       // a faint moonlit rim so a dark bird still reads against a dark sky
       const rim = opt.rim === false ? "" : ` stroke="${opt.rimColor || "#93a6ba"}" stroke-width="0.45" stroke-opacity="0.42" stroke-linejoin="round" paint-order="stroke"`;
@@ -196,9 +205,10 @@ const Rooms = (() => {
         c1y = y0 + (R() - 0.5) * gh * 0.5; c2y = y1 + (R() - 0.5) * gh * 0.5;
       } while (!clears(x0, y0, x0 + dx * 0.33, c1y, x0 + dx * 0.66, c2y, x1, y1) && ++tries < 9);
       const path = `M${x0.toFixed(1)},${y0.toFixed(1)} C${(x0 + dx * 0.33).toFixed(1)},${c1y.toFixed(1)} ${(x0 + dx * 0.66).toFixed(1)},${c2y.toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}`;
-      const flapDur = (0.9 + R() * 0.6) / Math.max(0.6, s);
-      const glides = 1 + Math.floor(R() * 4);
-      const kind = R() < 0.45 ? 1 : 0;
+      const kindRoll = R();
+      const kind = kindRoll < 0.40 ? 1 : kindRoll < 0.65 ? 2 : 0;
+      const flapDur = ((kind === 2 ? 0.55 : 0.9) + R() * 0.6) / Math.max(0.6, s);   // finches beat faster
+      const glides = kind === 2 ? Math.floor(R() * 2) : 1 + Math.floor(R() * 4);    // finches rarely glide
       const body = (i === 0 && opt.flock)
         ? `<g>${bird(s, flapDur, glides, kind)}<g transform="translate(-13,-8)">${bird(s * 0.9, flapDur * 1.07, glides, kind)}</g><g transform="translate(-12,9)">${bird(s * 0.92, flapDur * 0.95, glides, kind)}</g></g>`
         : bird(s, flapDur, glides, kind);
@@ -380,6 +390,16 @@ const Rooms = (() => {
       // ground mist lying on the grass (not in the room: it is behind the glass)
       out += `<ellipse cx="${x + w * 0.35}" cy="${horizon + h * 0.14}" rx="${w * 0.42}" ry="${h * 0.05}" fill="#c9d8e2" opacity="0.07"${q === "high" ? ' filter="url(#fxblur8)"' : ""}>${treesOn ? `<animateTransform attributeName="transform" type="translate" values="0,0;${w * 0.16},0;0,0" dur="41s" repeatCount="indefinite"/>` : ""}</ellipse>`;
       out += `<ellipse cx="${x + w * 0.72}" cy="${horizon + h * 0.1}" rx="${w * 0.36}" ry="${h * 0.04}" fill="#c9d8e2" opacity="0.06"${q === "high" ? ' filter="url(#fxblur8)"' : ""}>${treesOn ? `<animateTransform attributeName="transform" type="translate" values="0,0;${-w * 0.12},0;0,0" dur="53s" repeatCount="indefinite"/>` : ""}</ellipse>`;
+      /* slight upgrade: a true crescent moon (one path, no occluder disc) and
+         a pale moonpath lying on the wet lawn; night flowers by the fence */
+      const mx = x + w * 0.78, my = y + h * 0.16, mr = h * 0.055;
+      out += `<path d="M${mx},${(my - mr).toFixed(1)} A${mr.toFixed(1)},${mr.toFixed(1)} 0 1 1 ${mx},${(my + mr).toFixed(1)} A${(mr * 0.72).toFixed(1)},${mr.toFixed(1)} 0 1 0 ${mx},${(my - mr).toFixed(1)} Z" fill="#dfe7ee" opacity="0.85"/>`;
+      out += `<path d="M${(mx - w * 0.05).toFixed(1)},${(horizon + h * 0.06).toFixed(1)} q${w * 0.05},${h * 0.05} ${-w * 0.02},${(y2 - horizon - h * 0.06).toFixed(1)}" stroke="#c9d8e2" stroke-width="${w * 0.06}" fill="none" opacity="0.05"/>`;
+      for (let i = 0; i < 3; i++) {
+        const fx = x + w * (0.16 + i * 0.3), fy = horizon + h * (0.24 + (i % 2) * 0.05);
+        out += `<path d="M${fx},${fy} q-1.6,-5 0,-8 M${fx},${fy} q2,-4 4.4,-6 M${fx},${fy} q-2.6,-3 -5,-4.6" stroke="#16232c" stroke-width="1.3" fill="none"/>`;
+        out += `<circle cx="${fx}" cy="${fy - 8.6}" r="1.5" fill="#b9c8d2" opacity="0.55"/><circle cx="${fx + 4.6}" cy="${fy - 6.4}" r="1.2" fill="#a8b8c2" opacity="0.5"/>`;
+      }
     }
 
     /* ---- near trees: real limbs from the shared grower (planes 3 + 4) ---- */
