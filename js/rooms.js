@@ -2437,6 +2437,7 @@ const Rooms = (() => {
         <!-- hood: dial, then the crown -->
         ${CLOCK_817(343, 260, 34)}
         <rect x="296" y="196" width="94" height="10" rx="2" fill="#33261a"/>
+        <path d="M338,192 q0,-8 5,-8 q5,0 5,8 l2,2 l-14,0 Z" fill="none" stroke="#8a7148" stroke-width="1.6" opacity="0.8"/>
         <polygon points="296,196 343,172 390,196" fill="#33261a" stroke="#191309" stroke-width="2"/>
         <circle cx="343" cy="170" r="4" fill="#4a3826"/><circle cx="301" cy="193" r="3" fill="#4a3826"/><circle cx="385" cy="193" r="3" fill="#4a3826"/>
       </g>
@@ -3358,6 +3359,16 @@ const Rooms = (() => {
     </g>
     <g id="layer-mid">
       <!-- stacked boxes -->
+      <!-- a guest-room door the attic has been hiding behind the boxes -->
+      <g id="v_guestdoor">
+        <rect x="168" y="170" width="132" height="396" fill="#0c0a08"/>
+        <rect x="176" y="178" width="116" height="388" fill="#3a2c1e" stroke="#191309" stroke-width="4"/>
+        <rect x="188" y="196" width="92" height="150" fill="#2c211a" stroke="#191309" stroke-width="3"/>
+        <rect x="188" y="366" width="92" height="180" fill="#2c211a" stroke="#191309" stroke-width="3"/>
+        <circle cx="282" cy="372" r="6" fill="#565b60"/>
+        <rect x="276" y="382" width="12" height="20" rx="3" fill="#565b60"/>
+        <text x="234" y="640" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">the guest room</text>
+      </g>
       <g id="v_boxes">
         <rect x="150" y="470" width="150" height="130" fill="#3f2f20" stroke="#241a11" stroke-width="4"/>
         <rect x="180" y="380" width="110" height="90" fill="#4a3826" stroke="#241a11" stroke-width="4"/>
@@ -3420,6 +3431,7 @@ const Rooms = (() => {
       ${hs("fifthchair", 816, 350, 130, 270, "A chair, up here alone", "v_fifthchair")}
       ${hs("golavatory", 967, 160, 151, 410, "A stone doorway, cold air seeping out", "v_lvdoor")}
       ${hs("tally", 344, 280, 190, 60, "Marks on the beam", "v_tally")}
+      ${hs("goguest", 168, 160, 132, 410, State.hasItem("guestKey") && !State.flag("guestUnlocked") ? "The guest room. The iron-small key is warm in my pocket." : State.flag("guestUnlocked") ? "The guest room, open" : "A locked door behind the boxes", "v_guestdoor")}
       ${hs("boxes", 138, 368, 320, 240, "Stacked boxes", "v_boxes")}
       ${hs("awin", 586, 128, 110, 110, "A round window", "v_boxes")}
       ${hs("aback", 1150, 400, 130, 320, "Climb back down", "")}
@@ -4304,6 +4316,7 @@ const Rooms = (() => {
         <line x1="606" y1="238" x2="668" y2="140" stroke="#eef4f2" stroke-width="7" opacity="0.4"/>
         <rect x="560" y="330" width="160" height="34" rx="14" fill="#e8e4d8" stroke="#a89f88" stroke-width="4"/>
         <path d="M604,364 L596,470 L684,470 L676,364 Z" fill="#e0dccd" stroke="#a89f88" stroke-width="4"/>
+        <path d="M622,420 q5,-7 10,0 q5,7 10,0" stroke="#8a8f92" stroke-width="2" fill="none" opacity="0.8"/>
         <rect x="612" y="312" width="10" height="20" fill="#8a8f92"/><rect x="658" y="312" width="10" height="20" fill="#8a8f92"/>
         <path d="M617,312 q0,-10 10,-10 M663,312 q0,-10 -10,-10" stroke="#8a8f92" stroke-width="5" fill="none"/>
         <circle cx="612" cy="316" r="5" fill="#a84f4f"/><circle cx="668" cy="316" r="5" fill="#4f6fa8"/>
@@ -4480,6 +4493,7 @@ const Rooms = (() => {
         <path d="M130,310 l0,26 M310,310 l0,26" stroke="#453527" stroke-width="6"/>
         <path d="M150,262 q0,-8 8,-8 l24,0 q8,0 8,8 l-4,38 l-32,0 Z" fill="#8a7f6c" stroke="#5f5648" stroke-width="3"/>
         <rect x="230" y="272" width="44" height="28" rx="6" fill="#66755a" stroke="#454d47" stroke-width="3"/>
+        <path d="M196,300 q6,-10 0,-20 q-6,10 0,20 Z" fill="#5d6b52" opacity="0.9"/><line x1="196" y1="284" x2="196" y2="300" stroke="#454d47" stroke-width="1.6"/>
         ${QH ? `<rect x="238" y="262" width="28" height="12" rx="4" fill="#c9bda4"/>` : ""}
       </g>
     </g>
@@ -4494,7 +4508,83 @@ const Rooms = (() => {
     </svg>`;
   }
 
-  const builders = { porch: svgPorch, hallway: svgHallway, kitchen: svgKitchen, study: svgStudy, basement: svgBasement, memory: svgMemory, landing: svgLanding, childroom: svgChildroom, attic: svgAttic, diningroom: svgDining, conservatory: svgConservatory, gallery: svgGallery, bathroom: svgBathroom, sittingroom: svgSittingroom, suite: svgSuite, washroom: svgWashroom, steamroom: svgSteamroom, lavatory: svgLavatory };
+
+  /* =====================================================================
+     THE GUEST ROOM — under the eaves: a made bed, a round window, and a
+     desk whose drawer wears three brass dials.
+  ===================================================================== */
+  function svgGuestroom() {
+    const Q = quality();
+    const QH = Q === "high", QM = Q !== "low";
+    const bedArt = (typeof Art !== "undefined")
+      ? Art.bed(150, 300, { w: 380, headH: 130, footH: 84, legDrop: 120, pattern: "stripes", blanket: "#7a5a6a", blanketDark: "#64485a", blanketLight: "#8f6c7e", wood: "#3a2c1e", woodLight: "#4a3826" }).svg
+      : "";
+    return `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
+    ${DEFS}
+    <defs>
+      <clipPath id="guwinclip"><circle cx="960" cy="190" r="52"/></clipPath>
+    </defs>
+    <g id="layer-back">
+      <rect width="1280" height="470" fill="url(#wallg)"/>
+      <rect width="1280" height="470" fill="#4a4250" opacity="0.35"/>
+      ${QH ? [...Array(10)].map((_, i) => `<line x1="${i * 140}" y1="80" x2="${i * 140}" y2="460" stroke="#352c23" stroke-width="10" opacity="0.25"/>`).join("") : ""}
+      <rect x="0" y="72" width="1280" height="8" fill="#241d16"/>
+      <rect x="0" y="460" width="1280" height="12" fill="#1c1610"/>
+      <rect x="0" y="472" width="1280" height="248" fill="url(#floorg)"/>
+      ${(typeof Art !== "undefined") ? Art.wallStains(71, { x0: 300, x1: 1200, y0: 90, y1: 260, count: 3 }) : ""}
+      <g id="v_guwin">
+        <circle cx="960" cy="190" r="58" fill="#10161f" stroke="#2c241c" stroke-width="9"/>
+        <g clip-path="url(#guwinclip)">
+          <circle cx="976" cy="172" r="12" fill="#d8dce0"/>
+          <circle cx="982" cy="168" r="11" fill="#10161f"/>
+          ${[...Array(QM ? 10 : 5)].map((_, i) => `<circle cx="${(i * 47 + 16) % 104 + 908}" cy="${(i * 31) % 90 + 145}" r="${i % 3 === 0 ? 1.3 : 0.8}" fill="#cfd8e0" opacity="0.4"/>`).join("")}
+          <path d="M908,226 q26,-12 52,-4 q26,-10 52,0 L1012,242 L908,242 Z" fill="#0c1116"/>
+        </g>
+        <line x1="908" y1="190" x2="1012" y2="190" stroke="#2c241c" stroke-width="5"/>
+        <line x1="960" y1="138" x2="960" y2="242" stroke="#2c241c" stroke-width="5"/>
+      </g>
+      ${(typeof Art !== "undefined") ? `<g transform="translate(1280,0) scale(-1,1)">` + Art.cobweb(0, 74, 70, { o: 0.22 }) + `</g>` : ""}
+    </g>
+    <g id="layer-mid">
+      <g id="v_gubed">${bedArt}</g>
+      <g id="v_gudesk">
+        <ellipse cx="1020" cy="586" rx="150" ry="10" fill="#0d0a08" opacity="0.4"/>
+        <rect x="880" y="420" width="290" height="16" fill="#4a3826"/>
+        <rect x="890" y="436" width="16" height="146" fill="#33261a"/><rect x="1144" y="436" width="16" height="146" fill="#33261a"/>
+        <rect x="906" y="436" width="238" height="60" fill="#3a2c1e" stroke="#241a11" stroke-width="3"/>
+        <circle cx="1025" cy="466" r="7" fill="#8a7148"/>
+        ${["wave", "leaf", "bell"].map((k, i) => `<circle cx="${965 + i * 60}" cy="466" r="14" fill="#5d4a35" stroke="#8a7148" stroke-width="2"/>${k === "wave" ? `<path d="M${957 + i * 60},466 q4,-6 8,0 q4,6 8,0" stroke="#c9a35f" stroke-width="2" fill="none"/>` : k === "leaf" ? `<path d="M${965 + i * 60},458 q7,8 0,16 q-7,-8 0,-16" fill="#c9a35f"/>` : `<path d="M${961 + i * 60},470 q4,-12 8,0 l2,2 l-12,0 Z" fill="#c9a35f"/>`}`).join("")}
+        ${QH ? `<rect x="1080" y="398" width="44" height="22" rx="3" fill="#6b5d4a"/><rect x="1086" y="392" width="32" height="8" rx="2" fill="#8a7f6c"/>` : ""}
+      </g>
+      <g id="v_guchair">
+        <ellipse cx="800" cy="596" rx="44" ry="7" fill="#0d0a08" opacity="0.4"/>
+        <rect x="772" y="420" width="8" height="120" rx="3" fill="#3a2c1e"/>
+        <rect x="824" y="420" width="8" height="120" rx="3" fill="#3a2c1e"/>
+        <rect x="777" y="432" width="50" height="9" rx="3" fill="#4a3826"/>
+        <rect x="777" y="452" width="50" height="7" rx="3" fill="#42311f"/>
+        <rect x="768" y="498" width="68" height="11" rx="4" fill="#4a3826"/>
+        <rect x="770" y="509" width="8" height="84" rx="3" fill="#33261a"/>
+        <rect x="826" y="509" width="8" height="84" rx="3" fill="#33261a"/>
+      </g>
+      <g id="v_gutrink">
+        <ellipse cx="620" cy="642" rx="70" ry="8" fill="#0d0a08" opacity="0.4"/>
+        <rect x="560" y="580" width="120" height="58" rx="8" fill="#4a3826" stroke="#241a11" stroke-width="3"/>
+        <rect x="560" y="600" width="120" height="6" fill="#241a11"/>
+        <rect x="584" y="596" width="10" height="14" rx="2" fill="#8a7148"/><rect x="646" y="596" width="10" height="14" rx="2" fill="#8a7148"/>
+      </g>
+    </g>
+    <g id="layer-front"><rect width="1280" height="720" fill="#0b0806" opacity="0.1"/></g>
+    <g id="hotspots">
+      ${hs("guback", 0, 150, 60, 380, "Back to the attic", "")}
+      ${hs("gdesk", 880, 390, 290, 200, "A desk with three brass dials", "v_gudesk")}
+      ${hs("gubed", 140, 280, 400, 320, "A made bed, stripes pressed flat", "v_gubed")}
+      ${hs("guwin", 900, 130, 120, 120, "A round window, moon through dust", "v_guwin")}
+      ${hs("gutrink", 556, 570, 130, 80, "A traveller's trunk, brass-bound", "v_gutrink")}
+    </g>
+    </svg>`;
+  }
+
+  const builders = { porch: svgPorch, hallway: svgHallway, kitchen: svgKitchen, study: svgStudy, basement: svgBasement, memory: svgMemory, landing: svgLanding, childroom: svgChildroom, attic: svgAttic, diningroom: svgDining, conservatory: svgConservatory, gallery: svgGallery, bathroom: svgBathroom, sittingroom: svgSittingroom, suite: svgSuite, washroom: svgWashroom, steamroom: svgSteamroom, lavatory: svgLavatory, guestroom: svgGuestroom };
 
   /* ---------- render + wiring ---------- */
   /* BRIGHT-ROOM LIGHT RULE: bright rooms start dark with the fixture off; a

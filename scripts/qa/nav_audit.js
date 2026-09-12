@@ -44,6 +44,7 @@ const w = dom.window, wait = ms => new Promise(r => setTimeout(r, ms)), ev = c =
     washroom: { left: "wback" },
     steamroom: { left: "stback" },
     lavatory: { left: "lvback" },
+    guestroom: { left: "guback" },
     study: { left: "sback" },
     childroom: { right: "cback" },
     attic: { right: "aback" },

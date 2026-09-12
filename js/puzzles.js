@@ -98,6 +98,63 @@ const Puzzles = (() => {
     const handle = Popups.open({ title: "THE RED NOTEBOOK", bodyEl: el });
   }
 
+  /* three-dial lock on the guest-room desk: wave / leaf / bell.
+     The symbols are scratched and pressed around the house; the desk
+     remembers the order the house keeps them in. */
+  const GSYMBOLS = {
+    wave: `<svg viewBox="0 0 40 40"><path d="M6,22 q5,-8 10,0 q5,8 10,0 q4,-6 8,0" stroke="#c9a35f" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`,
+    leaf: `<svg viewBox="0 0 40 40"><path d="M20,6 q11,12 0,28 q-11,-16 0,-28 Z" fill="#c9a35f"/><line x1="20" y1="10" x2="20" y2="32" stroke="#8a7148" stroke-width="2"/></svg>`,
+    bell: `<svg viewBox="0 0 40 40"><path d="M12,26 q0,-16 8,-16 q8,0 8,16 l3,3 l-22,0 Z" fill="#c9a35f"/><circle cx="20" cy="32" r="3" fill="#c9a35f"/></svg>`,
+  };
+  const GORDER = ["wave", "leaf", "bell"];
+  function guestDial() {
+    const idx = [0, 0, 0];
+    const el = document.createElement("div");
+    el.innerHTML = `
+      <p class="dim" style="text-align:center">Three brass dials on a drawer front. Beneath them, engraved:</p>
+      <p style="text-align:center;font-style:italic;margin-top:4px">“water, garden, hour”</p>
+      <div class="dials">
+        ${[0,1,2].map(i => `
+          <div class="dial">
+            <button data-d="${i}" data-dir="-1">▲</button>
+            <div class="face" id="gface${i}">${GSYMBOLS[GORDER[0]]}</div>
+            <button data-d="${i}" data-dir="1">▼</button>
+          </div>`).join("")}
+      </div>
+      <div style="text-align:center;margin-top:10px"><button class="btn small primary" id="gtry">Turn the latch</button></div>`;
+    el.querySelectorAll("button[data-d]").forEach(b => b.addEventListener("click", () => {
+      const d = +b.dataset.d, dir = +b.dataset.dir;
+      idx[d] = (idx[d] + dir + 3) % 3;
+      const face = el.querySelector("#gface" + d);
+      face.innerHTML = GSYMBOLS[GORDER[idx[d]]];
+      face.style.transform = "scale(1.12)";
+      setTimeout(() => face.style.transform = "", 130);
+      AudioM.click();
+    }));
+    el.querySelector("#gtry").addEventListener("click", () => {
+      const want = (typeof PUZZLE_CONFIG !== "undefined" && PUZZLE_CONFIG.guestbox) ? PUZZLE_CONFIG.guestbox.order : GORDER;
+      const chosen = idx.map(i => GORDER[i]);
+      if (chosen.join() === want.join()) {
+        AudioM.unlock();
+        State.setFlag("guestboxOpen");
+        State.addAware(2);
+        Popups.close(handle);
+        if (typeof toast === "function") toast("Discovery · The guest ledger");
+        Dialogue.say([
+          "The drawer runs open on waxed runners. Inside: a guest ledger, one entry, eleven years deep.",
+          "HOUSE 17 — ONE GUEST. ARRIVED 8:17. The departure column is blank. The ink is still wet.",
+        ]);
+      } else {
+        AudioM.error();
+        Dialogue.say(Dialogue.pick("gd_fail", [
+          "The latch holds. Water, garden, hour. I've seen these marked somewhere in the house.",
+          "No. A wave scratched in porcelain, a leaf pressed in stone, a bell under a crown. In some order.",
+        ]));
+      }
+    });
+    const handle = Popups.open({ title: "THE DESK DRAWER", bodyEl: el });
+  }
+
   /* knock pattern door */
   function knockDoor() {
     let seq = [];
@@ -180,7 +237,7 @@ const Puzzles = (() => {
     return true;
   }
 
-  return { keypad, notebookDial, knockDoor, paperPopup, artZoom };
+  return { keypad, notebookDial, guestDial, knockDoor, paperPopup, artZoom };
 })();
 
 /* =====================================================================
@@ -766,6 +823,7 @@ const RoomActions = {
         Puzzles.paperPopup("THE GRANDFATHER CLOCK", `
           <p>Stopped at <b>8:17</b>. But the pendulum is still swinging, patient as breathing.</p>
           <p>The hands do not move. The pendulum does. One of them is lying.</p>
+          <p>Under the crown, tiny in the grain: a <b>bell</b>, engraved with a pin. The hour, marked in brass.</p>
           <p>Inside the case, an engraving in the wood:</p>
           <p style="font-style:italic;text-align:center;margin-top:6px">“for the evenings we keep”</p>`);
       } else {
@@ -814,6 +872,16 @@ const RoomActions = {
       ] : null);
     },
     rack() {
+      const n = State.bumpClick("rack");
+      if (n === 3 && !State.hasItem("guestKey")) {
+        State.addItem("guestKey");
+        AudioM.unlock();
+        Dialogue.say([
+          "The coat's left pocket is lined with something hard. A key, small and iron-warm.",
+          "It doesn't fit the front door, the study, or the hatch. Upstairs, the attic has a door I haven't opened.",
+        ]);
+        return;
+      }
       Dialogue.say(Dialogue.pick("rack", [
         "One coat, left behind. Nobody's size. Nobody's anything.",
         "The coat is dry. It rained this evening. Fine. It's been inside for eleven years. Obviously.",
@@ -1928,6 +1996,32 @@ const RoomActions = {
 
   /* ============ ATTIC ============ */
   attic: {
+    goguest() {
+      if (State.flag("guestUnlocked")) {
+        const first = !State.flag("visitedGuest");
+        State.setFlag("visitedGuest");
+        Rooms.goto("guestroom", first ? [
+          "A guest room under the eaves. The bed is made with the same impossible neatness as the small room's.",
+          "A round window, a traveller's trunk, and a desk whose drawer wears three brass dials.",
+        ] : null);
+        return;
+      }
+      if (State.hasItem("guestKey")) {
+        State.removeItem("guestKey");
+        State.setFlag("guestUnlocked");
+        AudioM.creakDoor();
+        State.setFlag("visitedGuest");
+        Rooms.goto("guestroom", [
+          "The small key turns twice and the lock gives like a sigh. The attic has been keeping a guest room behind the boxes.",
+          "A made bed, stripes pressed flat. A round window. And a desk whose drawer wears three brass dials.",
+        ]);
+        return;
+      }
+      Dialogue.say(Dialogue.pick("guelock", [
+        "Locked. The keyhole is worn bright at the edges. Someone used this lock often, and quietly.",
+        "The door behind the boxes is locked. A small keyhole, iron-warm to the touch.",
+      ]));
+    },
     golavatory() {
       const first = !State.flag("visitedLavatory");
       State.setFlag("visitedLavatory");
@@ -2371,6 +2465,37 @@ const RoomActions = {
     stlamp() {
       Dialogue.say(Dialogue.pick("stlamp", [
         "A caged bulb in cedar light. Even here, the house keeps its fixtures honest.",
+      ]));
+    },
+  },
+
+  /* ============ THE GUEST ROOM ============ */
+  guestroom: {
+    guback() { Rooms.goto("attic", null); },
+    gdesk() {
+      if (State.flag("guestboxOpen")) {
+        Dialogue.say("The drawer stands open. The dials rest at nothing, keeping their own counsel.");
+        return;
+      }
+      Puzzles.guestDial();
+    },
+    gubed() {
+      Dialogue.say(Dialogue.pick("gubed", [
+        "A made bed, stripes pressed flat. Nobody has slept here. Somebody has lain here, very still.",
+        "The blanket smells of cedar and cold air. The pillow is untouched, except for one corner.",
+      ]));
+    },
+    guwin() {
+      State.addAware(1);
+      Dialogue.say(Dialogue.pick("guwin", [
+        "A round window, moon through dust. The same moon, one roof closer.",
+        "Through the round glass: the moon, and a treeline that isn't on any side of the house.",
+      ]));
+    },
+    gutrink() {
+      Dialogue.say(Dialogue.pick("gutrink", [
+        "A traveller's trunk, brass-bound, empty. The straps are buckled from the inside.",
+        "Empty, except for a label in a hand I almost recognise: HOUSE 17 — ONE GUEST.",
       ]));
     },
   },

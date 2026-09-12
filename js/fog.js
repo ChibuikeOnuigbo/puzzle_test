@@ -798,6 +798,17 @@ const Fog = (() => {
       draughts: [DRAUGHT(40, 600, 80, true, 0.05)],
     },
 
+    /* ================= GUEST ROOM — attic stillness, one thin moon shaft ================= */
+    guestroom: {
+      kind: "room", density: 0.35, tint: "#8f87a0", clarityFloor: 0.5, clarityCeil: 0.9,
+      gust: { period: 28000, strength: 5, len: 2400 },
+      banks: [
+        { seed: 651, region: R.rect(0, 470, 1280, 250), count: 12, rMin: 40, rMax: 110, oMin: 0.05, oMax: 0.12,
+          drift: [4, -1], flow: 0.3, rise: -2, sway: 40, wrap: true, shape: "blob", hue: "#8f87a0", settle: 0.6 },
+      ],
+      draughts: [DRAUGHT(40, 600, 70, true, 0.03)],
+    },
+
     /* ================= STONE LAVATORY — cold, slow, one draught at the sill ================= */
     lavatory: {
       kind: "room", density: 0.4, tint: "#8fa8a0", clarityFloor: 0.45, clarityCeil: 0.9,

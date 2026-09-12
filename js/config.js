@@ -31,6 +31,7 @@ const ROOM_CONFIG = {
   landing:  { ripple: "#a89a7f", name: "The Upstairs Corridor" },
   childroom:{ ripple: "#c9b8d8", name: "The Small Room" },
   attic:    { ripple: "#8f8778", name: "The Attic" },
+  guestroom:{ ripple: "#b8a8c9", name: "The Guest Room" },
 };
 
 /* Puzzle answers & data — one source of truth */
@@ -40,6 +41,7 @@ const PUZZLE_CONFIG = {
   keypad817: { code: "817" },
   knock: { pattern: ["short", "short", "long"] },
   potIndex: 2, // the pot outside the porch light's reach (0-based, rightmost)
+  guestbox: { order: ["wave", "leaf", "bell"] }, // dials on the guest-room desk; symbols scratched/pressed around the house
 };
 
 /* Secrets — 5 optional discoveries. All found = secret ending. */
@@ -184,7 +186,8 @@ const HOUSE_GRAPH = {
   lavatory:  ["attic"],
   study:     ["landing"],
   childroom: ["landing"],
-  attic:     ["landing", "lavatory"],
+  attic:     ["landing", "lavatory", "guestroom"],
+  guestroom: ["attic"],
   basement:  ["hallway", "memory", "steamroom"],
   memory:    ["basement"],
 };
@@ -194,7 +197,7 @@ const HOUSE_GRAPH = {
 const ROOM_FLOORS = {
   porch: 0, hallway: 0, kitchen: 0, diningroom: 0, sittingroom: 0,
   washroom: 0,
-  basement: -1, memory: -1, steamroom: -1,
+  basement: -1, memory: -1, steamroom: -1, guestroom: 1,
   landing: 1, gallery: 1, conservatory: 1, bathroom: 1, suite: 1,
   lavatory: 1, study: 1,
   childroom: 1, attic: 1,
@@ -262,6 +265,10 @@ const EXIT_DESCRIPTORS = {
   lavatory: [
     { id: "lavatory_to_attic", from: "lavatory", destination: "attic", screenSide: "left",
       hotspot: "lvback", type: "edge_exit", tooltip: "Back to the attic" },
+  ],
+  guestroom: [
+    { id: "guestroom_to_attic", from: "guestroom", destination: "attic", screenSide: "left",
+      hotspot: "guback", type: "edge_exit", tooltip: "Back to the attic" },
   ],
   landing: [
     { id: "landing_to_gallery", from: "landing", destination: "gallery", screenSide: "left",
