@@ -144,7 +144,43 @@ const Puzzles = (() => {
     Popups.open({ title, bodyHTML: html });
   }
 
-  return { keypad, notebookDial, knockDoor, paperPopup };
+  /* CLOSER INSPECTION: lift any in-scene art element into a zoomed viewer.
+     The element is referenced, never copied, so the zoom always shows the
+     live artwork exactly as it hangs in the room. */
+  function artZoom(title, elId, caption) {
+    const el = document.getElementById(elId);
+    if (!el || typeof el.getBBox !== "function") return false;
+    let bb;
+    try { bb = el.getBBox(); } catch (e) { return false; }
+    if (!bb || !bb.width || !bb.height) return false;
+    const pad = Math.max(bb.width, bb.height) * 0.07 + 3;
+    const NS = "http://www.w3.org/2000/svg", XL = "http://www.w3.org/1999/xlink";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", [bb.x - pad, bb.y - pad, bb.width + pad * 2, bb.height + pad * 2].join(" "));
+    svg.setAttribute("width", "100%");
+    svg.style.maxHeight = "62vh";
+    svg.style.display = "block";
+    svg.style.background = "#0d0a08";
+    svg.style.border = "3px solid #3a2c1e";
+    svg.style.borderRadius = "4px";
+    const use = document.createElementNS(NS, "use");
+    use.setAttribute("href", "#" + elId);
+    use.setAttributeNS(XL, "xlink:href", "#" + elId);
+    svg.appendChild(use);
+    const wrap = document.createElement("div");
+    wrap.appendChild(svg);
+    if (caption) {
+      const p = document.createElement("p");
+      p.className = "small-note";
+      p.style.marginTop = "10px";
+      p.textContent = caption;
+      wrap.appendChild(p);
+    }
+    Popups.open({ title, bodyEl: wrap });
+    return true;
+  }
+
+  return { keypad, notebookDial, knockDoor, paperPopup, artZoom };
 })();
 
 /* =====================================================================
@@ -1246,6 +1282,8 @@ const RoomActions = {
         State.addAware(3);
         return;
       }
+      const z = State.bumpClick("portraitZoom");
+      if (z === 2 && Puzzles.artZoom("THE BLANK CANVAS", "v_portrait", "Primed, stretched, framed. The likeness has been taken back.")) return;
       Dialogue.say(Dialogue.pick("portrait2", [
         "Blank canvas. If I stare long enough my eyes start suggesting a shape. I stop staring.",
         "I should turn it back to the wall. They had a reason.",
@@ -1709,6 +1747,8 @@ const RoomActions = {
       ]));
     },
     frames() {
+      const n = State.bumpClick("frames");
+      if (n === 2 && Puzzles.artZoom("THREE SMALL FRAMES", "v_frames", "Two photographs, dusted and patient. The middle frame keeps its secret.")) return;
       if (State.flag("act2")) {
         State.addAware(3);
         Dialogue.say(Dialogue.pick("frames2", [
@@ -1754,6 +1794,8 @@ const RoomActions = {
       ] : null);
     },
     gphoto() {
+      const n = State.bumpClick("gphoto");
+      if (n === 2 && Puzzles.artZoom("A PHOTOGRAPH OF HOUSE 17", "v_gphoto", "A small house in both hands. Somewhere, someone is wrong about its size.")) return;
       State.addAware(1);
       Dialogue.say(Dialogue.pick("gphoto", [
         "A photograph of House 17, taken from the path. Small. Two windows over a door, a gable, a chimney. A house you could hold in both hands.",

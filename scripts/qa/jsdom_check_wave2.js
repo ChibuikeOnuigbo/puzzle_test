@@ -76,6 +76,12 @@ const svgStr = () => ev(`(() => { const s = document.querySelector('#scene-holde
   /* ---------- moon: crescent has no visible occluder disc ---------- */
   check("moon: night side is translucent earthshine, not a solid disc", /opacity="0\.07"/.test(fs.readFileSync(path.join(root, "js/rooms.js"), "utf8")));
 
+  /* ---------- artwork zoom viewer ---------- */
+  check("artZoom: viewer helper exposed", ev(`typeof Puzzles.artZoom === 'function'`));
+  check("artZoom: graceful no-crash on missing element", ev(`Puzzles.artZoom('X', 'no-such-art') === false`));
+  ev("State.setRoom('landing'); Rooms.render()"); await wait(60);
+  check("artZoom: frames hotspot present on landing", ev(`!!document.querySelector('.hotspot[data-hs="frames"]')`));
+
   console.log(fail.length ? `\n${fail.length} CHECK(S) FAILED` : "\nALL WAVE-2 CHECKS PASSED");
   process.exit(fail.length ? 1 : 0);
 })().catch(e => { console.error("CRASH", e); process.exit(1); });

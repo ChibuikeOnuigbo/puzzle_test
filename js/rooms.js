@@ -1173,8 +1173,22 @@ const Rooms = (() => {
       <!-- portrait: hung facing the wall -->
       <g id="v_portrait">
         ${flipped
-          ? `<rect x="700" y="176" width="96" height="126" fill="#221a12" stroke="#4a3826" stroke-width="5"/><rect x="710" y="186" width="76" height="106" fill="#cfc4a8"/>`
-          : `<rect x="700" y="176" width="96" height="126" fill="#8a7454" stroke="#5d4a35" stroke-width="4"/><line x1="700" y1="176" x2="796" y2="302" stroke="#5d4a35" stroke-width="2" opacity="0.6"/><line x1="796" y1="176" x2="700" y2="302" stroke="#5d4a35" stroke-width="2" opacity="0.6"/><path d="M712,184 q36,26 72,0" stroke="#3a2f22" stroke-width="2.4" fill="none"/>`}
+          ? `<rect x="700" y="176" width="96" height="126" fill="#221a12" stroke="#4a3826" stroke-width="5"/>
+             <rect x="706" y="182" width="84" height="114" fill="none" stroke="#6b5537" stroke-width="2" opacity="0.7"/>
+             <rect x="710" y="186" width="76" height="106" fill="#cfc4a8"/>
+             <rect x="710" y="186" width="76" height="10" fill="#b8ac8e" opacity="0.6"/>
+             <path d="M712,282 q20,-26 38,-8 q14,12 34,-6" stroke="#8a7a5a" stroke-width="2" fill="none" opacity="0.5"/>`
+          : `<!-- hung facing the wall: we see the frame's back, never the face -->
+             <path d="M748,168 q0,-10 0,-14" stroke="#3a2f22" stroke-width="2.4" fill="none"/>
+             <circle cx="748" cy="152" r="3.4" fill="#8a7148"/>
+             <rect x="700" y="176" width="96" height="126" fill="#7a6547" stroke="#4d3b26" stroke-width="5"/>
+             <rect x="706" y="182" width="84" height="114" fill="#8a7454" stroke="#5d4a35" stroke-width="2"/>
+             <line x1="706" y1="182" x2="790" y2="296" stroke="#5d4a35" stroke-width="3" opacity="0.75"/>
+             <line x1="790" y1="182" x2="706" y2="296" stroke="#5d4a35" stroke-width="3" opacity="0.75"/>
+             <rect x="744" y="234" width="8" height="10" rx="1" fill="#4d3b26"/>
+             <path d="M712,184 q36,26 72,0" stroke="#3a2f22" stroke-width="2.4" fill="none"/>
+             <path d="M703,180 q4,20 0,40 q-3,26 2,52" stroke="#9a8a6a" stroke-width="1.4" fill="none" opacity="0.35"/>
+             <rect x="700" y="296" width="96" height="6" fill="#57452e"/>`}
       </g>
       <!-- hanging lamp -->
       <line x1="640" y1="0" x2="640" y2="96" stroke="#241c13" stroke-width="5"/>
@@ -3068,17 +3082,28 @@ const Rooms = (() => {
         ${studyOpen ? "" : `<rect x="784" y="356" width="18" height="22" rx="2" fill="#171310" stroke="#4a3826" stroke-width="2"/><circle cx="793" cy="364" r="3" fill="#0d0a08"/>`}
         <text x="843" y="640" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="15" fill="#6b5d4a" font-style="italic">the study</text>
       </g>
-      <!-- linen closet -->
+      <!-- linen closet: door swings on its LEFT hinge toward the viewer -->
       <g id="v_closet">
         <rect x="950" y="180" width="120" height="310" fill="#3a2c1e" stroke="#1c1510" stroke-width="6"/>
         ${closetOpen ? `
           <rect x="958" y="188" width="104" height="294" fill="#171310"/>
+          <rect x="958" y="188" width="8" height="294" fill="#0f0b08" opacity="0.8"/>
+          <rect x="1054" y="188" width="8" height="294" fill="#0f0b08" opacity="0.55"/>
           <rect x="964" y="240" width="92" height="10" fill="#33261a"/>
           <rect x="964" y="330" width="92" height="10" fill="#33261a"/>
+          <rect x="964" y="420" width="92" height="10" fill="#33261a"/>
           <rect x="970" y="200" width="80" height="38" rx="4" fill="#8f8778" opacity="0.85"/>
           <rect x="970" y="252" width="80" height="34" rx="4" fill="#7a7264" opacity="0.8"/>
-          ${hasTorch ? "" : `<g id="v_torch"><rect x="986" y="346" width="52" height="14" rx="7" fill="#565b60"/><circle cx="1040" cy="353" r="9" fill="#3a3e42"/><circle cx="1042" cy="353" r="4" fill="#c9a35f" opacity="0.7"/></g>`}
-          <rect x="946" y="176" width="12" height="318" fill="#2c211a" transform="rotate(-18 950 490)"/>
+          <rect x="970" y="384" width="56" height="34" rx="4" fill="#847c6c" opacity="0.8"/>
+          <!-- the torch RESTS on the middle shelf, never floating -->
+          ${hasTorch ? "" : `<g id="v_torch"><ellipse cx="1012" cy="330" rx="30" ry="3" fill="#0d0a08" opacity="0.5"/><rect x="986" y="316" width="52" height="14" rx="7" fill="#565b60"/><rect x="990" y="319" width="30" height="3" rx="1.5" fill="#7d847f" opacity="0.7"/><circle cx="1040" cy="323" r="9" fill="#3a3e42"/><circle cx="1042" cy="323" r="4" fill="#c9a35f" opacity="0.7"/></g>`}
+          <!-- the swung leaf: left hinge, opened toward the player -->
+          <polygon points="950,180 880,198 880,510 950,490" fill="#3a2c1e" stroke="#1c1510" stroke-width="4"/>
+          <polygon points="880,198 888,201 888,506 880,510" fill="#4d3b28"/>
+          <polygon points="888,201 944,188 944,486 888,506" fill="#453322" opacity="0.95"/>
+          <rect x="898" y="222" width="34" height="118" rx="3" fill="none" stroke="#2c211a" stroke-width="3" opacity="0.8"/>
+          <rect x="898" y="356" width="34" height="118" rx="3" fill="none" stroke="#2c211a" stroke-width="3" opacity="0.8"/>
+          <circle cx="946" cy="340" r="5" fill="#8a7148"/>
         ` : `
           <line x1="1010" y1="180" x2="1010" y2="490" stroke="#1c1510" stroke-width="4"/>
           <circle cx="998" cy="340" r="5" fill="#8a7148"/><circle cx="1022" cy="340" r="5" fill="#8a7148"/>
@@ -3117,7 +3142,7 @@ const Rooms = (() => {
     </g>
     <g id="hotspots">
       ${childGone ? hs("chwall", 108, 140, 175, 360, "A wall that remembers being a door", "v_cdoor") : hs("gochild", 108, 140, 175, 360, "A small door with crayon marks", "v_cdoor")}
-      ${State.flag("closetOpen") && !hasTorch ? hs("torch", 975, 335, 84, 36, "Something metal", "v_torch") : ""}
+      ${State.flag("closetOpen") && !hasTorch ? hs("torch", 972, 308, 88, 32, "Something metal", "v_torch") : ""}
       ${hs("closet", 938, 168, 144, 335, "The linen closet", "v_closet")}
       ${hs("ahatch", 348, 0, 214, 170, "A hatch in the ceiling", "v_ahatch")}
       ${hs("lwin", 528, 118, 244, 204, "The window", "v_lwin")}

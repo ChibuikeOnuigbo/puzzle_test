@@ -47,28 +47,47 @@ const Windows = (() => {
   };
 
   /* ---------- translucent cloud masses: layered radial gradients, no blur,
-     never an opaque blob; different densities overlap naturally ---------- */
+     never an opaque blob; different densities overlap naturally.
+     HIGH tier builds real cumulus: a shaded base slab, ranked lobes along a
+     crowned arch, and a bright cap — puffs large amid, tapering at the ends. */
   function clouds(id, g, R, q, scene) {
     const lit = scene === "day" || scene === "dawn";
     const warm = scene === "sunset" || scene === "dawn";
     const base = lit ? "255,255,255" : (warm ? "226,206,196" : "168,186,204");
+    const shadow = lit ? "196,206,220" : (warm ? "188,166,158" : "128,142,160");
     const count = q === "high" ? 5 : q === "medium" ? 3 : 1;
     let out = "";
     for (let i = 0; i < count; i++) {
       const cx = g.x + g.w * (0.12 + R() * 0.76);
       const cy = g.y + g.h * (0.10 + R() * 0.30);
-      const puffs = q === "low" ? 1 : 2 + Math.floor(R() * 3);
+      const puffs = q === "high" ? 6 + Math.floor(R() * 4) : q === "medium" ? 3 + Math.floor(R() * 2) : 1;
       const drift = animOn("windowClouds") && q !== "low";
       const dur = (46 + R() * 60).toFixed(0);
       const dx = (8 + R() * 22).toFixed(0);
       const op = (0.10 + R() * 0.14).toFixed(2);
+      const span = g.w * (0.20 + R() * 0.14);
       let c = `<g opacity="${op}">`;
-      for (let p = 0; p < puffs; p++) {
-        const px = cx + (R() - 0.5) * g.w * 0.22;
-        const py = cy + (R() - 0.5) * g.h * 0.05;
-        const rx = g.w * (0.10 + R() * 0.13);
-        const ry = rx * (0.30 + R() * 0.16);
-        c += `<ellipse cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" fill="rgb(${base})" opacity="${(0.35 + R() * 0.4).toFixed(2)}"/>`;
+      if (q !== "low") {
+        /* shaded base slab: the flat underside every real cloud has */
+        c += `<ellipse cx="${cx.toFixed(1)}" cy="${(cy + g.h * 0.035).toFixed(1)}" rx="${(span * 0.62).toFixed(1)}" ry="${(span * 0.085).toFixed(1)}" fill="rgb(${shadow})" opacity="0.55"/>`;
+        for (let p = 0; p < puffs; p++) {
+          /* ranked lobes along an arch: big amid, tapering to the ends */
+          const t = puffs === 1 ? 0.5 : p / (puffs - 1);
+          const crown = Math.sin(t * Math.PI);                    // 0 at ends, 1 amid
+          const px = cx + (t - 0.5) * span * 1.5 + (R() - 0.5) * span * 0.18;
+          const py = cy - crown * span * (0.10 + R() * 0.08) + (R() - 0.5) * span * 0.05;
+          const rx = span * (0.16 + 0.20 * crown) * (0.85 + R() * 0.3);
+          const ry = rx * (0.42 + R() * 0.16);
+          c += `<ellipse cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" fill="rgb(${base})" opacity="${(0.40 + crown * 0.3 + R() * 0.15).toFixed(2)}"/>`;
+        }
+        if (q === "high") {
+          /* bright cap riding the crown */
+          c += `<ellipse cx="${(cx + (R() - 0.5) * span * 0.3).toFixed(1)}" cy="${(cy - span * 0.16).toFixed(1)}" rx="${(span * 0.20).toFixed(1)}" ry="${(span * 0.09).toFixed(1)}" fill="rgb(${base})" opacity="0.85"/>`;
+          /* wisps trailing off the lee side */
+          c += `<ellipse cx="${(cx + span * 0.72).toFixed(1)}" cy="${(cy + span * 0.02).toFixed(1)}" rx="${(span * 0.26).toFixed(1)}" ry="${(span * 0.05).toFixed(1)}" fill="rgb(${base})" opacity="0.30"/>`;
+        }
+      } else {
+        c += `<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="${(g.w * 0.14).toFixed(1)}" ry="${(g.w * 0.05).toFixed(1)}" fill="rgb(${base})" opacity="0.5"/>`;
       }
       c += `</g>`;
       if (drift) c = `<g>${c}<animateTransform attributeName="transform" type="translate" values="0,0;${dx},0;0,0" dur="${dur}s" repeatCount="indefinite"/></g>`;
