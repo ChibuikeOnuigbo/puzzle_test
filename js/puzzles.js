@@ -2276,6 +2276,14 @@ const RoomActions = {
   /* ============ THE WHITE SUITE ============ */
   suite: {
     suback() { Rooms.goto("gallery", null); },
+    lswitch() {
+      const on = State.flag("suiteLightOn") !== 1;
+      State.setFlag("suiteLightOn", on ? 1 : 0);
+      Rooms.render();
+      Dialogue.say(on
+        ? "The switch clicks. Light arrives, stutters, thinks better of it, steadies."
+        : "Dark again. The chrome goes first, then the glass. The room prefers it, I think.");
+    },
     ssink() {
       Dialogue.say(Dialogue.pick("ssink", [
         "The tap gives water at exactly body temperature, as if it had been waiting. The mirror holds no smudge. Not one.",
@@ -2308,6 +2316,14 @@ const RoomActions = {
   /* ============ THE TILED WASHROOM ============ */
   washroom: {
     wback() { Rooms.goto("sittingroom", null); },
+    lswitch() {
+      const on = State.flag("washLightOn") !== 1;
+      State.setFlag("washLightOn", on ? 1 : 0);
+      Rooms.render();
+      Dialogue.say(on
+        ? "Cream and green surface out of the dark. The bulb flickers twice, then commits."
+        : "Off. The tiles keep their colour in the dark; I can hear them doing it.");
+    },
     wsink() {
       Dialogue.say(Dialogue.pick("wsink", [
         "Cross handles, red and blue. The water runs clear after one cough, as if it were used yesterday.",

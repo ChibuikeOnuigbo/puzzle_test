@@ -711,12 +711,89 @@ const FX = (() => {
 
     if (!Settings.get("reducedMotion") && (typeof AnimReg === "undefined" || AnimReg.on("flyWander"))) stepFlies(dt, px, py);
 
+    tickRoomLight(t, dt, px, py);
+
     /* keep the detector overlay seated on the flies */
     if (flyDebugEls.length) {
       for (let i = 0; i < flyDebugEls.length && i < flies.length; i++) {
         flyDebugEls[i].setAttribute("cx", flies[i].x.toFixed(1));
         flyDebugEls[i].setAttribute("cy", flies[i].y.toFixed(1));
       }
+    }
+  }
+
+  /* ---------------- bright-room lights: random flicker + beam dust -------
+     Flicker: bursts of 0.3-1.2s of stutter separated by random calm spells
+     of 10 / 12 / 15 s. Dust: slow motes that lean away from the pointer. */
+  let flick = { room: null, quietUntil: 0, burstUntil: 0, nextToggle: 0, dim: 0 };
+  let dustP = null;
+  const DUST_ROOMS = { attic: 46, basement: 40, steamroom: 34, gallery: 26, lavatory: 24, suite: 24, washroom: 20 };
+  function tickRoomLight(t, dt, px, py) {
+    if (!svgEl || typeof State === "undefined") return;
+    const room = State.get().room;
+    const cfg = (typeof ROOM_LIGHTS !== "undefined") ? ROOM_LIGHTS[room] : null;
+    const litOn = cfg ? !!State.flag(cfg.flag) : false;
+    const reduced = Settings.get("reducedMotion");
+    /* --- flicker --- */
+    const fel = svgEl.querySelector("#light-flick");
+    if (fel && cfg && litOn && cfg.flicker && !reduced) {
+      if (flick.room !== room) flick = { room, quietUntil: t + 3000 + Math.random() * 3000, burstUntil: 0, nextToggle: 0, dim: 0 };
+      if (t < flick.quietUntil) fel.setAttribute("opacity", "0");
+      else {
+        if (t >= flick.burstUntil) {
+          if (Math.random() < 0.45) { flick.burstUntil = t + 300 + Math.random() * 900; flick.nextToggle = 0; }
+          else { flick.quietUntil = t + [10000, 12000, 15000][Math.floor(Math.random() * 3)]; fel.setAttribute("opacity", "0"); return; }
+        }
+        if (t >= flick.nextToggle) {
+          flick.dim = Math.random() < 0.6 ? 0.08 + Math.random() * 0.14 : 0;
+          flick.nextToggle = t + 60 + Math.random() * 120;
+        }
+        fel.setAttribute("opacity", flick.dim.toFixed(3));
+      }
+    } else if (fel) fel.setAttribute("opacity", "0");
+    /* --- dust --- */
+    let n = DUST_ROOMS[room] || 0;
+    if (cfg && !litOn) n = 0;                       // dark rooms keep their dust unseen
+    if (typeof quality === "function" && quality() === "low") n = Math.floor(n / 2);
+    let g = svgEl.querySelector("#dust-root");
+    if (!n) { if (g) g.remove(); dustP = null; return; }
+    if (!dustP || dustP.room !== room) {
+      if (g) g.remove();
+      g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      g.setAttribute("id", "dust-root");
+      g.setAttribute("pointer-events", "none");
+      svgEl.appendChild(g);
+      const R = Math.random;
+      dustP = { room, parts: [] };
+      for (let i = 0; i < n; i++) {
+        const el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        const p = { x: R() * 1280, y: 80 + R() * 560, vx: 0, vy: 0, r: 0.7 + R() * 1.1, o: 0.08 + R() * 0.18, ph: R() * 6.28, el };
+        el.setAttribute("r", p.r.toFixed(1));
+        el.setAttribute("fill", "#cfd8e0");
+        el.setAttribute("opacity", p.o.toFixed(2));
+        g.appendChild(el);
+        dustP.parts.push(p);
+      }
+    }
+    if (reduced) return;
+    for (let i = 0; i < dustP.parts.length; i++) {
+      const p = dustP.parts[i];
+      p.ph += 0.01 * dt;
+      p.x += (Math.sin(p.ph) * 0.12 + p.vx) * dt;
+      p.y += (0.06 + Math.cos(p.ph * 0.7) * 0.05 + p.vy) * dt;
+      /* lean away from the pointer */
+      if (px > -999) {
+        const dx = p.x - px, dy = p.y - py, d2 = dx * dx + dy * dy;
+        if (d2 < 8100 && d2 > 0.01) {
+          const d = Math.sqrt(d2), f = (90 - d) / 90 * 0.5;
+          p.vx += dx / d * f; p.vy += dy / d * f;
+        }
+      }
+      p.vx *= 0.92; p.vy *= 0.92;
+      if (p.y > 660) { p.y = 80; p.x = Math.random() * 1280; }
+      if (p.x < -10) p.x = 1290; if (p.x > 1290) p.x = -10;
+      p.el.setAttribute("cx", p.x.toFixed(1));
+      p.el.setAttribute("cy", p.y.toFixed(1));
     }
   }
 

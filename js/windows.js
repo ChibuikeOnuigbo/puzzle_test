@@ -240,13 +240,23 @@ const Windows = (() => {
     const nearC = night ? "#080f11" : (scene === "dawn" ? "#262b2e" : "#27402e");
     if (q !== "low") ext += treeline(glass, R, horizon, glass.h * (q === "high" ? 0.20 : 0.16), farC, 6 + Math.floor(R() * 3), false);
     ext += treeline(glass, R, horizon + 2, glass.h * (q === "high" ? 0.16 : 0.13), q === "low" ? nearC : midC, 4 + Math.floor(R() * 3), true);
-    if (q === "high") {
-      /* one near tree with a trunk, clipped by the pane like everything else */
-      const tx = glass.x + glass.w * (R() < 0.5 ? 0.14 : 0.86);
-      const th = glass.h * 0.42;
-      ext += `<rect x="${(tx - 2).toFixed(1)}" y="${(horizon - th * 0.5).toFixed(1)}" width="4" height="${(th * 0.55).toFixed(1)}" fill="${nearC}"/>
-        <path d="M${tx},${(horizon - th).toFixed(1)} q${-glass.w * 0.09},${th * 0.16} 0,${th * 0.34} q${glass.w * 0.09},${-th * 0.18} 0,${-th * 0.34} Z" fill="${nearC}"/>
-        <ellipse cx="${tx}" cy="${(horizon - th * 0.86).toFixed(1)}" rx="${(glass.w * 0.08).toFixed(1)}" ry="${(glass.h * 0.10).toFixed(1)}" fill="${nearC}"/>`;
+    if (q !== "low") {
+      /* one near tree grown the bedroom-garden way: a tapered trunk with two
+         arms, and a lobed crown clustered ON the branch tips — no floating
+         foliage, no stick trunk */
+      const tx = glass.x + glass.w * (R() < 0.5 ? 0.16 : 0.84);
+      const base = horizon + 3;
+      const th = glass.h * (q === "high" ? 0.46 : 0.38);
+      const rw = glass.w * 0.075;
+      let crown = "";
+      const lobes = q === "high" ? 5 : 3;
+      for (let k = 0; k < lobes; k++) {
+        const cx = tx + (R() - 0.5) * rw * 2.2, cy = base - th * (0.72 + R() * 0.5), rr = rw * (0.5 + R() * 0.35);
+        crown += `<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="${rr.toFixed(1)}" ry="${(rr * 0.75).toFixed(1)}" fill="${k % 2 ? nearC : midC}"/>`;
+      }
+      ext += `<g><path d="M${tx.toFixed(1)},${base} q-1.5,${(-th * 0.4).toFixed(1)} 0,${(-th * 0.62).toFixed(1)}" stroke="${nearC}" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M${tx.toFixed(1)},${(base - th * 0.5).toFixed(1)} q${(-rw * 0.9).toFixed(1)},${(-th * 0.14).toFixed(1)} ${(-rw * 1.1).toFixed(1)},${(-th * 0.26).toFixed(1)} M${tx.toFixed(1)},${(base - th * 0.58).toFixed(1)} q${(rw * 0.9).toFixed(1)},${(-th * 0.12).toFixed(1)} ${(rw * 1.1).toFixed(1)},${(-th * 0.24).toFixed(1)}" stroke="${nearC}" stroke-width="2" fill="none" stroke-linecap="round"/>
+        ${crown}</g>`;
     }
 
     /* ground */

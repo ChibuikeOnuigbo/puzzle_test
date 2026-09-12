@@ -500,15 +500,34 @@ const Art = (() => {
     return s;
   }
 
+  /* Table lamp rebuilt from reference: stepped base, urn ceramic body, neck,
+     drum fabric shade with top/bottom rims, pull chain. Light reads through
+     the shade colour and a pool on the table — no halo blobs. */
   function tableLamp(x, y, opt = {}) {
     const q = tier(); const on = !!opt.on;
-    const shade = on ? "#c9a35f" : "#4a3d2c";
-    let s = `<ellipse cx="${x}" cy="${y}" rx="20" ry="4" fill="#0d0a08" opacity="0.4"/>`;
-    s += `<path d="M${x - 20},${y - 46} L${x + 20},${y - 46} L${x + 14},${y - 20} L${x - 14},${y - 20} Z" fill="${shade}"/>`;
-    if (q === "high") s += `<path d="M${x - 20},${y - 46} L${x + 20},${y - 46} L${x + 18},${y - 42} L${x - 18},${y - 42} Z" fill="${on ? "#e0be78" : "#5a4a36"}"/>`;
-    s += `<rect x="${x - 3}" y="${y - 20}" width="6" height="14" fill="#2c241c"/>`;
-    s += `<ellipse cx="${x}" cy="${y - 4}" rx="12" ry="4" fill="#33261a"/>`;
-    if (on && q !== "low") s += `<ellipse cx="${x}" cy="${y - 34}" rx="30" ry="22" fill="url(#lampglow)" opacity="0.6"/>`;
+    const shadeC = on ? "#d8b46a" : "#5a4a36", shadeD = on ? "#b98f4a" : "#4a3d2c";
+    const rim = on ? "#e8cf96" : "#6b5d4a";
+    let s = `<ellipse cx="${x}" cy="${y}" rx="22" ry="4.5" fill="#0d0a08" opacity="0.4"/>`;
+    /* stepped base */
+    s += `<ellipse cx="${x}" cy="${y - 3}" rx="14" ry="4" fill="#33261a"/>`;
+    s += `<ellipse cx="${x}" cy="${y - 7}" rx="10" ry="3" fill="#4a3826"/>`;
+    /* urn ceramic body */
+    s += `<path d="M${x - 4},${y - 8} q-10,-10 -8,-22 q2,-12 8,-16 l8,0 q6,4 8,16 q2,12 -8,22 Z" fill="${on ? "#6b5d4a" : "#4a4234"}" stroke="#2c241c" stroke-width="2"/>`;
+    if (q !== "low") s += `<path d="M${x - 6},${y - 18} q-2,-8 2,-14" stroke="#8a7f6c" stroke-width="2" fill="none" opacity="0.5"/>`;
+    /* neck */
+    s += `<rect x="${x - 2}" y="${y - 52}" width="4" height="8" fill="#2c241c"/>`;
+    /* drum shade with rims */
+    s += `<path d="M${x - 22},${y - 52} L${x + 22},${y - 52} L${x + 17},${y - 78} L${x - 17},${y - 78} Z" fill="${shadeC}" stroke="${shadeD}" stroke-width="2"/>`;
+    s += `<line x1="${x - 22}" y1="${y - 52}" x2="${x + 22}" y2="${y - 52}" stroke="${rim}" stroke-width="2.4"/>`;
+    s += `<line x1="${x - 17}" y1="${y - 78}" x2="${x + 17}" y2="${y - 78}" stroke="${rim}" stroke-width="2"/>`;
+    if (q === "high") s += `<line x1="${x - 8}" y1="${y - 76}" x2="${x - 11}" y2="${y - 54}" stroke="#ffffff" stroke-width="2" opacity="${on ? 0.25 : 0.1}"/>`;
+    /* pull chain */
+    if (q !== "low") s += `<line x1="${x + 12}" y1="${y - 52}" x2="${x + 13}" y2="${y - 40}" stroke="#8a7148" stroke-width="1.4"/><circle cx="${x + 13}" cy="${y - 38}" r="2" fill="#8a7148"/>`;
+    /* light pool on the table + a soft upward spill, no halo ellipses */
+    if (on && q !== "low") {
+      s += `<polygon points="${x - 26},${y} ${x + 26},${y} ${x + 44},${y + 10} ${x - 44},${y + 10}" fill="#e8a04c" opacity="0.10"/>`;
+      s += `<polygon points="${x - 15},${y - 78} ${x + 15},${y - 78} ${x + 9},${y - 92} ${x - 9},${y - 92}" fill="#e8a04c" opacity="0.08"/>`;
+    }
     return s;
   }
 
@@ -577,7 +596,139 @@ const Art = (() => {
     return s;
   }
 
-  return { tier, fridge, milkRow, garbageBags, apple, painting, paintingDefs, fire, fireplace, sofa, armchair, rug, sideTable, ceilingLamp, tableLamp, tap, safe, _rng: rng };
+  /* =====================================================================
+     BED — OOP side-view bed builder. Every part is CONNECTED: posts run to
+     the floor, the side rail spans post-to-post, the mattress seats on the
+     rail, the pillow leans on the headboard, the blanket drapes over the
+     mattress and hangs past the rail. Customisable: wood/blanket/pillow
+     colours, blanket pattern ("stripes"|"dots"|"grid"|none), proportions,
+     an under-bed drawer.
+     Returns { svg, box:{x,y,w,h}, mattressTop }.
+  ===================================================================== */
+  function bed(x, y, opt = {}) {
+    const q = tier();
+    const w = opt.w || 400;
+    const wood = opt.wood || "#4a3826", woodD = opt.woodDark || "#2c211a", woodL = opt.woodLight || "#5d4a35";
+    const blanket = opt.blanket || "#6a6284", blanketD = opt.blanketDark || "#575070", blanketL = opt.blanketLight || "#7d7698";
+    const sheet = opt.sheet || "#cfc9ba", sheetD = opt.sheetDark || "#a8a190";
+    const pillowC = opt.pillow || "#d8d3c4", pillowD = opt.pillowDark || "#bdb7a6";
+    const headH = opt.headH || 150, footH = opt.footH || 96;
+    const legDrop = opt.legDrop != null ? opt.legDrop : 96;
+    const railH = 18, matH = opt.matH || 34;
+    const pattern = opt.pattern || "none";
+    const hbW = 16, fbW = 14;
+    const railY = y + headH;
+    const footY = railY + railH - footH;
+    const floorY = railY + railH + legDrop;
+    const mTop = railY - matH + 4;
+    const matX = x + hbW - 2, matW = w - hbW - fbW + 4;
+    let s = "";
+    /* contact shadow, feet on the floor */
+    s += `<ellipse cx="${x + w / 2}" cy="${floorY + 3}" rx="${w * 0.55}" ry="9" fill="#0d0a08" opacity="0.45"/>`;
+    /* headboard + footboard posts run ALL the way to the floor */
+    s += `<rect x="${x}" y="${y}" width="${hbW}" height="${floorY - y}" rx="5" fill="${wood}"/>`;
+    s += `<rect x="${x + w - fbW}" y="${footY}" width="${fbW}" height="${floorY - footY}" rx="5" fill="${wood}"/>`;
+    if (q !== "low") {
+      s += `<rect x="${x + 3}" y="${y + 8}" width="4" height="${floorY - y - 16}" rx="2" fill="${woodL}" opacity="0.5"/>`;
+      s += `<rect x="${x + w - fbW + 3}" y="${footY + 8}" width="4" height="${floorY - footY - 16}" rx="2" fill="${woodL}" opacity="0.5"/>`;
+    }
+    /* caps */
+    s += `<rect x="${x - 3}" y="${y - 8}" width="${hbW + 6}" height="10" rx="4" fill="${woodL}"/>`;
+    s += `<rect x="${x + w - fbW - 3}" y="${footY - 7}" width="${fbW + 6}" height="9" rx="4" fill="${woodL}"/>`;
+    /* optional under-bed drawer (sits between the legs, in the rail shadow) */
+    if (opt.drawer) {
+      s += `<rect x="${x + w * 0.22}" y="${railY + railH + 6}" width="${w * 0.5}" height="${legDrop - 14}" rx="4" fill="${woodD}"/>`;
+      s += `<rect x="${x + w * 0.22 + 8}" y="${railY + railH + 12}" width="${w * 0.5 - 16}" height="${legDrop - 26}" rx="3" fill="${wood}" opacity="0.8"/>`;
+      s += `<circle cx="${x + w * 0.47}" cy="${railY + railH + 6 + (legDrop - 14) / 2}" r="4" fill="${woodL}"/>`;
+    }
+    /* centre leg */
+    if (q !== "low" && !opt.drawer) s += `<rect x="${x + w * 0.52}" y="${railY + railH}" width="12" height="${legDrop}" fill="${woodD}"/>`;
+    /* side rail, post to post */
+    s += `<rect x="${x + hbW - 4}" y="${railY}" width="${w - hbW - fbW + 8}" height="${railH}" fill="${wood}"/>`;
+    s += `<line x1="${x + hbW}" y1="${railY + railH - 4}" x2="${x + w - fbW}" y2="${railY + railH - 4}" stroke="${woodD}" stroke-width="2" opacity="0.7"/>`;
+    /* mattress seated ON the rail (overlaps it, no gap) */
+    s += `<rect x="${matX}" y="${mTop}" width="${matW}" height="${matH}" rx="8" fill="${sheet}"/>`;
+    if (q !== "low") s += `<line x1="${matX + 8}" y1="${mTop + matH - 8}" x2="${matX + matW - 8}" y2="${mTop + matH - 8}" stroke="${sheetD}" stroke-width="2" opacity="0.8"/>`;
+    /* turned-down top sheet */
+    const bx0 = x + Math.round(w * 0.40);
+    s += `<rect x="${bx0 - 42}" y="${mTop - 3}" width="46" height="16" rx="6" fill="${opt.pillow ? pillowC : "#e2ddd0"}"/>`;
+    /* pillow leaning on the headboard, base sunk into the mattress */
+    s += `<path d="M${x + hbW + 2},${mTop + 6} q-8,-28 16,-33 q36,-7 66,-1 q20,4 16,25 q-4,18 -24,20 q-42,4 -62,0 q-10,-2 -12,-11 Z" fill="${pillowC}"/>`;
+    if (q === "high") {
+      s += `<path d="M${x + hbW + 14},${mTop - 12} q30,-12 72,-6" stroke="${pillowD}" stroke-width="2" fill="none" opacity="0.8"/>`;
+      s += `<ellipse cx="${x + hbW + 44}" cy="${mTop - 6}" rx="20" ry="7" fill="${pillowD}" opacity="0.5"/>`;
+    }
+    /* blanket: over the mattress, draped past the rail at the foot side */
+    const bTop = mTop - 6, bBot = railY + railH + 12, bR = x + w - fbW + 6;
+    s += `<rect x="${bx0}" y="${bTop}" width="${bR - bx0}" height="${bBot - bTop}" rx="8" fill="${blanket}"/>`;
+    /* the fold-over edge that hangs at the blanket's head-side */
+    s += `<rect x="${bx0 - 4}" y="${bTop}" width="20" height="${bBot - bTop + 6}" rx="8" fill="${blanket}"/>`;
+    s += `<rect x="${bx0 - 4}" y="${bTop}" width="20" height="${bBot - bTop + 6}" rx="8" fill="${blanketD}" opacity="0.35"/>`;
+    s += `<rect x="${bx0}" y="${bTop}" width="${bR - bx0}" height="10" rx="5" fill="${blanketL}" opacity="0.9"/>`;
+    if (pattern === "stripes") {
+      for (let px = bx0 + 26; px < bR - 10; px += 30) s += `<line x1="${px}" y1="${bTop + 12}" x2="${px}" y2="${bBot - 6}" stroke="${blanketD}" stroke-width="5" opacity="0.7"/>`;
+    } else if (pattern === "dots") {
+      for (let py = bTop + 22; py < bBot - 8; py += 24) for (let px = bx0 + 22; px < bR - 12; px += 28) s += `<circle cx="${px}" cy="${py}" r="3.4" fill="${blanketD}" opacity="0.7"/>`;
+    } else if (pattern === "grid") {
+      for (let px = bx0 + 24; px < bR - 10; px += 34) s += `<line x1="${px}" y1="${bTop + 12}" x2="${px}" y2="${bBot - 6}" stroke="${blanketD}" stroke-width="2.4" opacity="0.6"/>`;
+      for (let py = bTop + 24; py < bBot - 8; py += 26) s += `<line x1="${bx0 + 8}" y1="${py}" x2="${bR - 8}" y2="${py}" stroke="${blanketD}" stroke-width="2.4" opacity="0.6"/>`;
+    }
+    if (q !== "low") {
+      s += `<path d="M${bx0 + 30},${bTop + 18} q60,10 ${bR - bx0 - 50},6 M${bx0 + 26},${bTop + 46} q70,12 ${bR - bx0 - 50},6" stroke="${blanketD}" stroke-width="2.4" fill="none" opacity="0.7"/>`;
+    }
+    if (q === "high") {
+      s += `<path d="M${bx0 + 60},${bTop + 8} q-4,50 2,${bBot - bTop - 14} M${bx0 + 140},${bTop + 8} q-4,54 2,${bBot - bTop - 14}" stroke="${blanketD}" stroke-width="1.8" fill="none" opacity="0.5"/>`;
+    }
+    return { svg: s, box: { x, y: y - 8, w, h: floorY - y + 12 }, mattressTop: mTop };
+  }
+
+  /* WALL STAINS — seep blobs with drip runs below, plus pale cleaning swabs.
+     Seeded per room so re-renders never move them. */
+  function wallStains(seed, opt = {}) {
+    const q = tier(); const R = rng(seed);
+    const n = opt.count != null ? opt.count : (q === "high" ? 5 : q === "medium" ? 3 : 2);
+    const col = opt.color || "#241a11";
+    let s = "";
+    for (let i = 0; i < n; i++) {
+      const x = (opt.x0 != null ? opt.x0 + R() * (opt.x1 - opt.x0) : R() * 1280);
+      const y = (opt.y0 != null ? opt.y0 + R() * ((opt.y1 != null ? opt.y1 : 300) - opt.y0) : R() * 200);
+      const w = 14 + R() * 30, h = 40 + R() * 120;
+      s += `<ellipse cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" rx="${(w / 2).toFixed(0)}" ry="${(w * 0.34).toFixed(0)}" fill="${col}" opacity="${(0.05 + R() * 0.05).toFixed(2)}"/>`;
+      s += `<path d="M${(x - w * 0.18).toFixed(0)},${y.toFixed(0)} q${(w * 0.1).toFixed(0)},${(h * 0.5).toFixed(0)} 0,${h.toFixed(0)} q${(w * 0.06).toFixed(0)},${(h * 0.16).toFixed(0)} ${(w * 0.2).toFixed(0)},0 q-${(w * 0.12).toFixed(0)},-${(h * 0.6).toFixed(0)} ${(w * 0.16).toFixed(0)},-${h.toFixed(0)} Z" fill="${col}" opacity="${(0.05 + R() * 0.06).toFixed(2)}"/>`;
+      if (q === "high") s += `<path d="M${(x + w * 0.3).toFixed(0)},${(y + 6).toFixed(0)} q2,${(h * 0.4).toFixed(0)} 0,${(h * 0.7).toFixed(0)}" stroke="${col}" stroke-width="2" fill="none" opacity="0.08"/>`;
+    }
+    if (q !== "low") for (let i = 0; i < (opt.swabs != null ? opt.swabs : 2); i++) {
+      const x = (opt.x0 != null ? opt.x0 + R() * (opt.x1 - opt.x0) : R() * 1200);
+      const y = (opt.y0 != null ? opt.y0 + R() * 200 : 200 + R() * 200);
+      s += `<path d="M${x.toFixed(0)},${y.toFixed(0)} q40,-14 84,-2 q-44,10 -84,2 Z" fill="${opt.light || "#c9bb9b"}" opacity="0.05"/>`;
+    }
+    return s;
+  }
+
+  /* COBWEB — corner web: radial spokes + sagging rings. opt.o = visibility. */
+  function cobweb(x, y, r, opt = {}) {
+    const q = tier();
+    const o = opt.o != null ? opt.o : 0.25;
+    const spokes = q === "high" ? 7 : 5;
+    const col = opt.col || "#9aa19b";
+    let s = `<g opacity="${o}" stroke="${col}" fill="none" stroke-width="1.2">`;
+    for (let i = 0; i <= spokes; i++) {
+      const a = Math.PI / 2 * i / spokes;
+      s += `<line x1="${x}" y1="${y}" x2="${(x + Math.cos(a) * r).toFixed(0)}" y2="${(y + Math.sin(a) * r).toFixed(0)}"/>`;
+    }
+    for (let k = 1; k <= 3; k++) {
+      const rr = r * k / 3.4;
+      let d = `M${(x + rr).toFixed(0)},${y}`;
+      for (let i = 1; i <= spokes; i++) {
+        const a = Math.PI / 2 * i / spokes;
+        d += ` L${(x + Math.cos(a) * rr).toFixed(0)},${(y + Math.sin(a) * rr).toFixed(0)}`;
+      }
+      s += `<path d="${d}" opacity="0.8"/>`;
+    }
+    return s + "</g>";
+  }
+
+  return { tier, fridge, milkRow, garbageBags, apple, painting, paintingDefs, fire, fireplace, sofa, armchair, rug, sideTable, ceilingLamp, tableLamp, tap, safe, bed, wallStains, cobweb, _rng: rng };
 })();
 
 (typeof window !== "undefined") && (window.Art = Art);

@@ -292,6 +292,16 @@ const EXIT_DESCRIPTORS = {
    destinations use the glowing edge arrows instead. */
 const DOOR_SAFE = { minX: 140, maxX: 1140, minY: 90, maxY: 660 };
 
+/* BRIGHT-ROOM LIGHT RULE — rooms whose palette reads bright (>45% light
+   coverage) start DARK with the light off: a wall switch by the door turns
+   it on; once on, the fixture flickers in random bursts separated by random
+   10/12/15s calm spells, a dim vignette keeps the surround subdued, and dust
+   hangs in the beam. */
+const ROOM_LIGHTS = {
+  suite:    { flag: "suiteLightOn",  at: [168, 300], flicker: true },
+  washroom: { flag: "washLightOn",   at: [168, 300], flicker: true },
+};
+
 /* Edge arrows: fast navigation along real graph edges only. DERIVED from
    EXIT_DESCRIPTORS so the arrow, its tooltip, its hotspot and the graph
    edge can never disagree. An arrow only appears when its exit hotspot

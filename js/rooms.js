@@ -1528,6 +1528,7 @@ const Rooms = (() => {
         <line x1="555" y1="225" x2="765" y2="225" stroke="#2c241c" stroke-width="6"/>
       </g>
     </g>
+        ${(typeof Art !== "undefined") ? Art.wallStains(51, { x0: 240, x1: 980, y0: 90, y1: 240, count: 3 }) + Art.cobweb(0, 74, 70, { o: 0.24 }) : ""}
     <g id="layer-mid">
       <!-- the conservatory door: glass, mist and ferns on the far side,
            one floor above where a conservatory belongs -->
@@ -2390,6 +2391,7 @@ const Rooms = (() => {
         </ellipse>
       </g>`}
     </g>
+        ${(typeof Art !== "undefined") ? Art.wallStains(91, { x0: 60, x1: 1220, y0: 90, y1: 260 }) + `<g transform="translate(1280,0) scale(-1,1)">` + Art.cobweb(0, 74, 92, { o: 0.3 }) + `</g>` + Art.cobweb(0, 74, 84, { o: 0.26 }) : ""}
     <g id="layer-mid">
       <!-- kitchen doorway (left): open, showing the kitchen through the opening -->
       <g id="v_kdoor">
@@ -2676,6 +2678,7 @@ const Rooms = (() => {
       <path d="M612,66 L668,66 L654,92 L626,92 Z" fill="#3a2f22"/>
       <ellipse cx="640" cy="96" rx="14" ry="8" fill="#f0c884"><animate attributeName="opacity" values="1;0.85;1;1" dur="7s" repeatCount="indefinite"/></ellipse>`}
     </g>
+        ${(typeof Art !== "undefined") ? Art.wallStains(77, { x0: 40, x1: 900, y0: 100, y1: 300 }) : ""}
     <g id="layer-mid">
       <!-- wall clock 8:17 -->
       <!-- the left and right edges are exits handled by the side arrows; no door drawn -->
@@ -2701,12 +2704,14 @@ const Rooms = (() => {
           <rect x="1106" y="410" width="36" height="30" rx="3" fill="#8a6a4a" opacity="0.8"/>
         ` : ""}
       </g>
-      <!-- shopping list on fridge -->
-      <g id="v_list">
+      <!-- shopping list on fridge: glued to the FREEZER door's front face, so
+           when the freezer swings open the paper rides around with the leaf
+           and is no longer visible from the front -->
+      ${freezerOpen ? "" : `<g id="v_list">
         <rect x="1030" y="216" width="66" height="76" fill="#d8c9a8" transform="rotate(3 1063 254)"/>
         ${[0, 1, 2, 3].map(i => `<line x1="1040" y1="${234 + i * 14}" x2="${1082 - i * 4}" y2="${233 + i * 14}" stroke="#6b5b45" stroke-width="2.4" transform="rotate(3 1063 254)"/>`).join("")}
         <circle cx="1063" cy="222" r="4" fill="#8a4a3a" transform="rotate(3 1063 254)"/>
-      </g>
+      </g>`}
       <!-- counter run -->
       <rect x="60" y="430" width="860" height="22" fill="#4a3826"/>
       <rect x="60" y="452" width="860" height="120" fill="url(#woodg)"/>
@@ -3028,7 +3033,7 @@ const Rooms = (() => {
     </g>
     <g id="layer-front">${falseK ? `<rect width="1280" height="720" fill="#4a2a3a" opacity="0.08"/>` : ""}</g>
     <g id="hotspots">
-      ${hs("list", 1018, 204, 92, 100, "A shopping list", "v_list")}
+      ${freezerOpen ? "" : hs("list", 1018, 204, 92, 100, "A shopping list", "v_list")}
       ${hs("freezer", freezerOpen ? 912 : 984, freezerOpen ? 158 : 174, freezerOpen ? 254 : 182, freezerOpen ? 148 : 122, "The freezer door", "v_fridge")}
       ${hs("fridge", fridgeOpen ? 912 : 984, fridgeOpen ? 314 : 300, fridgeOpen ? 254 : 182, fridgeOpen ? 262 : 246, "The refrigerator door", "v_fridge")}
       ${fridgeOpen ? hs("milk", 1004, 340, 148, 100, "Bottles of milk", "v_milk") : ""}
@@ -3269,39 +3274,7 @@ const Rooms = (() => {
     <g id="layer-mid">
       <!-- bed, blanket folded with impossible neatness -->
       <g id="v_bed">
-        <!-- shadow under the bed: the frame and legs meet the floor -->
-        <ellipse cx="330" cy="700" rx="230" ry="12" fill="#0d0a08" opacity="0.45"/>
-        <!-- headboard: turned posts with finials, three rails -->
-        <rect x="128" y="372" width="14" height="298" rx="5" fill="#3a2c1e"/>
-        <circle cx="135" cy="370" r="8" fill="#4a3826"/>
-        <rect x="142" y="404" width="52" height="10" rx="4" fill="#4a3826"/>
-        <rect x="142" y="430" width="52" height="8" rx="4" fill="#42311f"/>
-        <rect x="142" y="452" width="52" height="8" rx="4" fill="#3a2c1e"/>
-        <!-- footboard post -->
-        <rect x="492" y="428" width="12" height="242" rx="5" fill="#3a2c1e"/>
-        <circle cx="498" cy="426" r="7" fill="#4a3826"/>
-        <!-- mattress: fitted sheet edge, thick side seam -->
-        <rect x="146" y="492" width="366" height="42" rx="10" fill="#cfc9ba"/>
-        <path d="M146,522 L512,522" stroke="#a8a190" stroke-width="2.4" opacity="0.8"/>
-        <path d="M158,498 q8,10 0,20 M500,498 q-8,10 0,20" stroke="#b5ae9d" stroke-width="2" fill="none" opacity="0.8"/>
-        <!-- blanket over the lower two thirds, with hanging folds -->
-        <rect x="286" y="486" width="226" height="112" rx="10" fill="#6a6284"/>
-        <path d="M286,500 q60,10 226,6 M286,528 q70,12 226,6 M286,560 q60,10 226,4" stroke="#575070" stroke-width="2.6" fill="none" opacity="0.8"/>
-        <path d="M300,486 q-6,56 4,112 M356,486 q-4,60 2,112 M420,486 q-6,58 2,112 M478,486 q-4,56 2,110" stroke="#575070" stroke-width="2" fill="none" opacity="0.6"/>
-        <path d="M286,486 q113,-10 226,0 l0,10 q-113,-8 -226,0 Z" fill="#7d7698" opacity="0.9"/>
-        <!-- turned-down top sheet between pillow and blanket -->
-        <rect x="238" y="488" width="58" height="26" rx="8" fill="#e2ddd0"/>
-        <path d="M242,496 q26,6 50,2" stroke="#c4bfae" stroke-width="1.8" fill="none" opacity="0.8"/>
-        <!-- two pillows, one slightly squashed, seams and a dent -->
-        <path d="M164,470 q-8,-26 14,-32 q40,-8 78,-2 q22,4 18,26 q-4,20 -26,22 q-44,4 -68,0 q-14,-2 -16,-14 Z" fill="#d8d3c4"/>
-        <path d="M176,458 q34,-14 84,-8" stroke="#bdb7a6" stroke-width="2" fill="none" opacity="0.8"/>
-        <ellipse cx="216" cy="462" rx="26" ry="9" fill="#c4bfae" opacity="0.7"/>
-        <path d="M258,474 q-4,-20 12,-24 q26,-5 48,0 q14,4 12,18 q-3,14 -18,15 q-30,3 -44,0 q-9,-2 -10,-9 Z" fill="#cfcaBB"/>
-        <!-- bed legs + a small gap shadow under the frame -->
-        <rect x="150" y="620" width="14" height="76" rx="4" fill="#2c2115"/>
-        <rect x="486" y="620" width="14" height="76" rx="4" fill="#2c2115"/>
-        <rect x="164" y="598" width="322" height="26" rx="6" fill="#33261a"/>
-        <rect x="168" y="624" width="314" height="10" fill="#0d0a08" opacity="0.4"/>
+        ${(typeof Art !== "undefined") ? Art.bed(124, 372, { w: 380, headH: 150, footH: 96, legDrop: 156, drawer: true, pattern: "grid" }).svg : ""}
       </g>
       <!-- toy blocks: they spell 17 -->
       <g id="v_blocks">
@@ -3806,11 +3779,10 @@ const Rooms = (() => {
       </g>
     </g>
     <g id="layer-mid">
-      <!-- child's bed -->
-      <rect x="90" y="430" width="240" height="70" rx="6" fill="#33261a"/>
-      <rect x="96" y="404" width="228" height="34" rx="8" fill="#4a4234"/>
-      <rect x="102" y="410" width="70" height="22" rx="6" fill="#6b6252"/>
-      <rect x="82" y="380" width="14" height="130" fill="#2c211a"/><rect x="324" y="380" width="14" height="130" fill="#2c211a"/>
+      <!-- the small bed, rebuilt connected: posts to floor, rail, mattress, pillow -->
+      <g id="v_mbed">
+        ${(typeof Art !== "undefined") ? Art.bed(82, 380, { w: 256, headH: 56, footH: 44, legDrop: 58, matH: 30, wood: "#2c211a", woodLight: "#3a2c1e", woodDark: "#1c1510", blanket: "#4a4234", blanketDark: "#3a3428", blanketLight: "#5a5244", sheet: "#6b6252", sheetDark: "#57503f", pillow: "#8a8272", pillowDark: "#6b6252" }).svg : ""}
+      </g>
       <!-- table with reel machine -->
       <g id="v_machine">
         <rect x="500" y="430" width="300" height="18" fill="#3f2f20"/>
@@ -4322,6 +4294,7 @@ const Rooms = (() => {
         <line x1="232" y1="172" x2="252" y2="158" stroke="#eef4f2" stroke-width="4" opacity="0.5"/>
       </g>
     </g>
+        ${(typeof Art !== "undefined") ? Art.wallStains(63, { x0: 80, x1: 1200, y0: 90, y1: 280, color: "#2f3a2f", light: "#e2d8c2" }) : ""}
     <g id="layer-mid">
       <g id="v_wsink">
         <ellipse cx="640" cy="188" rx="70" ry="86" fill="#b9c8c4" stroke="#8a7148" stroke-width="7"/>
@@ -4400,6 +4373,7 @@ const Rooms = (() => {
         ${[...Array(4)].map((_, i) => `<rect x="760" y="${150 + i * 12}" width="90" height="6" rx="3" fill="#4a2e1a"/>`).join("")}
       </g>
     </g>
+        ${(typeof Art !== "undefined") ? `<g transform="translate(1280,0) scale(-1,1)">` + Art.cobweb(0, 82, 78, { o: 0.3 }) + `</g>` + Art.cobweb(0, 82, 66, { o: 0.26 }) + Art.wallStains(39, { x0: 100, x1: 1180, y0: 100, y1: 300, color: "#2a1a0c", count: 2 }) : ""}
     <g id="layer-mid">
       <g id="v_stheater">
         <rect x="240" y="392" width="150" height="130" rx="8" fill="#3a3f42" stroke="#202426" stroke-width="4"/>
@@ -4520,10 +4494,43 @@ const Rooms = (() => {
   const builders = { porch: svgPorch, hallway: svgHallway, kitchen: svgKitchen, study: svgStudy, basement: svgBasement, memory: svgMemory, landing: svgLanding, childroom: svgChildroom, attic: svgAttic, diningroom: svgDining, conservatory: svgConservatory, gallery: svgGallery, bathroom: svgBathroom, sittingroom: svgSittingroom, suite: svgSuite, washroom: svgWashroom, steamroom: svgSteamroom, lavatory: svgLavatory };
 
   /* ---------- render + wiring ---------- */
+  /* BRIGHT-ROOM LIGHT RULE: bright rooms start dark with the fixture off; a
+     wall switch by the door wakes it. Once on, a vignette keeps the surround
+     subdued and a flicker rect (driven by FX) stutters at random. */
+  function applyRoomLight(holder, room) {
+    const cfg = (typeof ROOM_LIGHTS !== "undefined") ? ROOM_LIGHTS[room] : null;
+    if (!cfg) return;
+    const svg = holder.querySelector("svg");
+    if (!svg) return;
+    const on = !!State.flag(cfg.flag);
+    const [sx, sy] = cfg.at;
+    if (!on) {
+      const front = svg.querySelector("#layer-front");
+      if (front) front.insertAdjacentHTML("beforeend",
+        `<rect id="light-dark" width="1280" height="720" fill="#05060a" opacity="0.66" pointer-events="none"/>`);
+      const mid = svg.querySelector("#layer-mid");
+      if (mid) mid.insertAdjacentHTML("beforeend",
+        `<g id="v_lswitch"><rect x="${sx - 10}" y="${sy - 26}" width="20" height="34" rx="3" fill="#d8d3c4" opacity="0.92"/><rect x="${sx - 3}" y="${sy - 18}" width="6" height="12" rx="2" fill="#4a4234"/><circle cx="${sx}" cy="${sy + 14}" r="2.4" fill="#c96a2e" opacity="0.85"/></g>`);
+      const hsG = svg.querySelector("#hotspots");
+      if (hsG) hsG.insertAdjacentHTML("beforeend",
+        `<rect class="hotspot" data-hs="lswitch" data-label="A light switch" data-target="v_lswitch" x="${sx - 26}" y="${sy - 42}" width="52" height="72" rx="4"/>`);
+    } else {
+      svg.insertAdjacentHTML("afterbegin",
+        `<defs><radialGradient id="lvign" cx="0.5" cy="0.45" r="0.78"><stop offset="0.55" stop-color="#000000" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity="0.38"/></radialGradient></defs>`);
+      const mid = svg.querySelector("#layer-mid");
+      if (mid) mid.insertAdjacentHTML("afterbegin",
+        `<g id="v_lfix"><line x1="640" y1="0" x2="640" y2="64" stroke="#3a382f" stroke-width="3"/><rect x="630" y="62" width="20" height="10" rx="3" fill="#565b60"/><path d="M612,96 L668,96 L656,72 L624,72 Z" fill="#6b6f66"/><circle cx="640" cy="98" r="7" fill="#f2d8a0"/><polygon points="612,98 668,98 760,470 520,470" fill="#e8a04c" opacity="0.07"/></g>`);
+      const front = svg.querySelector("#layer-front");
+      if (front) front.insertAdjacentHTML("beforeend",
+        `<rect id="light-vign" width="1280" height="720" fill="url(#lvign)" pointer-events="none"/><rect id="light-flick" width="1280" height="720" fill="#05060a" opacity="0" pointer-events="none"/>`);
+    }
+  }
+
   function render() {
     const room = State.get().room;
     const holder = document.getElementById("scene-holder");
     holder.innerHTML = builders[room]();
+    applyRoomLight(holder, room);
     wireHotspots(holder, room);
     wireParallax(holder);
     if (room === "attic") wireTorch(holder);
