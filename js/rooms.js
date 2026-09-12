@@ -1567,6 +1567,16 @@ const Rooms = (() => {
         <polygon points="988,480 1132,480 1160,520 962,520" fill="#9cc3dc" opacity="0.06"/>
         <text x="1060" y="580" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">the small bathroom</text>
       </g>
+      <!-- the white suite door: new paint in an old corridor -->
+      <g id="v_gsuite">
+        <rect x="262" y="150" width="136" height="330" fill="#20262a"/>
+        <rect x="270" y="158" width="120" height="322" fill="#d7dee0" stroke="#8f9a9f" stroke-width="5"/>
+        <rect x="284" y="176" width="92" height="120" fill="#c3ced2"/>
+        <rect x="284" y="316" width="92" height="140" fill="#c3ced2"/>
+        <rect x="372" y="318" width="6" height="42" rx="3" fill="#8fa3a8"/>
+        <rect x="272" y="475" width="116" height="4" fill="#cfe4ec" opacity="0.25"/>
+        <text x="330" y="580" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">the white suite</text>
+      </g>
       <!-- a framed photograph of the house, taken from the path -->
       <g id="v_gphoto">
         <rect x="420" y="180" width="90" height="110" fill="#221a12" stroke="#4a3826" stroke-width="6"/>
@@ -1595,6 +1605,7 @@ const Rooms = (() => {
     </g>
     <g id="hotspots">
       ${hs("gcons", 52, 140, 196, 350, "A glass door, misted from the other side", "v_gcons")}
+      ${hs("gosuite", 254, 140, 152, 350, "A white door with new paint", "v_gsuite")}
       ${hs("gbath", 972, 140, 176, 360, "A bathroom door, paint scraped at the handle", "v_gbath")}
       ${hs("gphoto", 412, 172, 106, 126, "A framed photograph", "v_gphoto")}
       ${hs("gwin", 548, 138, 224, 174, "The window", "v_gwin")}
@@ -3379,6 +3390,20 @@ const Rooms = (() => {
         <text x="238" y="545" text-anchor="middle" font-family="Georgia" font-size="16" fill="#6b5d4a">NOV</text>
       </g>
       <!-- THE FIFTH CHAIR: identical to the kitchen chairs -->
+      <!-- a stone doorway in a wooden attic: cold air seeps at the sill -->
+      <g id="v_lvdoor">
+        <rect x="975" y="170" width="135" height="440" fill="#0c0e0d"/>
+        <rect x="967" y="162" width="151" height="20" fill="#5a625c"/>
+        <rect x="967" y="182" width="14" height="428" fill="#515a54"/>
+        <rect x="1104" y="182" width="14" height="428" fill="#515a54"/>
+        <rect x="985" y="182" width="115" height="428" fill="#454d47" stroke="#0c0e0d" stroke-width="4"/>
+        <line x1="985" y1="280" x2="1100" y2="280" stroke="#333a34" stroke-width="3"/>
+        <line x1="985" y1="380" x2="1100" y2="380" stroke="#333a34" stroke-width="3"/>
+        <line x1="985" y1="470" x2="1100" y2="470" stroke="#333a34" stroke-width="3"/>
+        <circle cx="1000" cy="392" r="6" fill="#3a3f42"/>
+        <rect x="987" y="560" width="111" height="4" fill="#9fb3b8" opacity="0.2"/>
+        <text x="1042" y="640" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">the stone lavatory</text>
+      </g>
       <g id="v_fifthchair">
         <ellipse cx="880" cy="612" rx="58" ry="7" fill="#000" opacity="0.5"/>
         <rect x="838" y="380" width="10" height="230" fill="#3a2c1e"/>
@@ -3418,6 +3443,7 @@ const Rooms = (() => {
     <g id="hotspots">
       ${hs("trunk", 466, 430, 250, 200, "An old trunk", "v_trunk")}
       ${hs("fifthchair", 816, 350, 130, 270, "A chair, up here alone", "v_fifthchair")}
+      ${hs("golavatory", 967, 160, 151, 410, "A stone doorway, cold air seeping out", "v_lvdoor")}
       ${hs("tally", 344, 280, 190, 60, "Marks on the beam", "v_tally")}
       ${hs("boxes", 138, 368, 320, 240, "Stacked boxes", "v_boxes")}
       ${hs("awin", 586, 128, 110, 110, "A round window", "v_boxes")}
@@ -3673,6 +3699,20 @@ const Rooms = (() => {
         <rect x="262" y="${power ? 178 : 208}" width="36" height="30" rx="4" fill="${power ? "#9ec7a8" : "#a5503c"}"/>
         <circle cx="280" cy="172" r="4" fill="${power ? "#9ec7a8" : "#5d3a34"}">${power ? "" : '<animate attributeName="opacity" values="1;0.3;1" dur="1.6s" repeatCount="indefinite"/>'}</circle>
       </g>
+      <!-- a narrow cedar door between the monitors and the keypad: warm air
+           under it, a smell of wet wood -->
+      <g id="v_steamdoor">
+        <rect x="894" y="150" width="108" height="344" fill="#191410"/>
+        <rect x="900" y="156" width="96" height="338" fill="#6e4629" stroke="#191410" stroke-width="4"/>
+        <line x1="900" y1="236" x2="996" y2="236" stroke="#4a2e1a" stroke-width="3"/>
+        <line x1="900" y1="316" x2="996" y2="316" stroke="#4a2e1a" stroke-width="3"/>
+        <line x1="900" y1="396" x2="996" y2="396" stroke="#4a2e1a" stroke-width="3"/>
+        <rect x="930" y="188" width="36" height="30" fill="#241a10"/>
+        <line x1="934" y1="196" x2="962" y2="196" stroke="#4a2e1a" stroke-width="3"/><line x1="934" y1="204" x2="962" y2="204" stroke="#4a2e1a" stroke-width="3"/><line x1="934" y1="212" x2="962" y2="212" stroke="#4a2e1a" stroke-width="3"/>
+        <circle cx="912" cy="330" r="5" fill="#3a3f42"/>
+        <rect x="902" y="488" width="92" height="4" fill="#c9a87f" opacity="0.25"/>
+        <text x="948" y="560" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">the steam room</text>
+      </g>
       <!-- metal door + keypad + knocker: framed, recessed, seated on the floor line -->
       <g id="v_mdoor">
         <!-- contact shadow + threshold so the door sits ON the floor, not in it -->
@@ -3736,7 +3776,8 @@ const Rooms = (() => {
         ${hs("mon2", 610, 278, 144, 126, "CAM 03 · 8:17", "v_mon2")}
         ${hs("mon3", 746, 278, 144, 126, "CAM 04 · 9:03", "v_mon3")}
         ${hs("mon5", 906, 528, 150, 118, "A fifth monitor, unplugged", "v_mon5")}
-        ${hs("keypad", 1008, 288, 74, 90, "A keypad", "v_keypad")}
+        ${hs("gosteamroom", 894, 140, 108, 350, "A narrow cedar door, warm air under it", "v_steamdoor")}
+      ${hs("keypad", 1008, 288, 74, 90, "A keypad", "v_keypad")}
         ${hs("mdoor", 1064, 140, 192, 372, kpOk ? "The knocker" : "A sealed metal door", "v_mdoor")}
         ${hs("boiler", 58, 208, 176, 326, "The boiler", "v_boiler")}
       ` : ""}
@@ -4103,6 +4144,15 @@ const Rooms = (() => {
         ${(typeof Art !== "undefined") ? Art.tableLamp(709, 512, { on: lampOn }) : ""}
         <rect x="678" y="530" width="34" height="5" rx="2" fill="#c9bb9b" opacity="0.8"/>
       </g>
+      <!-- a green door behind the sofa, paint the colour of the old tiles -->
+      <g id="v_washdoor">
+        <rect x="878" y="150" width="144" height="330" fill="#241b12"/>
+        <rect x="886" y="158" width="128" height="322" fill="#4c634e" stroke="#2c2118" stroke-width="5"/>
+        <rect x="898" y="176" width="104" height="120" fill="#3f5542" stroke="#2c2118" stroke-width="3"/>
+        <rect x="898" y="316" width="104" height="140" fill="#3f5542" stroke="#2c2118" stroke-width="3"/>
+        <circle cx="902" cy="330" r="6" fill="#c9b87f"/>
+        <text x="950" y="648" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">the washroom</text>
+      </g>
       <!-- the sofa: worn velvet, folded throw -->
       <g id="v_sofa">
         ${(typeof Art !== "undefined") ? Art.sofa(800, 442, { w: 330, h: 178 }) : ""}
@@ -4128,6 +4178,7 @@ const Rooms = (() => {
       ${hs("fire", 130, 180, 320, 320, "A fire, burning as if someone tends it", "v_fire")}
       ${hs("mantel", 160, 120, 280, 70, "Things on the mantel", "v_mantel")}
       ${hs("spaint", 200, 56, 180, 136, "A painting over the mantel", "v_spaint")}
+      ${hs("gowashroom", 878, 148, 144, 280, "A green door behind the sofa", "v_washdoor")}
       ${hs("armchair", 462, 436, 190, 200, "A worn armchair, angled to the fire", "v_armchair")}
       ${hs("sofa", 786, 428, 360, 210, "The sofa, deep and soft", "v_sofa")}
       ${hs("slamp", 660, 440, 100, 130, lampOn ? "The reading lamp, lit" : "The reading lamp", "v_slamp")}
@@ -4136,7 +4187,337 @@ const Rooms = (() => {
     </svg>`;
   }
 
-  const builders = { porch: svgPorch, hallway: svgHallway, kitchen: svgKitchen, study: svgStudy, basement: svgBasement, memory: svgMemory, landing: svgLanding, childroom: svgChildroom, attic: svgAttic, diningroom: svgDining, conservatory: svgConservatory, gallery: svgGallery, bathroom: svgBathroom, sittingroom: svgSittingroom };
+  /* =====================================================================
+     THE WHITE SUITE — a bathroom the house added without adding plumbing:
+     chrome, glass and a narrow window onto a dawn the corridor never sees.
+  ===================================================================== */
+  function svgSuite() {
+    const Q = quality();
+    const QH = Q === "high", QM = Q !== "low";
+    const reduced = Settings.get("reducedMotion");
+    const shower = State.flag("suiteShower") === 1;
+    const cols = QH ? 16 : QM ? 8 : 4;
+    return `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
+    ${DEFS}
+    <defs>
+      <linearGradient id="swallg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#d3dbde"/><stop offset="1" stop-color="#a9b4b9"/>
+      </linearGradient>
+      <linearGradient id="sdawng" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f2c9a0"/><stop offset="0.6" stop-color="#cfd8e0"/><stop offset="1" stop-color="#9fb3c4"/>
+      </linearGradient>
+      <clipPath id="swinclip"><rect x="690" y="110" width="120" height="150"/></clipPath>
+    </defs>
+    <g id="layer-back">
+      <rect width="1280" height="470" fill="url(#swallg)"/>
+      ${QH ? `<line x1="0" y1="300" x2="1280" y2="300" stroke="#bcc7cb" stroke-width="3" opacity="0.7"/><line x1="0" y1="180" x2="1280" y2="180" stroke="#c6cfd3" stroke-width="2" opacity="0.5"/>` : ""}
+      <rect x="0" y="72" width="1280" height="8" fill="#8f9a9f"/>
+      <rect x="0" y="460" width="1280" height="12" fill="#7f8a8f"/>
+      <rect x="0" y="472" width="1280" height="248" fill="#b9c2c6"/>
+      ${[...Array(cols + 1)].map((_, i) => `<line x1="${i * (1280 / cols)}" y1="472" x2="${i * (1280 / cols) - 46}" y2="720" stroke="#98a4a9" stroke-width="2" opacity="0.6"/>`).join("")}
+      <line x1="0" y1="560" x2="1280" y2="560" stroke="#98a4a9" stroke-width="2" opacity="0.5"/>
+      <line x1="0" y1="640" x2="1280" y2="640" stroke="#98a4a9" stroke-width="2" opacity="0.4"/>
+      <g id="v_swin">
+        <rect x="685" y="105" width="130" height="160" fill="url(#sdawng)" stroke="#7f8a8f" stroke-width="8"/>
+        <g clip-path="url(#swinclip)">
+          ${windowBirds("swin", { x: 690, y: 110, w: 120, h: 150 }, { count: 2, scale: 0.6, band: [0.15, 0.5] })}
+          <path d="M690,242 q30,-14 60,-4 q30,-10 60,0 L810,260 L690,260 Z" fill="#8fa0ad"/>
+        </g>
+        <line x1="750" y1="105" x2="750" y2="265" stroke="#7f8a8f" stroke-width="5"/>
+      </g>
+    </g>
+    <g id="layer-mid">
+      <g id="v_ssink">
+        <rect x="400" y="120" width="200" height="150" fill="#cfdde2" stroke="#8fa3a8" stroke-width="6"/>
+        <line x1="430" y1="250" x2="560" y2="140" stroke="#f4f8f9" stroke-width="10" opacity="0.18"/>
+        <rect x="392" y="282" width="216" height="8" fill="#8fa3a8"/>
+        <rect x="380" y="318" width="240" height="16" rx="4" fill="#f4f7f7"/>
+        <rect x="392" y="334" width="216" height="86" rx="6" fill="#e8ecec" stroke="#a9b6ba" stroke-width="4"/>
+        <line x1="500" y1="340" x2="500" y2="414" stroke="#a9b6ba" stroke-width="3"/>
+        <rect x="466" y="372" width="18" height="5" rx="2" fill="#8fa3a8"/><rect x="516" y="372" width="18" height="5" rx="2" fill="#8fa3a8"/>
+        <rect x="492" y="296" width="16" height="24" rx="4" fill="#b8c4c8"/>
+        <path d="M500,298 q0,-12 14,-12" stroke="#b8c4c8" stroke-width="6" fill="none"/>
+        ${QH ? `<rect x="560" y="300" width="14" height="18" fill="#9fb3b8"/><rect x="565" y="288" width="3" height="14" fill="#7f8a8f"/><rect x="416" y="302" width="22" height="16" rx="3" fill="#c4d2d5"/>` : ""}
+      </g>
+      <g id="v_sshower">
+        <rect x="880" y="120" width="280" height="8" fill="#8fa3a8"/>
+        <rect x="1006" y="128" width="10" height="26" fill="#8fa3a8"/>
+        <rect x="976" y="152" width="70" height="10" rx="5" fill="#b8c4c8"/>
+        ${shower ? [...Array(QH ? 14 : 8)].map((_, i) => `<line x1="${982 + i * 4.4}" y1="166" x2="${982 + i * 4.4}" y2="556" stroke="#cfe4ec" stroke-width="2" opacity="0.5"/>`).join("") + `<ellipse cx="1011" cy="562" rx="60" ry="8" fill="#cfe4ec" opacity="0.3"/>` : ""}
+        ${shower && animOn("steam") && !reduced ? [0, 1, 2].map(i => `<path d="M${920 + i * 90},540 q10,-40 0,-80 q-8,-36 6,-70" stroke="#e6f2f6" stroke-width="5" fill="none" opacity="0.16" stroke-linecap="round"><animateTransform attributeName="transform" type="translate" values="0 0; 0 -60" dur="${5 + i}s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.16;0.05;0.16" dur="${5 + i}s" repeatCount="indefinite"/></path>`).join("") : ""}
+        <rect x="880" y="560" width="280" height="16" rx="4" fill="#d7dee0"/>
+        <rect x="886" y="566" width="268" height="6" fill="#9fb0b5"/>
+        <rect x="878" y="120" width="6" height="456" fill="#9fb3b8" opacity="0.8"/>
+        <rect x="884" y="120" width="120" height="456" fill="#cfe4ec" opacity="0.10"/>
+        <line x1="886" y1="126" x2="886" y2="570" stroke="#cfe4ec" stroke-width="2" opacity="0.35"/>
+      </g>
+      <g id="v_stowel">
+        <rect x="200" y="240" width="120" height="8" rx="4" fill="#8fa3a8"/>
+        <rect x="212" y="248" width="42" height="120" rx="4" fill="#f4f7f7"/>
+        <rect x="262" y="248" width="42" height="104" rx="4" fill="#dfe8ea"/>
+        ${QH ? `<line x1="222" y1="260" x2="222" y2="356" stroke="#d3dfe1" stroke-width="3"/><line x1="272" y1="260" x2="272" y2="340" stroke="#c4d2d5" stroke-width="3"/>` : ""}
+      </g>
+      ${QM ? `<polygon points="430,600 620,600 650,660 400,660" fill="#dfe8ea" opacity="0.8"/><polygon points="446,610 606,610 628,650 424,650" fill="none" stroke="#b8c9d0" stroke-width="3" opacity="0.7"/>` : ""}
+      ${QH ? `<g id="v_splant"><path d="M120,560 L168,560 L160,620 L128,620 Z" fill="#9fb3b8"/><path d="M144,560 q-30,-40 -52,-48 M144,560 q0,-56 -8,-72 M144,560 q26,-44 50,-52 M144,560 q-14,-52 -30,-60 M144,560 q16,-52 30,-62" stroke="#6f8a6d" stroke-width="5" fill="none" stroke-linecap="round"/></g>` : ""}
+    </g>
+    <g id="layer-front"><rect width="1280" height="720" fill="#0b0806" opacity="0.04"/></g>
+    <g id="hotspots">
+      ${hs("suback", 0, 150, 60, 380, "Back to the corridor", "")}
+      ${hs("ssink", 380, 110, 240, 320, "A floating vanity, chrome still bright", "v_ssink")}
+      ${hs("sshower", 880, 110, 280, 480, shower ? "The shower, running" : "A walk-in shower behind glass", "v_sshower")}
+      ${hs("swindow", 685, 100, 130, 170, "A narrow window onto a pale dawn", "v_swin")}
+      ${hs("stowel", 196, 232, 130, 150, "Two towels, folded over the rail", "v_stowel")}
+    </g>
+    </svg>`;
+  }
+
+  /* =====================================================================
+     THE TILED WASHROOM — green vitrolite and cream paint: a guest bath
+     from a decade the house refuses to name.
+  ===================================================================== */
+  function svgWashroom() {
+    const Q = quality();
+    const QH = Q === "high", QM = Q !== "low";
+    const tiles = (() => {
+      let out = "";
+      for (let r = 0; r < 5; r++) for (let c = 0; c < 22; c++) {
+        const x = c * 60, y = 320 + r * 30;
+        const miss = (r === 1 && c === 6) || (r === 3 && c === 15);
+        out += miss
+          ? `<rect x="${x + 2}" y="${y + 2}" width="56" height="26" fill="#171d18"/>`
+          : `<rect x="${x + 2}" y="${y + 2}" width="56" height="26" fill="${(r * 22 + c) % 9 === 0 ? "#647f62" : (r * 22 + c) % 5 === 0 ? "#75906f" : "#6f8a6d"}"/>`;
+      }
+      return out;
+    })();
+    const checker = (() => {
+      let out = "";
+      for (let r = 0; r < 8; r++) for (let c = 0; c < 34; c++) {
+        if ((r + c) % 2) continue;
+        out += `<rect x="${c * 40 - 20}" y="${472 + r * 31}" width="40" height="31" fill="#3f4a40" opacity="${0.9 - r * 0.06}"/>`;
+      }
+      return out;
+    })();
+    return `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
+    ${DEFS}
+    <defs>
+      <linearGradient id="wwallg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#e2d8c2"/><stop offset="1" stop-color="#c4b79c"/>
+      </linearGradient>
+    </defs>
+    <g id="layer-back">
+      <rect width="1280" height="320" fill="url(#wwallg)"/>
+      ${QH ? [...Array(10)].map((_, i) => `<line x1="${i * 140}" y1="80" x2="${i * 140}" y2="314" stroke="#b3a68b" stroke-width="7" opacity="0.45"/>`).join("") : ""}
+      ${QM && !QH ? [...Array(6)].map((_, i) => `<line x1="${i * 240}" y1="80" x2="${i * 240}" y2="314" stroke="#b3a68b" stroke-width="5" opacity="0.35"/>`).join("") : ""}
+      <rect x="0" y="314" width="1280" height="8" fill="#4c634e"/>
+      <rect x="0" y="322" width="1280" height="148" fill="#465c48"/>
+      ${tiles}
+      <rect x="0" y="462" width="1280" height="10" fill="#4c634e"/>
+      <rect x="0" y="472" width="1280" height="248" fill="#cfc7b2"/>
+      ${QM ? checker : `<line x1="0" y1="560" x2="1280" y2="560" stroke="#b3a68b" stroke-width="3" opacity="0.5"/>`}
+      <g id="v_wport">
+        <circle cx="260" cy="200" r="62" fill="#b9c8c4" stroke="#4c634e" stroke-width="10"/>
+        <circle cx="260" cy="200" r="48" fill="#cfdcd8"/>
+        <line x1="212" y1="200" x2="308" y2="200" stroke="#4c634e" stroke-width="5"/>
+        <line x1="260" y1="152" x2="260" y2="248" stroke="#4c634e" stroke-width="5"/>
+        <line x1="232" y1="172" x2="252" y2="158" stroke="#eef4f2" stroke-width="4" opacity="0.5"/>
+      </g>
+    </g>
+    <g id="layer-mid">
+      <g id="v_wsink">
+        <ellipse cx="640" cy="188" rx="70" ry="86" fill="#b9c8c4" stroke="#8a7148" stroke-width="7"/>
+        <line x1="606" y1="238" x2="668" y2="140" stroke="#eef4f2" stroke-width="7" opacity="0.4"/>
+        <rect x="560" y="330" width="160" height="34" rx="14" fill="#e8e4d8" stroke="#a89f88" stroke-width="4"/>
+        <path d="M604,364 L596,470 L684,470 L676,364 Z" fill="#e0dccd" stroke="#a89f88" stroke-width="4"/>
+        <rect x="612" y="312" width="10" height="20" fill="#8a8f92"/><rect x="658" y="312" width="10" height="20" fill="#8a8f92"/>
+        <path d="M617,312 q0,-10 10,-10 M663,312 q0,-10 -10,-10" stroke="#8a8f92" stroke-width="5" fill="none"/>
+        <circle cx="612" cy="316" r="5" fill="#a84f4f"/><circle cx="668" cy="316" r="5" fill="#4f6fa8"/>
+        ${QH ? `<rect x="700" y="316" width="16" height="16" rx="3" fill="#a8c9a8"/><rect x="536" y="318" width="20" height="14" rx="3" fill="#c9b8a8"/>` : ""}
+      </g>
+      <g id="v_wtoilet">
+        <rect x="920" y="168" width="120" height="72" rx="6" fill="#e8e4d8" stroke="#a89f88" stroke-width="4"/>
+        <rect x="914" y="160" width="132" height="12" rx="5" fill="#d8d2c0"/>
+        <rect x="972" y="240" width="14" height="120" fill="#cfc9b8"/>
+        <path d="M930,360 q0,-24 50,-24 q50,0 50,24 l-8,56 q-42,18 -84,0 Z" fill="#e8e4d8" stroke="#a89f88" stroke-width="4"/>
+        <path d="M952,424 L946,470 L1014,470 L1008,424 Z" fill="#e0dccd" stroke="#a89f88" stroke-width="3"/>
+        <ellipse cx="980" cy="470" rx="52" ry="6" fill="#0d0a08" opacity="0.3"/>
+        <ellipse cx="980" cy="362" rx="46" ry="14" fill="#d8d2c0" stroke="#a89f88" stroke-width="3"/>
+        <line x1="1006" y1="240" x2="1006" y2="330" stroke="#8a8f92" stroke-width="3"/>
+        <circle cx="1006" cy="336" r="7" fill="none" stroke="#8a8f92" stroke-width="3"/>
+        ${QH ? `<line x1="928" y1="182" x2="928" y2="228" stroke="#c9c2ae" stroke-width="3"/>` : ""}
+      </g>
+      <g id="v_wring">
+        <circle cx="430" cy="270" r="16" fill="none" stroke="#8a7148" stroke-width="4"/>
+        <rect x="410" y="280" width="40" height="86" rx="4" fill="#d8e0d8"/>
+        ${QH ? `<line x1="418" y1="292" x2="418" y2="356" stroke="#c2cec2" stroke-width="3"/>` : ""}
+      </g>
+    </g>
+    <g id="layer-front"><rect width="1280" height="720" fill="#0b0806" opacity="0.07"/></g>
+    <g id="hotspots">
+      ${hs("wback", 0, 150, 60, 380, "Back to the sitting room", "")}
+      ${hs("wsink", 550, 100, 190, 380, "A pedestal sink, taps in cross handles", "v_wsink")}
+      ${hs("wtoilet", 906, 150, 150, 330, "A high-tank toilet with a pull chain", "v_wtoilet")}
+      ${hs("wport", 196, 136, 128, 128, "A round window, frosted", "v_wport")}
+      ${hs("wring", 402, 248, 60, 130, "A hand towel on a brass ring", "v_wring")}
+    </g>
+    </svg>`;
+  }
+
+  /* =====================================================================
+     THE STEAM ROOM — cedar planks, two benches, a stove of stones.
+     The house keeps it warm for no one.
+  ===================================================================== */
+  function svgSteamroom() {
+    const Q = quality();
+    const QH = Q === "high", QM = Q !== "low";
+    const reduced = Settings.get("reducedMotion");
+    const on = State.flag("steamOn") === 1;
+    const plank = (y, i) => `<rect x="0" y="${y}" width="1280" height="24" fill="${["#7a4f2e", "#8a5a34", "#6e4629"][i % 3]}"/><line x1="0" y1="${y + 24}" x2="1280" y2="${y + 24}" stroke="#4a2e1a" stroke-width="2"/>`;
+    const slat = (x, y, w) => `<rect x="${x}" y="${y}" width="${w}" height="12" rx="5" fill="#9a6a3e" stroke="#5d3a20" stroke-width="2"/>`;
+    return `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
+    ${DEFS}
+    <defs>
+      <radialGradient id="stglow" cx="0.5" cy="0.5" r="0.5">
+        <stop offset="0" stop-color="#f2d8a0" stop-opacity="0.32"/><stop offset="1" stop-color="#f2d8a0" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <g id="layer-back">
+      <rect width="1280" height="80" fill="#2a1a0e"/>
+      <line x1="0" y1="80" x2="1280" y2="80" stroke="#1c1108" stroke-width="4"/>
+      ${[...Array(15)].map((_, i) => plank(80 + i * 26, i)).join("")}
+      ${QH ? `<circle cx="300" cy="150" r="4" fill="#4a2e1a" opacity="0.7"/><circle cx="820" cy="230" r="3" fill="#4a2e1a" opacity="0.6"/><circle cx="1120" cy="120" r="4" fill="#4a2e1a" opacity="0.6"/>` : ""}
+      <rect x="0" y="470" width="1280" height="250" fill="#5d3a20"/>
+      ${[...Array(QM ? 5 : 2)].map((_, i) => `<line x1="0" y1="${492 + i * 46}" x2="1280" y2="${492 + i * 46}" stroke="#3f2716" stroke-width="3"/>`).join("")}
+      ${QH ? [...Array(16)].map((_, i) => `<line x1="${(i * 173 + 40) % 1140}" y1="${100 + (i * 53) % 340}" x2="${(i * 173 + 40) % 1140 + 120}" y2="${100 + (i * 53) % 340}" stroke="#5d3a20" stroke-width="3" opacity="0.7"/>`).join("") : ""}
+      ${QM ? `<ellipse cx="640" cy="170" rx="300" ry="140" fill="url(#stglow)"/>` : ""}
+      <g id="v_stlamp">
+        <line x1="640" y1="80" x2="640" y2="128" stroke="#3a3f42" stroke-width="4"/>
+        <rect x="622" y="128" width="36" height="14" rx="4" fill="#565b60"/>
+        <circle cx="640" cy="156" r="12" fill="#f2d8a0"/>
+        <line x1="626" y1="148" x2="626" y2="166" stroke="#3a3f42" stroke-width="2"/><line x1="654" y1="148" x2="654" y2="166" stroke="#3a3f42" stroke-width="2"/>
+        <line x1="630" y1="144" x2="650" y2="168" stroke="#3a3f42" stroke-width="2"/><line x1="650" y1="144" x2="630" y2="168" stroke="#3a3f42" stroke-width="2"/>
+      </g>
+      <g id="v_stvent">
+        ${[...Array(4)].map((_, i) => `<rect x="760" y="${150 + i * 12}" width="90" height="6" rx="3" fill="#4a2e1a"/>`).join("")}
+      </g>
+    </g>
+    <g id="layer-mid">
+      <g id="v_stheater">
+        <rect x="240" y="392" width="150" height="130" rx="8" fill="#3a3f42" stroke="#202426" stroke-width="4"/>
+        ${on ? `<line x1="262" y1="470" x2="368" y2="470" stroke="#c96a2e" stroke-width="4" opacity="0.7"/><line x1="262" y1="490" x2="368" y2="490" stroke="#a84f2e" stroke-width="4" opacity="0.5"/>` : ""}
+        <line x1="252" y1="400" x2="252" y2="520" stroke="#565b60" stroke-width="4"/><line x1="378" y1="400" x2="378" y2="520" stroke="#565b60" stroke-width="4"/>
+        <circle cx="272" cy="386" r="14" fill="#6b6f72"/><circle cx="300" cy="378" r="16" fill="#83888b"/><circle cx="330" cy="384" r="14" fill="#6b6f72"/><circle cx="356" cy="390" r="12" fill="#7a7f82"/><circle cx="316" cy="394" r="13" fill="#5d6164"/>
+        ${on && animOn("steam") && !reduced ? [0, 1, 2].map(i => `<path d="M${280 + i * 34},360 q8,-30 0,-60 q-6,-28 6,-52" stroke="#e6e2da" stroke-width="5" fill="none" opacity="0.2" stroke-linecap="round"><animateTransform attributeName="transform" type="translate" values="0 0; 0 -70" dur="${4 + i}s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.2;0.06;0.2" dur="${4 + i}s" repeatCount="indefinite"/></path>`).join("") : ""}
+      </g>
+      <g id="v_stbench">
+        ${slat(660, 372, 560)}${slat(660, 390, 560)}${slat(660, 408, 560)}
+        <rect x="676" y="420" width="16" height="120" fill="#5d3a20"/><rect x="1188" y="420" width="16" height="120" fill="#5d3a20"/>
+        ${slat(700, 470, 520)}${slat(700, 488, 520)}
+        <rect x="716" y="500" width="16" height="90" fill="#5d3a20"/><rect x="1188" y="500" width="16" height="90" fill="#5d3a20"/>
+        <g id="v_stbucket">
+          <path d="M1080,332 L1128,332 L1122,372 L1086,372 Z" fill="#7a4f2e" stroke="#4a2e1a" stroke-width="3"/>
+          <line x1="1082" y1="344" x2="1126" y2="344" stroke="#4a2e1a" stroke-width="3"/>
+          <path d="M1084,332 q20,-18 40,0" stroke="#4a2e1a" stroke-width="3" fill="none"/>
+          <line x1="1050" y1="300" x2="1076" y2="340" stroke="#9a6a3e" stroke-width="5"/>
+          <ellipse cx="1046" cy="296" rx="10" ry="6" fill="#9a6a3e" stroke="#5d3a20" stroke-width="2"/>
+        </g>
+      </g>
+      ${QH ? `<g id="v_stthermo"><rect x="480" y="180" width="16" height="90" rx="8" fill="#d8d2c0" stroke="#5d3a20" stroke-width="3"/><circle cx="488" cy="262" r="10" fill="#a84f2e"/><rect x="485" y="210" width="6" height="52" fill="#a84f2e"/></g>
+      <g id="v_sttowel"><rect x="760" y="344" width="80" height="14" rx="6" fill="#d8e0d8"/><rect x="764" y="356" width="72" height="14" rx="6" fill="#c2cec2"/><line x1="770" y1="351" x2="830" y2="351" stroke="#b3c0b3" stroke-width="2"/></g>` : ""}
+    </g>
+    <g id="layer-front"><rect width="1280" height="720" fill="#120a04" opacity="0.14"/></g>
+    <g id="hotspots">
+      ${hs("stback", 0, 150, 60, 380, "Back to the basement", "")}
+      ${hs("stheater", 232, 356, 166, 170, on ? "The stove, stones hissing" : "A stove piled with stones", "v_stheater")}
+      ${hs("stbench", 660, 280, 560, 300, "Two cedar benches, still warm", "v_stbench")}
+      ${hs("stlamp", 606, 80, 68, 100, "A caged bulb, wrapped in cedar light", "v_stlamp")}
+    </g>
+    </svg>`;
+  }
+
+  /* =====================================================================
+     THE STONE LAVATORY — cold blocks, a deep stone basin, herbs hanging
+     from the beam. Under the eaves, where the water tank lives.
+  ===================================================================== */
+  function svgLavatory() {
+    const Q = quality();
+    const QH = Q === "high", QM = Q !== "low";
+    const reduced = Settings.get("reducedMotion");
+    const stones = (() => {
+      let out = "";
+      for (let r = 0; r < 9; r++) {
+        const y = 84 + r * 42;
+        for (let c = 0; c < 8; c++) {
+          const x = c * 168 + (r % 2 ? 84 : 0) - 84;
+          const tone = ["#5a625c", "#667069", "#515a54"][(r * 8 + c) % 3];
+          out += `<rect x="${x + 3}" y="${y + 3}" width="162" height="36" rx="4" fill="${tone}"/>`;
+        }
+      }
+      return out;
+    })();
+    return `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
+    ${DEFS}
+    <defs>
+      <clipPath id="lwinclip"><path d="M900,300 L900,200 q60,-70 120,0 L1020,300 Z"/></clipPath>
+    </defs>
+    <g id="layer-back">
+      <rect width="1280" height="470" fill="#454d47"/>
+      ${stones}
+      ${QH ? `<line x1="0" y1="466" x2="1280" y2="466" stroke="#333a34" stroke-width="6"/>` : ""}
+      <rect x="0" y="470" width="1280" height="250" fill="#3c443e"/>
+      ${QH ? [...Array(14)].map((_, i) => `<ellipse cx="${(i * 197 + 60) % 1280}" cy="${520 + (i * 67) % 170}" rx="${26 + (i % 3) * 10}" ry="${12 + (i % 2) * 6}" fill="${i % 2 ? "#46504a" : "#333b35"}" stroke="#2a312b" stroke-width="2"/>`).join("") : (QM ? [...Array(7)].map((_, i) => `<ellipse cx="${(i * 373 + 90) % 1280}" cy="${540 + (i * 83) % 150}" rx="34" ry="14" fill="#46504a" stroke="#2a312b" stroke-width="2"/>`).join("") : "")}
+      <g id="v_lwin">
+        <path d="M892,308 L892,198 q68,-80 136,0 L1028,308 Z" fill="#141c26" stroke="#333a34" stroke-width="9"/>
+        <g clip-path="url(#lwinclip)">
+          <circle cx="960" cy="210" r="18" fill="#d8dce0"/>
+          <circle cx="968" cy="204" r="16" fill="#141c26"/>
+          ${[...Array(QM ? 8 : 4)].map((_, i) => `<circle cx="${(i * 53 + 20) % 120 + 900}" cy="${(i * 37) % 80 + 170}" r="${i % 3 === 0 ? 1.3 : 0.8}" fill="#cfd8e0" opacity="0.4"/>`).join("")}
+        </g>
+        <line x1="960" y1="152" x2="960" y2="304" stroke="#333a34" stroke-width="5"/>
+        <line x1="896" y1="240" x2="1024" y2="240" stroke="#333a34" stroke-width="5"/>
+      </g>
+      <g id="v_lherb">
+        <line x1="300" y1="84" x2="300" y2="120" stroke="#8a7f6c" stroke-width="3"/>
+        <line x1="300" y1="120" x2="286" y2="170" stroke="#5d6b52" stroke-width="4" stroke-linecap="round"/>
+        <line x1="300" y1="120" x2="300" y2="176" stroke="#66755a" stroke-width="4" stroke-linecap="round"/>
+        <line x1="300" y1="120" x2="314" y2="168" stroke="#5d6b52" stroke-width="4" stroke-linecap="round"/>
+        ${QH ? `<line x1="292" y1="140" x2="280" y2="156" stroke="#66755a" stroke-width="3"/><line x1="308" y1="142" x2="320" y2="158" stroke="#5d6b52" stroke-width="3"/>` : ""}
+        <line x1="380" y1="84" x2="380" y2="112" stroke="#8a7f6c" stroke-width="3"/>
+        <line x1="380" y1="112" x2="370" y2="152" stroke="#6b7a5e" stroke-width="4" stroke-linecap="round"/>
+        <line x1="380" y1="112" x2="392" y2="150" stroke="#5d6b52" stroke-width="4" stroke-linecap="round"/>
+      </g>
+    </g>
+    <g id="layer-mid">
+      <g id="v_lbasin">
+        <rect x="470" y="380" width="300" height="90" rx="14" fill="#7c867f" stroke="#454d47" stroke-width="5"/>
+        <rect x="486" y="394" width="268" height="40" rx="8" fill="#59635c"/>
+        <rect x="486" y="404" width="268" height="26" rx="6" fill="#39443d"/>
+        <rect x="500" y="470" width="40" height="90" fill="#667069" stroke="#454d47" stroke-width="4"/>
+        <rect x="700" y="470" width="40" height="90" fill="#667069" stroke="#454d47" stroke-width="4"/>
+        <path d="M620,340 q0,-28 26,-28" stroke="#3a3f42" stroke-width="7" fill="none"/>
+        <rect x="612" y="340" width="16" height="44" fill="#3a3f42"/>
+        <circle cx="648" cy="312" r="7" fill="#565b60"/>
+        ${animOn("drips") && !reduced ? `<line x1="646" y1="384" x2="646" y2="398" stroke="#9fb3b8" stroke-width="3" opacity="0.7"><animate attributeName="y1" values="384;410" dur="1.4s" repeatCount="indefinite"/><animate attributeName="y2" values="398;424" dur="1.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.7;0" dur="1.4s" repeatCount="indefinite"/></line>` : `<circle cx="646" cy="388" r="2" fill="#9fb3b8" opacity="0.5"/>`}
+      </g>
+      <g id="v_lshelf">
+        <rect x="120" y="300" width="200" height="10" fill="#5d4a35"/>
+        <path d="M130,310 l0,26 M310,310 l0,26" stroke="#453527" stroke-width="6"/>
+        <path d="M150,262 q0,-8 8,-8 l24,0 q8,0 8,8 l-4,38 l-32,0 Z" fill="#8a7f6c" stroke="#5f5648" stroke-width="3"/>
+        <rect x="230" y="272" width="44" height="28" rx="6" fill="#66755a" stroke="#454d47" stroke-width="3"/>
+        ${QH ? `<rect x="238" y="262" width="28" height="12" rx="4" fill="#c9bda4"/>` : ""}
+      </g>
+    </g>
+    <g id="layer-front"><rect width="1280" height="720" fill="#0b0d0b" opacity="0.12"/></g>
+    <g id="hotspots">
+      ${hs("lvback", 0, 150, 60, 380, "Back to the attic", "")}
+      ${hs("lbasin", 460, 300, 320, 260, "A deep stone basin, water weeping in", "v_lbasin")}
+      ${hs("lherb", 268, 84, 130, 100, "Herbs hung from the beam to dry", "v_lherb")}
+      ${hs("lwindow", 886, 140, 148, 180, "An arched window, moon through grit", "v_lwin")}
+      ${hs("lshelf", 116, 250, 210, 70, "A shelf of jug and soap", "v_lshelf")}
+    </g>
+    </svg>`;
+  }
+
+  const builders = { porch: svgPorch, hallway: svgHallway, kitchen: svgKitchen, study: svgStudy, basement: svgBasement, memory: svgMemory, landing: svgLanding, childroom: svgChildroom, attic: svgAttic, diningroom: svgDining, conservatory: svgConservatory, gallery: svgGallery, bathroom: svgBathroom, sittingroom: svgSittingroom, suite: svgSuite, washroom: svgWashroom, steamroom: svgSteamroom, lavatory: svgLavatory };
 
   /* ---------- render + wiring ---------- */
   function render() {

@@ -178,7 +178,7 @@ const w = dom.window, wait = ms => new Promise(r=>setTimeout(r,ms)), ev = c => w
   check("inventory: no top-left or top-right icon clutter", ev("document.getElementById('hud-right') === null && document.getElementById('inventory') === null"));
 
   // --- no oval light glows remain anywhere ---
-  const ROOMS_ALL = ["porch","hallway","kitchen","diningroom","conservatory","landing","study","childroom","attic","basement","memory","gallery","bathroom"];
+  const ROOMS_ALL = ["porch","hallway","kitchen","diningroom","conservatory","landing","study","childroom","attic","basement","memory","gallery","bathroom","suite","washroom","steamroom","lavatory"];
   ev(`(${JSON.stringify(ROOMS_ALL)}).forEach(r => { State.setRoom(r); Rooms.render(); })`);
   const ovals = ev(`(${JSON.stringify(ROOMS_ALL)}).reduce((n,r)=>{ State.setRoom(r); Rooms.render(); return n + document.querySelectorAll('#scene-holder ellipse[fill="url(#lampglow)"], #scene-holder ellipse[fill="url(#coldglow)"]').length; }, 0)`);
   check("no oval glow ellipses in any room", ovals === 0);

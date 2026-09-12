@@ -49,8 +49,10 @@ const w = dom.window, wait = ms => new Promise(r => setTimeout(r, ms)), ev = c =
   ev("State.setRoom('gallery'); Rooms.render()"); await wait(60);
   check("gallery renders both wrong doors", ev("!!document.querySelector('#v_gcons') && !!document.querySelector('#v_gbath')"));
   check("gallery right arrow returns to the corridor", ev("document.getElementById('nav-right').dataset.hs === 'gback'"));
-  check("gallery is in the house graph", ev("(HOUSE_GRAPH.gallery || []).join(',')") === "landing,conservatory,bathroom");
+  check("gallery is in the house graph", ev("(HOUSE_GRAPH.gallery || []).join(',')") === "landing,conservatory,bathroom,suite");
   check("bathroom hangs off the gallery only", ev("(HOUSE_GRAPH.bathroom || []).join(',')") === "gallery");
+  check("four new bathrooms hang off their parents", ev("HOUSE_GRAPH.suite.join(',') === 'gallery' && HOUSE_GRAPH.washroom.join(',') === 'sittingroom' && HOUSE_GRAPH.steamroom.join(',') === 'basement' && HOUSE_GRAPH.lavatory.join(',') === 'attic'"));
+  check("sitting room gains the washroom only", ev("(HOUSE_GRAPH.sittingroom || []).join(',')") === "diningroom,washroom");
   check("dining touches kitchen + sitting room only", ev("(HOUSE_GRAPH.diningroom || []).join(',')") === "kitchen,sittingroom");
   // --- outside fog must keep the middle of the frame clear ---
   ev("State.setRoom('porch'); Rooms.render()"); await wait(60);

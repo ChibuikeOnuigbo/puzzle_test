@@ -761,6 +761,56 @@ const Fog = (() => {
       draughts: [DRAUGHT(60, 600, 80, true, 0.04), DRAUGHT(1210, 600, 80, true, 0.04)],
     },
 
+    /* ================= WHITE SUITE — showroom-clean air, the faintest mist ================= */
+    suite: {
+      kind: "room", density: 0.3, tint: "#b8c9d8", clarityFloor: 0.5, clarityCeil: 0.92,
+      gust: { period: 30000, strength: 5, len: 2400 },
+      banks: [
+        { seed: 611, region: R.rect(0, 480, 1280, 240), count: 10, rMin: 40, rMax: 100, oMin: 0.04, oMax: 0.10,
+          drift: [4, -2], flow: 0.3, rise: -2, sway: 40, wrap: true, shape: "blob", hue: "#b8c9d8", settle: 0.5 },
+      ],
+      draughts: [DRAUGHT(40, 600, 70, true, 0.03)],
+    },
+
+    /* ================= TILED WASHROOM — old air, barely moving ================= */
+    washroom: {
+      kind: "room", density: 0.28, tint: "#a8c9a8", clarityFloor: 0.5, clarityCeil: 0.9,
+      gust: { period: 28000, strength: 5, len: 2200 },
+      banks: [
+        { seed: 621, region: R.rect(0, 470, 1280, 250), count: 10, rMin: 40, rMax: 110, oMin: 0.05, oMax: 0.12,
+          drift: [4, -1], flow: 0.3, rise: -2, sway: 36, wrap: true, shape: "blob", hue: "#a8c9a8", settle: 0.6 },
+      ],
+      draughts: [DRAUGHT(40, 600, 70, true, 0.03)],
+    },
+
+    /* ================= STEAM ROOM — the house keeps it warm for no one ================= */
+    steamroom: {
+      kind: "room", density: 1.0, tint: "#c9a87f", clarityFloor: 0.32, clarityCeil: 0.86,
+      gust: { period: 18000, strength: 9, len: 2800 },
+      glow: [[640, 300, "#f2d8a0", 220]],
+      banks: [
+        { seed: 631, region: R.rect(0, 300, 1280, 420), count: 34, rMin: 50, rMax: 150, oMin: 0.10, oMax: 0.28,
+          drift: [6, -4], flow: 0.45, rise: -6, sway: 56, wrap: true, shape: "blob", hue: "#c9a87f", settle: 0.35,
+          streamers: STREAM(6, 22, 130, 10000, 0.2) },
+        { seed: 632, region: R.ellipse(315, 350, 160, 120), count: 14, rMin: 30, rMax: 90, oMin: 0.10, oMax: 0.24,
+          drift: [4, -8], flow: 0.4, rise: -10, sway: 40, wrap: true, shape: "blob", hue: "#e6e2da", settle: 0.3 },
+      ],
+      draughts: [DRAUGHT(40, 600, 80, true, 0.05)],
+    },
+
+    /* ================= STONE LAVATORY — cold, slow, one draught at the sill ================= */
+    lavatory: {
+      kind: "room", density: 0.4, tint: "#8fa8a0", clarityFloor: 0.45, clarityCeil: 0.9,
+      gust: { period: 26000, strength: 6, len: 2400 },
+      banks: [
+        { seed: 641, region: R.rect(0, 470, 1280, 250), count: 14, rMin: 40, rMax: 120, oMin: 0.06, oMax: 0.14,
+          drift: [5, -2], flow: 0.35, rise: -3, sway: 44, wrap: true, shape: "blob", hue: "#8fa8a0", settle: 0.55 },
+        { seed: 642, region: R.ellipse(620, 400, 200, 90), count: 8, rMin: 30, rMax: 80, oMin: 0.05, oMax: 0.12,
+          drift: [3, -4], flow: 0.3, rise: -6, sway: 30, wrap: true, shape: "blob", hue: "#9fb3b8", settle: 0.4 },
+      ],
+      draughts: [DRAUGHT(40, 600, 70, true, 0.04)],
+    },
+
     /* ================= BATHROOM — one cold shaft off the sea window ================= */
     bathroom: {
       shafts: [
@@ -768,6 +818,23 @@ const Fog = (() => {
       ],
       draughts: [DRAUGHT(46, 560, 70, true, 0.04)],
       wisps: { count: 3, o: 0.05, speed: 0.3 },
+    },
+
+    /* ================= WHITE SUITE — one pale dawn shaft off the narrow window ================= */
+    suite: {
+      shafts: [
+        SHAFT(750, 110, 700, 580, 110, 0.06, "#f2c9a0", 10),
+      ],
+      draughts: [DRAUGHT(46, 560, 70, true, 0.03)],
+    },
+
+    /* ================= STONE LAVATORY — one cold moon shaft off the arched window ================= */
+    lavatory: {
+      shafts: [
+        SHAFT(960, 150, 640, 580, 120, 0.06, "#a8c8da", 10),
+      ],
+      draughts: [DRAUGHT(46, 560, 70, true, 0.04)],
+      wisps: { count: 2, o: 0.04, speed: 0.25 },
     },
 
     /* ================= CONSERVATORY — glass shafts, drips, an eddy ================= */

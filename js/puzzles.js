@@ -1395,6 +1395,15 @@ const RoomActions = {
   /* ============ THE SITTING ROOM ============ */
   sittingroom: {
     sitback() { Rooms.goto("diningroom", null); },
+    gowashroom() {
+      const first = !State.flag("visitedWashroom");
+      State.setFlag("visitedWashroom");
+      Rooms.goto("washroom", first ? [
+        "The washroom. Green tile and cream paint, out of a decade I can't place.",
+        "The pedestal sink is dry, but the trap smells of water. The high tank waits over the bowl like a held breath.",
+        "From the sitting room this door hides behind the sofa. From in here, the sitting room looks like the past.",
+      ] : null);
+    },
     fire() {
       State.addAware(1);
       Dialogue.say(Dialogue.pick("sitfire", [
@@ -1784,6 +1793,15 @@ const RoomActions = {
         "And I reached it by a door at the top of a staircase. A conservatory grows on the ground, against a wall, in a yard. This one grows off a landing.",
       ] : null);
     },
+    gosuite() {
+      const first = !State.flag("visitedSuite");
+      State.setFlag("visitedSuite");
+      Rooms.goto("suite", first ? [
+        "A white suite. Chrome and glass, no dust. It smells of a showroom — of nothing ever lived in.",
+        "A bathroom the size of the kitchen downstairs. The house keeps adding rooms it never needed.",
+        "The window faces east, onto a pale dawn. In the corridor behind me, every window faces the moon.",
+      ] : null);
+    },
     gbath() {
       const first = !State.flag("visitedBathroom");
       State.setFlag("visitedBathroom");
@@ -1910,6 +1928,15 @@ const RoomActions = {
 
   /* ============ ATTIC ============ */
   attic: {
+    golavatory() {
+      const first = !State.flag("visitedLavatory");
+      State.setFlag("visitedLavatory");
+      Rooms.goto("lavatory", first ? [
+        "A stone lavatory. Cold blocks, a deep basin, herbs hung from the beam.",
+        "Water weeps in from an iron tap, drop by drop, into stone worn smooth by a century of patience.",
+        "The attic is wood. This room is stone. The house builds its rooms the way a liar stacks alibis.",
+      ] : null);
+    },
     aback() {
       stopAtticTimers();
       Rooms.goto("landing", ["Down the ladder. The corridor light feels like surfacing."]);
@@ -2110,6 +2137,15 @@ const RoomActions = {
       if (State.flag("finalOpen")) { Dialogue.say("No. It's ahead of me now, not behind."); return; }
       Rooms.goto("hallway");
     },
+    gosteamroom() {
+      const first = !State.flag("visitedSteamroom");
+      State.setFlag("visitedSteamroom");
+      Rooms.goto("steamroom", first ? [
+        "A steam room. Cedar planks, two benches, a stove piled with stones.",
+        "It is warm. Not house-warm — bath-warm. The basement has been cold for eleven years.",
+        "Someone ladled water on these stones not long ago. The smell is still standing in the air.",
+      ] : null);
+    },
     breaker() {
       if (!State.flag("basementPower")) {
         State.setFlag("basementPower");
@@ -2233,6 +2269,120 @@ const RoomActions = {
       Dialogue.say(Dialogue.pick("mbed", [
         "A visitor's bed. Made up fresh. The pillow still holds the shape of a small head.",
         "I slept here. Eleven years ago, one night, November 14th. It's coming back in pieces.",
+      ]));
+    },
+  },
+
+  /* ============ THE WHITE SUITE ============ */
+  suite: {
+    suback() { Rooms.goto("gallery", null); },
+    ssink() {
+      Dialogue.say(Dialogue.pick("ssink", [
+        "The tap gives water at exactly body temperature, as if it had been waiting. The mirror holds no smudge. Not one.",
+        "Chrome without a fingerprint. I touch the basin and leave the only mark in the room.",
+      ]));
+    },
+    sshower() {
+      const on = State.flag("suiteShower") !== 1;
+      State.setFlag("suiteShower", on ? 1 : 0);
+      Rooms.render();
+      Dialogue.say(on
+        ? "Water falls at once, hot and even. The drain takes it without a sound. Downstairs, the tap took its time."
+        : "The water stops. The glass mists, then clears, as if it hadn't.");
+    },
+    swindow() {
+      State.addAware(1);
+      Dialogue.say(Dialogue.pick("swin", [
+        "Dawn. Pale, patient, fixed. The same dawn every time I look.",
+        "East, says the light. But the corridor's windows face the moon, and the moon was high an hour ago.",
+      ]));
+    },
+    stowel() {
+      Dialogue.say(Dialogue.pick("stowel", [
+        "Two towels, washed and folded, hung to face the door. For whom?",
+        "The towels are dry and warm. I did not hear a dryer.",
+      ]));
+    },
+  },
+
+  /* ============ THE TILED WASHROOM ============ */
+  washroom: {
+    wback() { Rooms.goto("sittingroom", null); },
+    wsink() {
+      Dialogue.say(Dialogue.pick("wsink", [
+        "Cross handles, red and blue. The water runs clear after one cough, as if it were used yesterday.",
+        "A pedestal sink, white against green tile. Someone kept this clean. Someone with time.",
+      ]));
+    },
+    wtoilet() {
+      Dialogue.say(Dialogue.pick("wtoilet", [
+        "The pull chain hangs by the tank. I don't pull it. Some habits aren't mine.",
+        "A high tank, a brass chain, a bowl the colour of old milk. Decades deep in this room.",
+      ]));
+    },
+    wport() {
+      State.addAware(1);
+      Dialogue.say(Dialogue.pick("wport", [
+        "A round window, frosted. Light gets in; the view doesn't. Mercy, maybe.",
+        "Through the frost: a brightness that doesn't move. Not sun. Not headlights. Just brightness.",
+      ]));
+    },
+    wring() {
+      Dialogue.say(Dialogue.pick("wring", [
+        "A hand towel on a brass ring, the monogram worn to a single thread.",
+      ]));
+    },
+  },
+
+  /* ============ THE STEAM ROOM ============ */
+  steamroom: {
+    stback() { Rooms.goto("basement", null); },
+    stheater() {
+      const on = State.flag("steamOn") !== 1;
+      State.setFlag("steamOn", on ? 1 : 0);
+      Rooms.render();
+      Dialogue.say(on
+        ? "Water on the stones. The hiss fills the room and the steam rises like something standing up."
+        : "The hiss dies down. The stones tick as they cool, patient as clocks.");
+    },
+    stbench() {
+      State.addAware(1);
+      Dialogue.say(Dialogue.pick("stbench", [
+        "The top bench is still warm. I put my hand flat on it. Recent. Someone was here, recent.",
+        "Two benches, cedar, worn where bodies sit. The basement below is dust. This room is use.",
+      ]));
+    },
+    stlamp() {
+      Dialogue.say(Dialogue.pick("stlamp", [
+        "A caged bulb in cedar light. Even here, the house keeps its fixtures honest.",
+      ]));
+    },
+  },
+
+  /* ============ THE STONE LAVATORY ============ */
+  lavatory: {
+    lvback() { Rooms.goto("attic", null); },
+    lbasin() {
+      Dialogue.say(Dialogue.pick("lbasin", [
+        "The basin is deep enough to bathe a child in. The thought arrives uninvited. I let the water run over my hands instead.",
+        "Stone worn to a shine at the rim. A hundred years of hands. Or eleven, doing the work of a hundred.",
+      ]));
+    },
+    lherb() {
+      Dialogue.say(Dialogue.pick("lherb", [
+        "Lavender and sage, tied and hung to dry. The smell is the kindest thing on this floor.",
+      ]));
+    },
+    lwindow() {
+      State.addAware(1);
+      Dialogue.say(Dialogue.pick("lwin2", [
+        "Moon through the arched window, through the grime. The same moon finds me even here.",
+        "The window is old glass, wavering. The moon in it is steady. One of them is lying.",
+      ]));
+    },
+    lshelf() {
+      Dialogue.say(Dialogue.pick("lshelf", [
+        "A jug, and a bar of soap worn thin in the middle. Used. All of this is used.",
       ]));
     },
   },

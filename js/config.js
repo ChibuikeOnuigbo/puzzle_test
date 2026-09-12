@@ -20,6 +20,10 @@ const ROOM_CONFIG = {
   kitchen:  { ripple: "#b8c98f", name: "The Kitchen" },
   conservatory: { ripple: "#a8c9b8", name: "The Conservatory" },
   bathroom: { ripple: "#7fa8b8", name: "The Small Bathroom" },
+  suite:    { ripple: "#b8c9d8", name: "The White Suite" },
+  washroom: { ripple: "#a8c9a8", name: "The Tiled Washroom" },
+  steamroom:{ ripple: "#c9a87f", name: "The Steam Room" },
+  lavatory: { ripple: "#8fa8a0", name: "The Stone Lavatory" },
   gallery:    { ripple: "#9a8f7a", name: "The Back Landing" },
   study:    { ripple: "#c98f6a", name: "The Study" },
   basement: { ripple: "#7fa89a", name: "The Basement" },
@@ -169,15 +173,19 @@ const HOUSE_GRAPH = {
   hallway:   ["porch", "kitchen", "landing", "basement"],
   kitchen:   ["hallway", "diningroom"],
   diningroom: ["kitchen", "sittingroom"],
-  sittingroom: ["diningroom"],
+  sittingroom: ["diningroom", "washroom"],
   conservatory: ["gallery"],
   landing:   ["hallway", "study", "childroom", "attic", "gallery"],
-  gallery:   ["landing", "conservatory", "bathroom"],
+  gallery:   ["landing", "conservatory", "bathroom", "suite"],
   bathroom:  ["gallery"],
+  suite:     ["gallery"],
+  washroom:  ["sittingroom"],
+  steamroom: ["basement"],
+  lavatory:  ["attic"],
   study:     ["landing"],
   childroom: ["landing"],
-  attic:     ["landing"],
-  basement:  ["hallway", "memory"],
+  attic:     ["landing", "lavatory"],
+  basement:  ["hallway", "memory", "steamroom"],
   memory:    ["basement"],
 };
 
@@ -185,8 +193,10 @@ const HOUSE_GRAPH = {
    destination on a different floor than the arrow actually leads to. */
 const ROOM_FLOORS = {
   porch: 0, hallway: 0, kitchen: 0, diningroom: 0, sittingroom: 0,
-  basement: -1, memory: -1,
-  landing: 1, gallery: 1, conservatory: 1, bathroom: 1, study: 1,
+  washroom: 0,
+  basement: -1, memory: -1, steamroom: -1,
+  landing: 1, gallery: 1, conservatory: 1, bathroom: 1, suite: 1,
+  lavatory: 1, study: 1,
   childroom: 1, attic: 1,
 };
 
@@ -236,6 +246,22 @@ const EXIT_DESCRIPTORS = {
   bathroom: [
     { id: "bathroom_to_gallery", from: "bathroom", destination: "gallery", screenSide: "left",
       hotspot: "bback", type: "edge_exit", tooltip: "Back to the corridor" },
+  ],
+  suite: [
+    { id: "suite_to_gallery", from: "suite", destination: "gallery", screenSide: "left",
+      hotspot: "suback", type: "edge_exit", tooltip: "Back to the corridor" },
+  ],
+  washroom: [
+    { id: "washroom_to_sittingroom", from: "washroom", destination: "sittingroom", screenSide: "left",
+      hotspot: "wback", type: "edge_exit", tooltip: "Back to the sitting room" },
+  ],
+  steamroom: [
+    { id: "steamroom_to_basement", from: "steamroom", destination: "basement", screenSide: "left",
+      hotspot: "stback", type: "edge_exit", tooltip: "Back to the basement" },
+  ],
+  lavatory: [
+    { id: "lavatory_to_attic", from: "lavatory", destination: "attic", screenSide: "left",
+      hotspot: "lvback", type: "edge_exit", tooltip: "Back to the attic" },
   ],
   landing: [
     { id: "landing_to_gallery", from: "landing", destination: "gallery", screenSide: "left",
