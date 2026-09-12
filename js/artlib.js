@@ -463,18 +463,40 @@ const Art = (() => {
      LIGHTS — fixture bodies (the beams live in FX). Each light has a real
      physical identity: housing, bulb, shade, mounting.
   ===================================================================== */
+  /* =====================================================================
+     PENDANT CEILING LAMP — a real fixture, not a trapezoid: canopy on the
+     ceiling, cord, socket stem, a bell shade drawn with curves (rounded
+     dome, lip, dark inner mouth), a seated bulb, and a warm halo.
+  ===================================================================== */
   function ceilingLamp(x, y, opt = {}) {
     const q = tier(); const on = opt.on !== false;
+    const ceilY = opt.ceilY || 0;
+    const w = opt.w || 30;                       // shade half-width
     const glow = on ? "#f0c884" : "#6b6154";
-    let s = `<line x1="${x}" y1="${opt.ceilY || 0}" x2="${x}" y2="${y}" stroke="#1c1610" stroke-width="4"/>`;
-    s += `<path d="M${x - 30},${y} L${x + 30},${y} L${x + 16},${y + 26} L${x - 16},${y + 26} Z" fill="#3a2f22"/>`;
+    let s = "";
+    /* canopy + cord */
+    s += `<path d="M${x - 9},${ceilY} L${x + 9},${ceilY} L${x + 5},${ceilY + 7} L${x - 5},${ceilY + 7} Z" fill="#2c241c"/>`;
+    s += `<line x1="${x}" y1="${ceilY + 6}" x2="${x}" y2="${y}" stroke="#1c1610" stroke-width="3.4"/>`;
+    if (q === "high") s += `<line x1="${x + 1.4}" y1="${ceilY + 8}" x2="${x + 1.4}" y2="${y}" stroke="#3a2f22" stroke-width="1" opacity="0.8"/>`;
+    /* socket stem */
+    s += `<rect x="${x - 4.5}" y="${y - 2}" width="9" height="12" rx="2.5" fill="#2c241c"/>`;
+    /* the bell shade: domed crown, flared lip, dark inner mouth */
+    s += `<path d="M${x - w},${y + 26} Q${x - w},${y + 8} ${x - w * 0.45},${y + 5} Q${x},${y + 2} ${x + w * 0.45},${y + 5} Q${x + w},${y + 8} ${x + w},${y + 26} L${x + w + 4},${y + 29} L${x - w - 4},${y + 29} Z" fill="#3a2f22"/>`;
     if (q === "high") {
-      s += `<path d="M${x - 30},${y} L${x + 30},${y} L${x + 26},${y + 6} L${x - 26},${y + 6} Z" fill="#4c3f2e"/>`;
-      s += `<line x1="${x - 12}" y1="${y + 4}" x2="${x - 8}" y2="${y + 24}" stroke="#241c13" stroke-width="1.4" opacity="0.7"/>`;
-      s += `<line x1="${x + 12}" y1="${y + 4}" x2="${x + 8}" y2="${y + 24}" stroke="#241c13" stroke-width="1.4" opacity="0.7"/>`;
+      /* dome sheen + ribs */
+      s += `<path d="M${x - w * 0.7},${y + 10} Q${x - w * 0.5},${y + 6} ${x - w * 0.1},${y + 5.6}" stroke="#5a4a36" stroke-width="2" fill="none" opacity="0.8"/>`;
+      s += `<path d="M${x - w * 0.55},${y + 24} Q${x - w * 0.6},${y + 12} ${x - w * 0.2},${y + 7}" stroke="#241c13" stroke-width="1.2" fill="none" opacity="0.55"/>`;
+      s += `<path d="M${x + w * 0.55},${y + 24} Q${x + w * 0.6},${y + 12} ${x + w * 0.2},${y + 7}" stroke="#241c13" stroke-width="1.2" fill="none" opacity="0.55"/>`;
+      s += `<path d="M${x - w - 4},${y + 29} L${x + w + 4},${y + 29} L${x + w},${y + 31} L${x - w},${y + 31} Z" fill="#4c3f2e"/>`;
+    } else if (q === "medium") {
+      s += `<path d="M${x - w},${y + 26} Q${x - w},${y + 9} ${x - w * 0.4},${y + 6}" stroke="#4c3f2e" stroke-width="1.8" fill="none" opacity="0.7"/>`;
     }
-    s += `<ellipse cx="${x}" cy="${y + 30}" rx="14" ry="8" fill="${glow}">${on ? `<animate attributeName="opacity" values="1;0.85;1;1" dur="7s" repeatCount="indefinite"/>` : ""}</ellipse>`;
-    if (on && q !== "low") s += `<ellipse cx="${x}" cy="${y + 32}" rx="26" ry="14" fill="url(#lampglow)" opacity="0.5"/>`;
+    /* inner mouth of the shade */
+    s += `<ellipse cx="${x}" cy="${y + 29}" rx="${w}" ry="4.6" fill="#171009"/>`;
+    /* the bulb, seated inside the mouth (no halo blob: the room's FX light
+       layer owns the pool of light beneath the fixture) */
+    s += `<ellipse cx="${x}" cy="${y + 31}" rx="11" ry="7.4" fill="${glow}">${on ? `<animate attributeName="opacity" values="1;0.85;1;1" dur="7s" repeatCount="indefinite"/>` : ""}</ellipse>`;
+    if (on && q === "high") s += `<ellipse cx="${x - 3}" cy="${y + 29}" rx="3.4" ry="2.2" fill="#fff4d8" opacity="0.8"/>`;
     return s;
   }
 

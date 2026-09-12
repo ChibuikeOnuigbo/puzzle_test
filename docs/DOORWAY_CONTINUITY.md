@@ -21,8 +21,10 @@ destination.
    - `kitchen` — seen through the hallway's open doorway (honours the act-2
      `falseKitchen` overlay across the whole aperture, because the *lie* is
      what the player sees);
-   - `sittingroom` — seen through the dining room's new doorway (fire glow,
-     rug, sofa all visible).
+   - `sittingroom` — no longer glimpsed through a dining doorway (that door
+     sits on the left wall, out of the player's facing; the exit is the left
+     edge arrow `gositting`). The preview stays registered for future
+     apertures and for the room's own render.
 
 3. **No hand-painted fakes** — the old masked, hand-drawn "kitchen glimpse" in
    the hallway was removed; it could disagree with the kitchen. Anything seen
@@ -43,7 +45,7 @@ destination.
 | Aperture | Room | Shows | Notes |
 |---|---|---|---|
 | left doorway | hallway | kitchen | fridge/counter/window match `svgKitchen`; act-2 overlay optional |
-| left doorway | diningroom | sittingroom | fire + rug + sofa match `svgSittingroom` |
+| left edge arrow | diningroom | sittingroom | the sitting-room door is on the left WALL, not facing the player: no door drawn, arrow `gositting`, descriptor `diningroom_to_sittingroom` |
 | right edge arrow | sittingroom | diningroom | `sitback`, tooltip "Back to the dining room" |
 | left edge arrow | hallway | porch | `leave`, leaving-house dialogue |
 | left edge arrow | kitchen | diningroom | `godining` |
@@ -53,5 +55,6 @@ destination.
 - `node scripts/qa/nav_audit.js` — arrows/tooltips/graph per room.
 - `node scripts/qa/render_still.mjs hallway|diningroom out.png` — look at the
   aperture; the glimpse must read as the destination room.
-- `node scripts/qa/jsdom_check2.js` — dining renders the sitting doorway and
-  the graph row stays `kitchen,sittingroom`.
+- `node scripts/qa/jsdom_check2.js` — dining's exit graph row stays
+  `kitchen,sittingroom`; the sitting-room exit is the left edge arrow, no
+  door visual drawn.

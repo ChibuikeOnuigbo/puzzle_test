@@ -1051,7 +1051,12 @@ const Rooms = (() => {
       : localGrowTree(seed, x, baseY, h, opt);
     function paint(n) {
       let inner = `<path d="M${n.x1.toFixed(1)},${n.y1.toFixed(1)} Q${n.cx.toFixed(1)},${n.cy.toFixed(1)} ${n.x2.toFixed(1)},${n.y2.toFixed(1)}" stroke="${col}" stroke-width="${n.w.toFixed(1)}" fill="none" stroke-linecap="round"/>`;
-      // canopy blobs recorded during growth
+      // canopy blobs recorded during growth — each one is ANCHORED to the
+      // skeleton by a connector twig, so foliage never floats disconnected
+      for (const e of n.canopies) {
+        const mx = ((n.x2 + e.x) / 2).toFixed(1), my = ((n.y2 + e.y) / 2 + 2).toFixed(1);
+        inner += `<path d="M${n.x2.toFixed(1)},${n.y2.toFixed(1)} Q${mx},${my} ${e.x.toFixed(1)},${e.y.toFixed(1)}" stroke="${col}" stroke-width="${Math.max(1.4, n.w * 0.35).toFixed(1)}" fill="none" stroke-linecap="round"/>`;
+      }
       for (const e of n.canopies) {
         inner += `<ellipse cx="${e.x.toFixed(1)}" cy="${e.y.toFixed(1)}" rx="${e.rx.toFixed(1)}" ry="${e.ry.toFixed(1)}" fill="${leafCol}" opacity="${e.a}"/>`;
       }
@@ -1190,10 +1195,11 @@ const Rooms = (() => {
              <path d="M703,180 q4,20 0,40 q-3,26 2,52" stroke="#9a8a6a" stroke-width="1.4" fill="none" opacity="0.35"/>
              <rect x="700" y="296" width="96" height="6" fill="#57452e"/>`}
       </g>
-      <!-- hanging lamp -->
+      <!-- hanging lamp: real pendant fixture (canopy, cord, bell shade, bulb) -->
+      ${(typeof Art !== "undefined") ? Art.ceilingLamp(640, 96, { w: 34 }) : `
       <line x1="640" y1="0" x2="640" y2="96" stroke="#241c13" stroke-width="5"/>
       <path d="M604,96 L676,96 L656,126 L624,126 Z" fill="#3a2c1e"/>
-      <ellipse cx="640" cy="130" rx="17" ry="8" fill="#e8c87a" opacity="0.9"/>
+      <ellipse cx="640" cy="130" rx="17" ry="8" fill="#e8c87a" opacity="0.9"/>`}
       <!-- doorframe to the kitchen: clean casing, no stray marks -->
       <g id="v_kframe">
         <rect x="1196" y="150" width="20" height="400" fill="#3a2c1e"/>
@@ -2373,17 +2379,33 @@ const Rooms = (() => {
       <!-- the way out is the left side arrow; no door drawn for it -->
       <!-- grandfather clock: pendulum visibly swings -->
       <g id="v_gclock">
-        <rect x="300" y="200" width="86" height="310" rx="6" fill="url(#woodg)" stroke="#221a12" stroke-width="4"/>
-        <rect x="312" y="330" width="62" height="160" fill="#241a11"/>
+        <!-- plinth and body: a real case, panelled and crowned -->
+        <rect x="294" y="496" width="98" height="18" rx="3" fill="#2c211a" stroke="#191309" stroke-width="3"/>
+        <rect x="297" y="508" width="14" height="8" fill="#241a11"/><rect x="375" y="508" width="14" height="8" fill="#241a11"/>
+        <rect x="300" y="200" width="86" height="300" rx="6" fill="url(#woodg)" stroke="#221a12" stroke-width="4"/>
+        <rect x="306" y="206" width="74" height="288" rx="4" fill="none" stroke="#4a3826" stroke-width="1.6" opacity="0.7"/>
+        <!-- waist mouldings above and below the trunk -->
+        <rect x="296" y="318" width="94" height="9" rx="2" fill="#33261a"/>
+        <rect x="296" y="492" width="94" height="8" rx="2" fill="#33261a"/>
+        <!-- trunk: framed glass door, dark interior -->
+        <rect x="312" y="330" width="62" height="158" fill="#241a11"/>
         <g transform="translate(343,340)">
           <g>
             ${Settings.get("reducedMotion") ? "" : `<animateTransform attributeName="transform" type="rotate" values="-7 0 0;7 0 0;-7 0 0" dur="2.4s" repeatCount="indefinite"/>`}
             <line x1="0" y1="4" x2="0" y2="100" stroke="#8a7148" stroke-width="3"/>
             <circle cx="0" cy="108" r="12" fill="#8a7148" opacity="0.9"/>
+            <circle cx="-3" cy="105" r="3.4" fill="#c9a35f" opacity="0.55"/>
           </g>
         </g>
+        <!-- the glass itself, with a long diagonal sheen -->
+        <rect x="312" y="330" width="62" height="158" fill="none" stroke="#4a3826" stroke-width="3"/>
+        <line x1="322" y1="486" x2="364" y2="338" stroke="#cfd8de" stroke-width="3" opacity="0.12"/>
+        <line x1="332" y1="486" x2="370" y2="352" stroke="#cfd8de" stroke-width="1.6" opacity="0.10"/>
+        <!-- hood: dial, then the crown -->
         ${CLOCK_817(343, 260, 34)}
-        <polygon points="296,200 343,178 390,200" fill="#33261a"/>
+        <rect x="296" y="196" width="94" height="10" rx="2" fill="#33261a"/>
+        <polygon points="296,196 343,172 390,196" fill="#33261a" stroke="#191309" stroke-width="2"/>
+        <circle cx="343" cy="170" r="4" fill="#4a3826"/><circle cx="301" cy="193" r="3" fill="#4a3826"/><circle cx="385" cy="193" r="3" fill="#4a3826"/>
       </g>
       <!-- family photo -->
       <g id="v_photo">
@@ -2618,9 +2640,10 @@ const Rooms = (() => {
       </g>`;
       })()}
       <!-- hanging lamp: fixture only; the beam and pool come from the FX light layer -->
+      ${(typeof Art !== "undefined") ? Art.ceilingLamp(640, 66, { w: 28 }) : `
       <line x1="640" y1="0" x2="640" y2="66" stroke="#1c1610" stroke-width="4"/>
       <path d="M612,66 L668,66 L654,92 L626,92 Z" fill="#3a2f22"/>
-      <ellipse cx="640" cy="96" rx="14" ry="8" fill="#f0c884"><animate attributeName="opacity" values="1;0.85;1;1" dur="7s" repeatCount="indefinite"/></ellipse>
+      <ellipse cx="640" cy="96" rx="14" ry="8" fill="#f0c884"><animate attributeName="opacity" values="1;0.85;1;1" dur="7s" repeatCount="indefinite"/></ellipse>`}
     </g>
     <g id="layer-mid">
       <!-- wall clock 8:17 -->
@@ -2843,7 +2866,11 @@ const Rooms = (() => {
       <!-- drawer with batteries (opens) -->
       <g id="v_drawer">
         <rect x="420" y="466" width="150" height="40" rx="3" fill="#3a2c1e" stroke="#241a11" stroke-width="3"/>
+        <rect x="427" y="471" width="136" height="30" rx="2" fill="none" stroke="#4a3826" stroke-width="1.6" opacity="0.7"/>
+        <path d="M432,477 L558,477 M430,496 L560,496" stroke="#241a11" stroke-width="1" opacity="0.3"/>
+        <ellipse cx="496" cy="491" rx="17" ry="4.4" fill="#0d0a08" opacity="0.25"/>
         <rect x="482" y="482" width="28" height="7" rx="3" fill="#8a7148"/>
+        <rect x="484" y="483.5" width="24" height="2" rx="1" fill="#c9a35f" opacity="0.5"/>
         ${drawerOpen ? `
           <rect x="412" y="508" width="166" height="46" rx="3" fill="#241a11" stroke="#33261a" stroke-width="3"/>
           <rect x="416" y="512" width="158" height="6" fill="#0d0a08" opacity="0.5"/>

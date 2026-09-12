@@ -118,12 +118,23 @@ const Windows = (() => {
     const gc = night ? "#0d1410" : (scene === "dawn" ? "#2c3226" : "#2e4028");
     let out = `<rect x="${g.x}" y="${gy}" width="${g.w}" height="${g.y + g.h - gy}" fill="${gc}"/>`;
     if (q !== "low") {
-      const blades = q === "high" ? 14 : 7;
+      /* a second tone band reads as raked grass, not a flat floor */
+      out += `<path d="M${g.x},${gy + 4} q${g.w * 0.3},-3 ${g.w * 0.55},0 q${g.w * 0.25},2 ${g.w * 0.45},-1 L${g.x + g.w},${g.y + g.h} L${g.x},${g.y + g.h} Z" fill="${night ? "#0a100c" : "#26361f"}" opacity="0.55"/>`;
+      const blades = q === "high" ? 18 : 9;
       const bc = night ? "#141d16" : "#3a4c30";
+      const bc2 = night ? "#0f1712" : "#46583a";
       for (let i = 0; i < blades; i++) {
         const bx = g.x + g.w * (i + R()) / blades;
         const bh = 5 + R() * 9;
-        out += `<path d="M${bx.toFixed(1)},${gy + 2} q${(R() - 0.5) * 6},${-bh} ${(R() - 0.5) * 3},${-bh - 2}" stroke="${bc}" stroke-width="1.4" fill="none"/>`;
+        out += `<path d="M${bx.toFixed(1)},${gy + 2} q${(R() - 0.5) * 6},${-bh} ${(R() - 0.5) * 3},${-bh - 2}" stroke="${i % 3 ? bc : bc2}" stroke-width="1.4" fill="none"/>`;
+      }
+      if (q === "high" && !night) {
+        /* a few scattered field flowers, small and unsaturated */
+        for (let i = 0; i < 4; i++) {
+          const fx = g.x + g.w * (0.1 + R() * 0.8);
+          const fy = gy + 6 + R() * (g.y + g.h - gy - 10);
+          out += `<circle cx="${fx.toFixed(1)}" cy="${fy.toFixed(1)}" r="1.4" fill="${R() < 0.5 ? "#c9b8a0" : "#b8a8b0"}" opacity="0.6"/>`;
+        }
       }
     }
     return out;
@@ -202,6 +213,25 @@ const Windows = (() => {
 
     /* clouds — translucent, drifting, depth-ordered above the treeline */
     ext += clouds(id, glass, R, q, scene);
+
+    /* far hills: two soft ridges behind the treeline give the view depth */
+    if (q !== "low" && scene !== "sea") {
+      const night = scene === "night";
+      const hillFar = night ? "#131c26" : (scene === "dawn" ? "#4a4e56" : "#527058");
+      const hillNear = night ? "#101820" : (scene === "dawn" ? "#41464e" : "#46624e");
+      const ridge = (base, amp, col, op, ph) => {
+        let d = `M${glass.x},${base}`;
+        const n = 5;
+        for (let i = 0; i <= n; i++) {
+          const hx = glass.x + glass.w * i / n;
+          const hy = base - amp * (0.4 + 0.6 * Math.abs(Math.sin(i * 1.7 + ph)));
+          d += ` Q${(hx - glass.w / (2 * n)).toFixed(1)},${(hy - amp * 0.3).toFixed(1)} ${hx.toFixed(1)},${hy.toFixed(1)}`;
+        }
+        return `<path d="${d} L${glass.x + glass.w},${base} Z" fill="${col}" opacity="${op}"/>`;
+      };
+      ext += ridge(horizon + 1, glass.h * 0.16, hillFar, 0.85, R() * 6);
+      if (q === "high") ext += ridge(horizon + 2, glass.h * 0.10, hillNear, 0.9, R() * 6);
+    }
 
     /* vegetation: far rank, mid rank, near rank — all ABOVE ground line */
     const night = scene === "night" || scene === "sea";
