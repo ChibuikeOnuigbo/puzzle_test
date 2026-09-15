@@ -636,6 +636,50 @@ function armDiningTimer() {
 }
 
 /* the house is live: leave the linen closet open and it will quietly shut it */
+/* the linen closet's two leaves fold about their outer hinges; this eases
+   the rendered pose from the opposite one so the swing is one smooth
+   motion — no sudden 90-degree snap, no yaw/pitch tricks. */
+/* the bathroom mirror cabinet door swings on its left hinge; ease the
+   rendered pose from the opposite one (through edge-on, like a real door
+   passing the viewer) instead of snapping between poses. */
+function swingBcab(opening) {
+  const D = document.getElementById("bcab-door");
+  if (!D) return;
+  let reduced = false; try { reduced = Settings.get("reducedMotion"); } catch (e) {}
+  if (reduced || typeof requestAnimationFrame === "undefined") return;
+  const from = opening ? 1 : -0.39, to = opening ? -0.39 : 1;
+  const set = (s) => D.setAttribute("transform", `translate(196,0) scale(${s},1) translate(-196,0)`);
+  set(from.toFixed(3));
+  const t0 = performance.now(), dur = 480;
+  const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+  const step = (n) => {
+    const k = Math.min(1, (n - t0) / dur);
+    set((from + (to - from) * ease(k)).toFixed(3));
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+function swingCloset(opening) {
+  const L = document.getElementById("cleaf-L"), R = document.getElementById("cleaf-R");
+  if (!L || !R) return;
+  let reduced = false; try { reduced = Settings.get("reducedMotion"); } catch (e) {}
+  if (reduced || typeof requestAnimationFrame === "undefined") return;
+  const from = opening ? 1 : 0.12, to = opening ? 0.12 : 1;
+  L.setAttribute("transform", `translate(950,0) scale(${from},1) translate(-950,0)`);
+  R.setAttribute("transform", `translate(1070,0) scale(${from},1) translate(-1070,0)`);
+  const t0 = performance.now(), dur = 560;
+  const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+  const step = (nowT) => {
+    const k = Math.min(1, (nowT - t0) / dur);
+    const s = (from + (to - from) * ease(k)).toFixed(3);
+    L.setAttribute("transform", `translate(950,0) scale(${s},1) translate(-950,0)`);
+    R.setAttribute("transform", `translate(1070,0) scale(${s},1) translate(-1070,0)`);
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
 function armClosetTimer() {
   clearTimeout(closetT);
   closetT = setTimeout(() => {
@@ -1046,6 +1090,17 @@ const RoomActions = {
       Rooms.render();
     },
     tap() {
+      /* the kitchen tap shares the house main: abuse closes it for everyone */
+      if (Plumbing.refusal()) {
+        if (State.flag("tapOn")) { clearTapTimers(); State.setFlag("tapOn", false); State.setFlag("tapOverflow", false); Rooms.render(); }
+        Dialogue.say(Plumbing.refusal());
+        return;
+      }
+      if (Plumbing.noteToggle("ktap")) {
+        if (State.flag("tapOn")) { clearTapTimers(); State.setFlag("tapOn", false); State.setFlag("tapOverflow", false); Rooms.render(); }
+        Dialogue.say("The handle turns and the pipes go silent mid-stream. The house has closed the main, entirely, and it will not be argued with for a while.");
+        return;
+      }
       if (!State.flag("tapOn")) {
         State.setFlag("tapOn");
         State.setFlag("tapHouseOff", false);
@@ -1566,19 +1621,31 @@ const RoomActions = {
       ]));
     },
     bcab() {
-      State.addAware(1);
-      Dialogue.say(Dialogue.pick("bcab", [
-        "A mirror cabinet, door ajar. Inside: one shelf, a green bottle, a hairbrush with no hair in it. A room's worth of small things, and none of them used.",
-        "The mirror on the door faces into the room at an angle, and gives me back the bath, the window, the sea. In the glass the water is not still.",
-      ]));
+      const wasOpen = State.flag("bcabOpen") !== 0;
+      State.setFlag("bcabOpen", wasOpen ? 0 : 1);
+      if (wasOpen) {
+        AudioM.close();
+        Dialogue.say(Dialogue.pick("bcabC", [
+          "I shut the cabinet. The mirror faces the room now, and the room looks back.",
+          "Closed. The glass keeps the bath, the window, the sea. In the glass the water is not still.",
+        ]));
+      } else {
+        AudioM.open();
+        Dialogue.say(Dialogue.pick("bcab", [
+          "A mirror cabinet. Inside: one shelf, a green bottle, a hairbrush with no hair in it. A room's worth of small things, and none of them used.",
+          "The door swings back on its hinge. The shelves hold their breath.",
+        ]));
+      }
+      Rooms.render();
+      swingBcab(!wasOpen);
     },
     btowel() {
       Dialogue.say(Dialogue.pick("btowel", [
         "A grey towel on a brass rail, damp at the hem. Damp. In a house where the feast stays hot and the bath stays warm, the towel stays damp.",
         "It has been wrung out and hung with care, as if the person who used it meant to come back for it in the morning.",
       ]));
-      /* the towel answers a touch with a slow swing on the rail */
-      try { const t = document.getElementById("towelsway"); if (t && t.beginElement) t.beginElement(); } catch (e) {}
+      /* the towel answers a touch with a slow damped swing on the rail */
+      try { const t = document.getElementById("towelsway-btowel"); if (t && t.beginElement) t.beginElement(); } catch (e) {}
     },
     bmat() {
       Dialogue.say(Dialogue.pick("bmat", [
@@ -1771,6 +1838,7 @@ const RoomActions = {
           "Something metal glints on the bottom shelf.",
         ]);
         Rooms.render();
+        swingCloset(true);
       } else {
         State.setFlag("closetOpen", false);
         AudioM.close();
@@ -1781,6 +1849,7 @@ const RoomActions = {
           "I close it properly this time. The house notices. The house always notices.",
         ]));
         Rooms.render();
+        swingCloset(false);
       }
     },
     torch() {
@@ -2379,16 +2448,24 @@ const RoomActions = {
         : "Dark again. The chrome goes first, then the glass. The room prefers it, I think.");
     },
     ssink() {
-      Dialogue.say(Dialogue.pick("ssink", [
-        "The tap gives water at exactly body temperature, as if it had been waiting. The mirror holds no smudge. Not one.",
-        "Chrome without a fingerprint. I touch the basin and leave the only mark in the room.",
-      ]));
+      const res = Plumbing.use("ssink");
+      if (res === "blocked") return;
+      Dialogue.say(res
+        ? Dialogue.pick("ssinkO", [
+            "The tap gives water at exactly body temperature, as if it had been waiting. The mirror holds no smudge. Not one.",
+            "Chrome without a fingerprint. The water runs clear; I leave the only mark in the room.",
+          ])
+        : Dialogue.pick("ssinkC", [
+            "I close the tap. The last thread of water counts itself down the drain.",
+            "Off. The chrome stops singing. The mirror holds no smudge. Not one.",
+          ]));
     },
     sshower() {
-      const on = State.flag("suiteShower") !== 1;
-      State.setFlag("suiteShower", on ? 1 : 0);
+      const res = Plumbing.use("sshower");
+      if (res === "blocked") { if (State.flag("suiteShower")) { State.setFlag("suiteShower", 0); Rooms.render(); } return; }
+      State.setFlag("suiteShower", res ? 1 : 0);
       Rooms.render();
-      Dialogue.say(on
+      Dialogue.say(res
         ? "Water falls at once, hot and even. The drain takes it without a sound. Downstairs, the tap took its time."
         : "The water stops. The glass mists, then clears, as if it hadn't.");
     },
@@ -2404,6 +2481,7 @@ const RoomActions = {
         "Two towels, washed and folded, hung to face the door. For whom?",
         "The towels are dry and warm. I did not hear a dryer.",
       ]));
+      try { const t = document.getElementById("towelsway-stowel"); if (t && t.beginElement) t.beginElement(); } catch (e) {}
     },
   },
 
@@ -2419,16 +2497,31 @@ const RoomActions = {
         : "Off. The tiles keep their colour in the dark; I can hear them doing it.");
     },
     wsink() {
-      Dialogue.say(Dialogue.pick("wsink", [
-        "Cross handles, red and blue. The water runs clear after one cough, as if it were used yesterday.",
-        "A pedestal sink, white against green tile. Someone kept this clean. Someone with time.",
-      ]));
+      const res = Plumbing.use("wsink");
+      if (res === "blocked") return;
+      Dialogue.say(res
+        ? Dialogue.pick("wsinkO", [
+            "Cross handles, red and blue. The water runs clear after one cough, as if it were used yesterday.",
+            "I turn both handles the old way. The pedestal fills its voice with running water.",
+          ])
+        : Dialogue.pick("wsinkC", [
+            "I shut the cross handles. The stream thins, hesitates, and lets go.",
+            "Off. The pedestal ticks once as the water leaves it.",
+          ]));
     },
     wtoilet() {
-      Dialogue.say(Dialogue.pick("wtoilet", [
-        "The pull chain hangs by the tank. I don't pull it. Some habits aren't mine.",
-        "A high tank, a brass chain, a bowl the colour of old milk. Decades deep in this room.",
-      ]));
+      const res = Plumbing.use("wtoilet");
+      if (res === "blocked") return;
+      const r = Plumbing._rt("wtoilet");
+      Dialogue.say(r.clogged
+        ? Dialogue.pick("wtoiletC", [
+            "I pull the chain. The water rises, hesitates, and stays. Something in the bend is refusing.",
+            "The flush gurgles and chokes. The bowl fills too high and holds — clogged, not flooded. The drain will change its mind later.",
+          ])
+        : Dialogue.pick("wtoiletF", [
+            "The chain rattles, the high tank empties in a long rush, and the bowl swirls clean.",
+            "A flush like a small storm. The pipes knock once, approving, and the water bows out.",
+          ]));
     },
     wport() {
       State.addAware(1);
@@ -2441,6 +2534,7 @@ const RoomActions = {
       Dialogue.say(Dialogue.pick("wring", [
         "A hand towel on a brass ring, the monogram worn to a single thread.",
       ]));
+      try { const t = document.getElementById("towelsway-wring"); if (t && t.beginElement) t.beginElement(); } catch (e) {}
     },
   },
 
@@ -2504,10 +2598,17 @@ const RoomActions = {
   lavatory: {
     lvback() { Rooms.goto("attic", null); },
     lbasin() {
-      Dialogue.say(Dialogue.pick("lbasin", [
-        "The basin is deep enough to drown a morning in. The thought arrives uninvited. I let the water run over my hands instead.",
-        "Stone worn to a shine at the rim. A hundred years of hands. Or eleven, doing the work of a hundred.",
-      ]));
+      const res = Plumbing.use("lbasin");
+      if (res === "blocked") return;
+      Dialogue.say(res
+        ? Dialogue.pick("lbasinO", [
+            "I lift the old handle and the weep becomes a run, cold and mineral. The basin begins to hold it.",
+            "The basin is deep enough to drown a morning in. The thought arrives uninvited. I let the water run over my hands instead.",
+          ])
+        : Dialogue.pick("lbasinC", [
+            "I shut the pipe back to its weep. The basin drains in a slow spiral, reluctant.",
+            "Stone worn to a shine at the rim. A hundred years of hands. Or eleven, doing the work of a hundred.",
+          ]));
     },
     lherb() {
       Dialogue.say(Dialogue.pick("lherb", [

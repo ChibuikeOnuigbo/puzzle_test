@@ -1128,7 +1128,7 @@ const Rooms = (() => {
   function forestFog() {
     if (Settings.get && Settings.get("fog") === false) return "";
     return `<g id="v_forest-fog" pointer-events="none">
-      <rect x="0" y="392" width="1280" height="120" fill="url(#forestfog)" opacity="0.5"/>
+      <rect x="-80" y="392" width="1440" height="120" fill="url(#forestfog)" opacity="0.5"/>
       <ellipse cx="300" cy="446" rx="240" ry="16" fill="#7a8492" opacity="0.05" filter="url(#fxblur8)"/>
       <ellipse cx="960" cy="438" rx="260" ry="18" fill="#7a8492" opacity="0.05" filter="url(#fxblur8)"/>
     </g>`;
@@ -1169,9 +1169,9 @@ const Rooms = (() => {
     return `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
     <g id="layer-back">
-      <rect width="1280" height="500" fill="url(#wallg)"/>
+      <rect x="-80" width="1440" height="500" fill="url(#wallg)"/>
       ${[...Array(6)].map((_, i) => `<rect x="${i * 224}" y="120" width="200" height="360" fill="#3f342a" opacity="0.18"/>`).join("")}
-      <rect x="0" y="500" width="1280" height="220" fill="url(#floorg)"/>
+      <rect x="-80" y="500" width="1440" height="220" fill="url(#floorg)"/>
       ${[...Array(7)].map((_, i) => `<line x1="${i * 200}" y1="500" x2="${i * 200 + 50}" y2="720" stroke="#100c09" stroke-width="2" opacity="0.5"/>`).join("")}
       <!-- dawn window: the fourth sky this house cannot agree on. Exterior
            clipped to the glass; frame stays in front -->
@@ -1500,11 +1500,11 @@ const Rooms = (() => {
       <clipPath id="gwinclip"><rect x="560" y="150" width="200" height="150"/></clipPath>
     </defs>
     <g id="layer-back">
-      <rect width="1280" height="470" fill="url(#wallg)"/>
+      <rect x="-80" width="1440" height="470" fill="url(#wallg)"/>
       ${QH ? [...Array(32)].map((_, i) => `<line x1="${i * 40}" y1="80" x2="${i * 40}" y2="460" stroke="#352c23" stroke-width="12" opacity="0.3"/>`).join("") : (QM ? [...Array(10)].map((_, i) => `<line x1="${i * 128}" y1="80" x2="${i * 128}" y2="460" stroke="#352c23" stroke-width="12" opacity="0.26"/>`).join("") : "")}
-      <rect x="0" y="72" width="1280" height="8" fill="#241d16"/>
-      <rect x="0" y="460" width="1280" height="12" fill="#1c1610"/>
-      <rect x="0" y="472" width="1280" height="248" fill="url(#floorg)"/>
+      <rect x="-80" y="72" width="1440" height="8" fill="#241d16"/>
+      <rect x="-80" y="460" width="1440" height="12" fill="#1c1610"/>
+      <rect x="-80" y="472" width="1440" height="248" fill="url(#floorg)"/>
       ${[...Array(9)].map((_, i) => `<line x1="${i * 160}" y1="472" x2="${i * 160 + 46}" y2="720" stroke="#100c09" stroke-width="2" opacity="0.5"/>`).join("")}
       <!-- a narrow runner, worn in the middle -->
       <polygon points="470,520 810,520 860,690 420,690" fill="#3f2c22" opacity="0.85"/>
@@ -1602,7 +1602,7 @@ const Rooms = (() => {
       </g>
     </g>
     <g id="layer-front">
-      <rect width="1280" height="720" fill="#0b0806" opacity="${act2 ? "0.16" : "0.08"}"/>
+      <rect x="-80" y="-80" width="1440" height="880" fill="#0b0806" opacity="${act2 ? "0.16" : "0.08"}"/>
     </g>
     <g id="hotspots">
       ${hs("gcons", 52, 140, 196, 350, "A glass door, misted from the other side", "v_gcons")}
@@ -1648,7 +1648,7 @@ const Rooms = (() => {
       </linearGradient>
     </defs>
     <g id="layer-back">
-      <rect width="1280" height="720" fill="url(#consky)"/>
+      <rect x="-80" y="-80" width="1440" height="880" fill="url(#consky)"/>
       <!-- moon, high and small, through the glass -->
       ${moonView(985, 84, 28, { skyTop: "#0d1720", skyBot: "#1b2a33" })}
       <!-- a treeline far away, seen through the mist -->
@@ -1674,7 +1674,7 @@ const Rooms = (() => {
       ${[...Array(8)].map((_, i) => `<rect x="${44 + i * 150}" y="200" width="146" height="316" fill="#1c2e38" opacity="0.13"/>`).join("")}
       ${[...Array(16)].map((_, i) => `<line x1="${64 + i * 82}" y1="${212 + (i % 5) * 58}" x2="${60 + i * 82}" y2="${302 + (i % 6) * 46}" stroke="#9fc0d0" stroke-width="2" opacity="0.16"/>`).join("")}
       <!-- damp stone floor -->
-      <rect x="0" y="520" width="1280" height="200" fill="url(#confloor)"/>
+      <rect x="-80" y="520" width="1440" height="200" fill="url(#confloor)"/>
       ${[...Array(7)].map((_, i) => `<line x1="${i * 200}" y1="520" x2="${i * 200 + 90}" y2="720" stroke="#0a120f" stroke-width="2" opacity="0.5"/>`).join("")}
       ${[...Array(4)].map((_, i) => `<line x1="0" y1="${520 + i * 50}" x2="1280" y2="${520 + i * 50}" stroke="#0a120f" stroke-width="2" opacity="0.4"/>`).join("")}
       <polygon points="150,600 330,600 350,622 128,622" fill="#27404a" opacity="0.3"/>
@@ -1903,7 +1903,7 @@ const Rooms = (() => {
       </linearGradient>
     </defs>
     <g id="layer-back">
-      <rect width="1280" height="720" fill="url(#nightg)"/>
+      <rect x="-80" y="-80" width="1440" height="880" fill="url(#nightg)"/>
       ${QH ? [...Array(46)].map((_, i) => `<circle cx="${(i * 137 + 40) % 1280}" cy="${(i * 61) % 200 + 12}" r="${i % 3 === 0 ? 1.7 : i % 4 === 0 ? 1.2 : 0.9}" fill="#cfd8e0" opacity="${0.3 + (i % 5) * 0.11}"/>`).join("") : (QM ? [...Array(14)].map((_, i) => `<circle cx="${(i * 337 + 40) % 1280}" cy="${(i * 161) % 200 + 12}" r="1.2" fill="#cfd8e0" opacity="${0.3 + (i % 4) * 0.1}"/>`).join("") : "")}
       ${reducedMotion ? "" : `
       <!-- an occasional shooting star, gone almost before it is seen -->
@@ -1936,8 +1936,8 @@ const Rooms = (() => {
         ${forestNear()}
         ${typeof Birds !== "undefined" ? Birds.part("back") : ""}
       </g>
-      <rect x="0" y="540" width="1280" height="180" fill="#12161c"/>
-      <rect x="0" y="536" width="1280" height="6" fill="#0c0f13"/>
+      <rect x="-80" y="540" width="1440" height="180" fill="#12161c"/>
+      <rect x="-80" y="536" width="1440" height="6" fill="#0c0f13"/>
       <!-- rocky (not grassy) yard: varied stones, plus moss at each tree base -->
       ${rockyGround()}
       <g id="v_moss">${mossClump(70, 692, 1.15)}${mossClump(1212, 696, 1.1)}${mossClump(250, 704, 0.8)}${mossClump(1040, 706, 0.8)}</g>
@@ -2271,7 +2271,7 @@ const Rooms = (() => {
         <animate attributeName="opacity" values="0.07;0.11;0.07" dur="53s" repeatCount="indefinite"/>
       </ellipse>
       </g>
-      <rect x="0" y="690" width="1280" height="30" fill="#0b0d10"/>
+      <rect x="-80" y="690" width="1440" height="30" fill="#0b0d10"/>
       <path d="M0,700 Q120,660 200,706 L0,720 Z" fill="#0e1116"/>
       <path d="M1280,700 Q1150,656 1080,708 L1280,720 Z" fill="#0e1116"/>
       <!-- foreground framing: two huge dark trees at the very edges, near the
@@ -2370,12 +2370,12 @@ const Rooms = (() => {
       </linearGradient>
     </defs>
     <g id="layer-back">
-      <rect width="1280" height="500" fill="url(#wallg)"/>
-      <rect x="0" y="500" width="1280" height="220" fill="url(#floorg)"/>
+      <rect x="-80" width="1440" height="500" fill="url(#wallg)"/>
+      <rect x="-80" y="500" width="1440" height="220" fill="url(#floorg)"/>
       ${QH ? [...Array(9)].map((_, i) => `<polygon points="${i*150},500 ${i*150+150},500 ${i*150+190},720 ${i*150+30},720" fill="none" stroke="#100c09" stroke-width="2" opacity="0.5"/>`).join("") : (QM ? [...Array(6)].map((_, i) => `<polygon points="${i*220},500 ${i*220+220},500 ${i*220+260},720 ${i*220+40},720" fill="none" stroke="#0a0806" stroke-width="2.4" opacity="0.6"/>`).join("") : "")}
-      <rect x="0" y="490" width="1280" height="12" fill="#1c1610"/>
-      ${QH ? `<rect x="0" y="490" width="1280" height="3" fill="#3a2f22" opacity="0.7"/>` : ""}
-      <rect x="0" y="90" width="1280" height="8" fill="#241d16"/>
+      <rect x="-80" y="490" width="1440" height="12" fill="#1c1610"/>
+      ${QH ? `<rect x="-80" y="490" width="1440" height="3" fill="#3a2f22" opacity="0.7"/>` : ""}
+      <rect x="-80" y="90" width="1440" height="8" fill="#241d16"/>
       <!-- wallpaper stripes: full pattern on high, sparse on medium, flat on low -->
       ${QH ? [...Array(32)].map((_, i) => `<line x1="${i * 40}" y1="98" x2="${i * 40}" y2="490" stroke="#352c23" stroke-width="12" opacity="0.35"/>`).join("") : (QM ? [...Array(10)].map((_, i) => `<line x1="${i * 128}" y1="98" x2="${i * 128}" y2="490" stroke="#3f3427" stroke-width="14" opacity="0.5"/>`).join("") : "")}
       <!-- ceiling fog: slow thin wisps that breathe and drift -->
@@ -2606,8 +2606,8 @@ const Rooms = (() => {
       <ellipse cx="560" cy="600" rx="200" ry="36" fill="none" stroke="#5d4a35" stroke-width="3" opacity="0.7"/>
     </g>
     <g id="layer-front">
-      <rect x="0" y="0" width="1280" height="720" fill="#0b0806" opacity="${act2 ? "0.14" : "0.05"}"/>
-      ${hallLampOn ? "" : `<rect x="0" y="0" width="1280" height="720" fill="#0b0d12" opacity="0.22"/>`}
+      <rect x="-80" y="0" width="1440" height="720" fill="#0b0806" opacity="${act2 ? "0.14" : "0.05"}"/>
+      ${hallLampOn ? "" : `<rect x="-80" y="0" width="1440" height="720" fill="#0b0d12" opacity="0.22"/>`}
     </g>
     <g id="hotspots">
       ${hs("gokitchen", 52, 160, 196, 350, "Go to the kitchen", "v_kdoor")}
@@ -2647,10 +2647,10 @@ const Rooms = (() => {
     return `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
     <g id="layer-back">
-      <rect width="1280" height="480" fill="#3b3a2f"/>
+      <rect x="-80" width="1440" height="480" fill="#3b3a2f"/>
       ${[...Array(20)].map((_, i) => `<rect x="${i * 64}" y="90" width="60" height="120" fill="#434235" opacity="0.55"/>`).join("")}
       ${[...Array(20)].map((_, i) => `<rect x="${(i * 64) + 32}" y="214" width="60" height="120" fill="#403f31" opacity="0.5"/>`).join("")}
-      <rect x="0" y="480" width="1280" height="240" fill="url(#floorg)"/>
+      <rect x="-80" y="480" width="1440" height="240" fill="url(#floorg)"/>
       ${[...Array(8)].map((_, i) => `<line x1="${i * 170}" y1="480" x2="${i * 170 + 60}" y2="720" stroke="#100c09" stroke-width="2" opacity="0.5"/>`).join("")}
       <!-- window over sink: exterior clipped to the glass, frame in front.
            NOTHING outside may ever render above the frame (docs/DEPTH_AND_Z_ORDER.md) -->
@@ -3035,7 +3035,7 @@ const Rooms = (() => {
       </g>
       <!-- the right edge exit is the side arrow; no door drawn -->
     </g>
-    <g id="layer-front">${falseK ? `<rect width="1280" height="720" fill="#4a2a3a" opacity="0.08"/>` : ""}</g>
+    <g id="layer-front">${falseK ? `<rect x="-80" y="-80" width="1440" height="880" fill="#4a2a3a" opacity="0.08"/>` : ""}</g>
     <g id="hotspots">
       ${freezerOpen ? "" : hs("list", 1018, 204, 92, 100, "A shopping list", "v_list")}
       ${hs("freezer", freezerOpen ? 912 : 984, freezerOpen ? 158 : 174, freezerOpen ? 254 : 182, freezerOpen ? 148 : 122, "The freezer door", "v_fridge")}
@@ -3079,12 +3079,12 @@ const Rooms = (() => {
       </linearGradient>
     </defs>
     <g id="layer-back">
-      <rect width="1280" height="490" fill="url(#wallg)"/>
+      <rect x="-80" width="1440" height="490" fill="url(#wallg)"/>
       ${QH ? [...Array(32)].map((_, i) => `<line x1="${i * 40}" y1="98" x2="${i * 40}" y2="480" stroke="#352c23" stroke-width="12" opacity="0.3"/>`).join("") : (QM ? [...Array(10)].map((_, i) => `<line x1="${i * 128}" y1="98" x2="${i * 128}" y2="480" stroke="#352c23" stroke-width="12" opacity="0.26"/>`).join("") : "")}
-      <rect x="0" y="90" width="1280" height="8" fill="#241d16"/>
-      <rect x="0" y="480" width="1280" height="12" fill="#1c1610"/>
-      ${QH ? `<rect x="0" y="480" width="1280" height="3" fill="#3a2f22" opacity="0.7"/>` : ""}
-      <rect x="0" y="492" width="1280" height="228" fill="url(#floorg)"/>
+      <rect x="-80" y="90" width="1440" height="8" fill="#241d16"/>
+      <rect x="-80" y="480" width="1440" height="12" fill="#1c1610"/>
+      ${QH ? `<rect x="-80" y="480" width="1440" height="3" fill="#3a2f22" opacity="0.7"/>` : ""}
+      <rect x="-80" y="492" width="1440" height="228" fill="url(#floorg)"/>
       ${QH ? [...Array(9)].map((_, i) => `<line x1="${i * 160}" y1="492" x2="${i * 160 + 50}" y2="720" stroke="#100c09" stroke-width="2" opacity="0.5"/>`).join("") : (QM ? [...Array(4)].map((_, i) => `<line x1="${i * 340}" y1="492" x2="${i * 340 + 60}" y2="720" stroke="#100c09" stroke-width="2" opacity="0.4"/>`).join("") : "")}
       <!-- runner rug -->
       <polygon points="380,540 900,540 960,700 320,700" fill="#4a2f24" opacity="0.85"/>
@@ -3149,32 +3149,38 @@ const Rooms = (() => {
         ${studyOpen ? "" : `<rect x="784" y="356" width="18" height="22" rx="2" fill="#171310" stroke="#4a3826" stroke-width="2"/><circle cx="793" cy="364" r="3" fill="#0d0a08"/>`}
         <text x="843" y="640" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="15" fill="#6b5d4a" font-style="italic">the study</text>
       </g>
-      <!-- linen closet: door swings on its LEFT hinge toward the viewer -->
+      <!-- linen closet: TWO leaves on outer hinges. The leaves are drawn
+           full and scaled about their hinge (a real door swing seen flat:
+           no yaw/pitch snap, the width simply folds away), so opening and
+           closing ease smoothly and the shelves sit behind, not through. -->
       <g id="v_closet">
         <rect x="950" y="180" width="120" height="310" fill="#3a2c1e" stroke="#1c1510" stroke-width="6"/>
-        ${closetOpen ? `
-          <rect x="958" y="188" width="104" height="294" fill="#171310"/>
-          <rect x="958" y="188" width="8" height="294" fill="#0f0b08" opacity="0.8"/>
-          <rect x="1054" y="188" width="8" height="294" fill="#0f0b08" opacity="0.55"/>
-          <rect x="964" y="240" width="92" height="10" fill="#33261a"/>
-          <rect x="964" y="330" width="92" height="10" fill="#33261a"/>
-          <rect x="964" y="420" width="92" height="10" fill="#33261a"/>
-          <rect x="970" y="200" width="80" height="38" rx="4" fill="#8f8778" opacity="0.85"/>
-          <rect x="970" y="252" width="80" height="34" rx="4" fill="#7a7264" opacity="0.8"/>
-          <rect x="970" y="384" width="56" height="34" rx="4" fill="#847c6c" opacity="0.8"/>
-          <!-- the torch RESTS on the middle shelf, never floating -->
-          ${hasTorch ? "" : `<g id="v_torch"><ellipse cx="1012" cy="330" rx="30" ry="3" fill="#0d0a08" opacity="0.5"/><rect x="986" y="316" width="52" height="14" rx="7" fill="#565b60"/><rect x="990" y="319" width="30" height="3" rx="1.5" fill="#7d847f" opacity="0.7"/><circle cx="1040" cy="323" r="9" fill="#3a3e42"/><circle cx="1042" cy="323" r="4" fill="#c9a35f" opacity="0.7"/></g>`}
-          <!-- the swung leaf: left hinge, opened toward the player -->
-          <polygon points="950,180 880,198 880,510 950,490" fill="#3a2c1e" stroke="#1c1510" stroke-width="4"/>
-          <polygon points="880,198 888,201 888,506 880,510" fill="#4d3b28"/>
-          <polygon points="888,201 944,188 944,486 888,506" fill="#453322" opacity="0.95"/>
-          <rect x="898" y="222" width="34" height="118" rx="3" fill="none" stroke="#2c211a" stroke-width="3" opacity="0.8"/>
-          <rect x="898" y="356" width="34" height="118" rx="3" fill="none" stroke="#2c211a" stroke-width="3" opacity="0.8"/>
-          <circle cx="946" cy="340" r="5" fill="#8a7148"/>
-        ` : `
-          <line x1="1010" y1="180" x2="1010" y2="490" stroke="#1c1510" stroke-width="4"/>
-          <circle cx="998" cy="340" r="5" fill="#8a7148"/><circle cx="1022" cy="340" r="5" fill="#8a7148"/>
-        `}
+        <!-- interior always present; the closed leaves cover it -->
+        <rect x="958" y="188" width="104" height="294" fill="#171310"/>
+        <rect x="958" y="188" width="8" height="294" fill="#0f0b08" opacity="0.8"/>
+        <rect x="1054" y="188" width="8" height="294" fill="#0f0b08" opacity="0.55"/>
+        <rect x="964" y="240" width="92" height="10" fill="#33261a"/>
+        <rect x="964" y="330" width="92" height="10" fill="#33261a"/>
+        <rect x="964" y="420" width="92" height="10" fill="#33261a"/>
+        <rect x="970" y="200" width="80" height="38" rx="4" fill="#8f8778" opacity="0.85"/>
+        <rect x="970" y="252" width="80" height="34" rx="4" fill="#7a7264" opacity="0.8"/>
+        <rect x="970" y="384" width="56" height="34" rx="4" fill="#847c6c" opacity="0.8"/>
+        <!-- the torch RESTS on the middle shelf, never floating -->
+        ${hasTorch ? "" : `<g id="v_torch"><ellipse cx="1012" cy="330" rx="30" ry="3" fill="#0d0a08" opacity="0.5"/><rect x="986" y="316" width="52" height="14" rx="7" fill="#565b60"/><rect x="990" y="319" width="30" height="3" rx="1.5" fill="#7d847f" opacity="0.7"/><circle cx="1040" cy="323" r="9" fill="#3a3e42"/><circle cx="1042" cy="323" r="4" fill="#c9a35f" opacity="0.7"/></g>`}
+        <!-- left leaf, hinge x=950 -->
+        <g id="cleaf-L" transform="translate(950,0) scale(${closetOpen ? 0.12 : 1},1) translate(-950,0)">
+          <rect x="950" y="180" width="60" height="310" fill="#3a2c1e" stroke="#1c1510" stroke-width="4"/>
+          <rect x="958" y="200" width="44" height="120" rx="3" fill="none" stroke="#2c211a" stroke-width="3" opacity="0.8"/>
+          <rect x="958" y="344" width="44" height="120" rx="3" fill="none" stroke="#2c211a" stroke-width="3" opacity="0.8"/>
+          ${closetOpen ? "" : `<circle cx="1002" cy="340" r="5" fill="#8a7148"/>`}
+        </g>
+        <!-- right leaf, hinge x=1070 -->
+        <g id="cleaf-R" transform="translate(1070,0) scale(${closetOpen ? 0.12 : 1},1) translate(-1070,0)">
+          <rect x="1010" y="180" width="60" height="310" fill="#453322" stroke="#1c1510" stroke-width="4"/>
+          <rect x="1018" y="200" width="44" height="120" rx="3" fill="none" stroke="#2c211a" stroke-width="3" opacity="0.8"/>
+          <rect x="1018" y="344" width="44" height="120" rx="3" fill="none" stroke="#2c211a" stroke-width="3" opacity="0.8"/>
+          ${closetOpen ? "" : `<circle cx="1018" cy="340" r="5" fill="#8a7148"/>`}
+        </g>
         <text x="1010" y="640" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">closet</text>
       </g>
       <!-- attic hatch in the ceiling with a pull cord; the cord hangs from the
@@ -3205,7 +3211,7 @@ const Rooms = (() => {
       <!-- the stairs down are behind the player: the right arrow carries the exit -->
     </g>
     <g id="layer-front">
-      <rect width="1280" height="720" fill="#0b0806" opacity="${act2 ? "0.16" : "0.07"}"/>
+      <rect x="-80" y="-80" width="1440" height="880" fill="#0b0806" opacity="${act2 ? "0.16" : "0.07"}"/>
     </g>
     <g id="hotspots">
       ${childGone ? hs("chwall", 108, 140, 175, 360, "A wall that remembers being a door", "v_cdoor") : hs("gochild", 108, 140, 175, 360, "A small door with pencil marks", "v_cdoor")}
@@ -3232,9 +3238,9 @@ const Rooms = (() => {
     return `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
     <g id="layer-back">
-      <rect width="1280" height="500" fill="#3b3348"/>
+      <rect x="-80" width="1440" height="500" fill="#3b3348"/>
       ${QH ? [...Array(16)].map((_, i) => `<circle cx="${60 + i * 80}" cy="${140 + (i % 3) * 120}" r="10" fill="#4a415c" opacity="0.5"/>`).join("") : (QM ? [...Array(6)].map((_, i) => `<circle cx="${100 + i * 220}" cy="${160 + (i % 2) * 160}" r="10" fill="#4a415c" opacity="0.45"/>`).join("") : "")}
-      <rect x="0" y="500" width="1280" height="220" fill="url(#floorg)"/>
+      <rect x="-80" y="500" width="1440" height="220" fill="url(#floorg)"/>
       ${QM ? `<ellipse cx="500" cy="620" rx="260" ry="46" fill="#5d5a7a" opacity="0.35"/>` : ""}
       ${QH ? `<ellipse cx="500" cy="620" rx="200" ry="34" fill="#6a6787" opacity="0.25"/>` : ""}
       <!-- rain window: the garden behind the glass is a layered, wind-blown
@@ -3311,7 +3317,7 @@ const Rooms = (() => {
       </g>
     </g>
     <g id="layer-front">
-      <rect width="1280" height="720" fill="#0b0806" opacity="${act2 ? "0.18" : "0.08"}"/>
+      <rect x="-80" y="-80" width="1440" height="880" fill="#0b0806" opacity="${act2 ? "0.18" : "0.08"}"/>
     </g>
     <g id="hotspots">
       ${hs("blocks", 588, 550, 104, 96, "Toy blocks", "v_blocks")}
@@ -3340,16 +3346,16 @@ const Rooms = (() => {
         <stop offset="0" stop-color="#000000"/><stop offset="0.65" stop-color="#3a3a3a"/><stop offset="1" stop-color="#ffffff"/>
       </radialGradient>
       <mask id="torchmask">
-        <rect width="1280" height="720" fill="#ffffff"/>
+        <rect x="-80" y="-80" width="1440" height="880" fill="#ffffff"/>
         <circle id="torch-hole" cx="640" cy="400" r="190" fill="url(#torchfade)"/>
       </mask>
     </defs>
     <g id="layer-back">
-      <rect width="1280" height="720" fill="#181410"/>
+      <rect x="-80" y="-80" width="1440" height="880" fill="#181410"/>
       <!-- roof beams -->
       <polygon points="0,240 640,40 1280,240 1280,270 640,80 0,270" fill="#241a11"/>
       ${[...Array(5)].map((_, i) => `<rect x="${140 + i * 240}" y="${170 - Math.abs(2 - i) * -20}" width="18" height="${420 + Math.abs(2 - i) * 30}" fill="#2b1f14" transform="skewX(${(i - 2) * 2})"/>`).join("")}
-      <rect x="0" y="600" width="1280" height="120" fill="#100c09"/>
+      <rect x="-80" y="600" width="1440" height="120" fill="#100c09"/>
       ${[...Array(7)].map((_, i) => `<line x1="${i * 200}" y1="620" x2="${i * 200 + 90}" y2="720" stroke="#000" stroke-width="2" opacity="0.5"/>`).join("")}
       <!-- tiny round window: a coin of moonlight -->
       <circle cx="640" cy="180" r="42" fill="url(#nightg)" stroke="#2c241c" stroke-width="8"/>
@@ -3420,10 +3426,10 @@ const Rooms = (() => {
     <g id="layer-front">
       ${torchOn ? `
       <!-- torch on: the dark with the beam cut out of it -->
-      <rect width="1280" height="720" fill="#040302" opacity="0.965" mask="url(#torchmask)"/>
-      <rect width="1280" height="720" fill="#040302" opacity="0"><animate attributeName="opacity" values="0;0;0.12;0" dur="6s" repeatCount="indefinite"/></rect>` : `
+      <rect x="-80" y="-80" width="1440" height="880" fill="#040302" opacity="0.965" mask="url(#torchmask)"/>
+      <rect x="-80" y="-80" width="1440" height="880" fill="#040302" opacity="0"><animate attributeName="opacity" values="0;0;0.12;0" dur="6s" repeatCount="indefinite"/></rect>` : `
       <!-- torch off: total dark, save one coin of moonlight at the window -->
-      <rect width="1280" height="720" fill="#040302" opacity="0.99"/>
+      <rect x="-80" y="-80" width="1440" height="880" fill="#040302" opacity="0.99"/>
       <circle cx="640" cy="180" r="46" fill="#a8c8da" opacity="0.07" filter="url(#fxblur8)"/>`}
     </g>
     <g id="hotspots">
@@ -3450,9 +3456,9 @@ const Rooms = (() => {
     return `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
     <g id="layer-back">
-      <rect width="1280" height="500" fill="#38291f"/>
+      <rect x="-80" width="1440" height="500" fill="#38291f"/>
       ${QH ? [...Array(26)].map((_, i) => `<line x1="${i * 50}" y1="70" x2="${i * 50}" y2="500" stroke="#412f24" stroke-width="16" opacity="0.3"/>`).join("") : (QM ? [...Array(9)].map((_, i) => `<line x1="${i * 144}" y1="70" x2="${i * 144}" y2="500" stroke="#412f24" stroke-width="16" opacity="0.26"/>`).join("") : "")}
-      <rect x="0" y="500" width="1280" height="220" fill="url(#floorg)"/>
+      <rect x="-80" y="500" width="1440" height="220" fill="url(#floorg)"/>
       ${QH ? [...Array(7)].map((_, i) => `<line x1="0" y1="${520 + i * 30}" x2="1280" y2="${520 + i * 30}" stroke="#100c09" stroke-width="2" opacity="0.4"/>`).join("") : (QM ? [...Array(3)].map((_, i) => `<line x1="0" y1="${540 + i * 60}" x2="1280" y2="${540 + i * 60}" stroke="#100c09" stroke-width="2" opacity="0.35"/>`).join("") : "")}
       <!-- window -->
       <g id="v_swin">
@@ -3560,7 +3566,7 @@ const Rooms = (() => {
       <ellipse cx="620" cy="640" rx="230" ry="40" fill="#3f3428" opacity="0.9"/>
     </g>
     <g id="layer-front">
-      ${lampOn ? "" : `<rect width="1280" height="720" fill="#0b0d12" opacity="0.42"/>`}
+      ${lampOn ? "" : `<rect x="-80" y="-80" width="1440" height="880" fill="#0b0d12" opacity="0.42"/>`}
     </g>
     <g id="hotspots">
       ${hs("notebook", 548, 348, 122, 62, "The red notebook", "v_notebook")}
@@ -3597,18 +3603,18 @@ const Rooms = (() => {
       <stop offset="1" stop-color="#000000" stop-opacity="0.22"/>
     </linearGradient></defs>
     <g id="layer-back">
-      <rect width="1280" height="720" fill="#141210"/>
-      <rect width="1280" height="500" fill="#232019"/>
+      <rect x="-80" y="-80" width="1440" height="880" fill="#141210"/>
+      <rect x="-80" width="1440" height="500" fill="#232019"/>
       ${QH
         ? [...Array(16)].map((_, i) => [...Array(7)].map((_, j) => `<rect x="${i * 82 + (j % 2) * 40}" y="${70 + j * 62}" width="78" height="58" fill="none" stroke="#0d0b08" stroke-width="3"/><line x1="${i * 82 + (j % 2) * 40 + 2}" y1="${72 + j * 62}" x2="${i * 82 + (j % 2) * 40 + 76}" y2="${72 + j * 62}" stroke="#4a4436" stroke-width="1.6" opacity="0.6"/>`).join("")).join("")
         : (QM
           ? [...Array(16)].map((_, i) => [...Array(3)].map((_, j) => `<rect x="${i * 82 + (j % 2) * 40}" y="${70 + j * 124}" width="78" height="58" fill="none" stroke="#060404" stroke-width="3"/>`).join("")).join("")
           : "")}
-      <rect x="0" y="500" width="1280" height="220" fill="#151210"/>
+      <rect x="-80" y="500" width="1440" height="220" fill="#151210"/>
       <!-- pipes -->
-      <rect x="0" y="46" width="1280" height="16" fill="#3c4043"/>
-      ${QH ? `<rect x="0" y="48" width="1280" height="3" fill="#5a5e61" opacity="0.6"/>` : ""}
-      <rect x="0" y="70" width="1280" height="8" fill="#33363a"/>
+      <rect x="-80" y="46" width="1440" height="16" fill="#3c4043"/>
+      ${QH ? `<rect x="-80" y="48" width="1440" height="3" fill="#5a5e61" opacity="0.6"/>` : ""}
+      <rect x="-80" y="70" width="1440" height="8" fill="#33363a"/>
       <circle cx="300" cy="54" r="14" fill="#4a4d50"/><circle cx="880" cy="54" r="14" fill="#4a4d50"/>
       <line x1="640" y1="62" x2="640" y2="120" stroke="#1c1610" stroke-width="4"/>
       <ellipse cx="640" cy="126" rx="12" ry="7" fill="${power ? "#f0c884" : "#3a3428"}">${power ? '<animate attributeName="opacity" values="1;0.7;1;0.9;1" dur="4s" repeatCount="indefinite"/>' : ""}</ellipse>
@@ -3753,7 +3759,7 @@ const Rooms = (() => {
            drawn by the FX layer with drifting motes so you know which way is out -->
     </g>
     <g id="layer-front">
-      ${power ? "" : `<rect width="1280" height="720" fill="#060505" opacity="0.55"/>`}
+      ${power ? "" : `<rect x="-80" y="-80" width="1440" height="880" fill="#060505" opacity="0.55"/>`}
     </g>
     <g id="hotspots">
       ${hs("breaker", 236, 148, 90, 122, power ? "The breaker box" : "A breaker box, a red light blinks", "v_breaker")}
@@ -3781,8 +3787,8 @@ const Rooms = (() => {
     ${DEFS}
     <defs><filter id="blurf2"><feGaussianBlur stdDeviation="5"/></filter></defs>
     <g id="layer-back">
-      <rect width="1280" height="720" fill="#0e0c0a"/>
-      <rect width="1280" height="500" fill="#171410"/>
+      <rect x="-80" y="-80" width="1440" height="880" fill="#0e0c0a"/>
+      <rect x="-80" width="1440" height="500" fill="#171410"/>
       <line x1="640" y1="0" x2="640" y2="150" stroke="#1c1610" stroke-width="4"/>
       <ellipse cx="640" cy="158" rx="13" ry="8" fill="#f0c884">
         <animate attributeName="opacity" values="1;0.8;1;0.65;1" dur="5s" repeatCount="indefinite"/>
@@ -3906,12 +3912,12 @@ const Rooms = (() => {
       <clipPath id="bwater"><path d="M424,458 q236,-22 472,0 q-20,26 -236,26 q-216,0 -236,-26 Z"/></clipPath>
     </defs>
     <g id="layer-back">
-      <rect width="1280" height="720" fill="url(#bwall)"/>
+      <rect x="-80" y="-80" width="1440" height="880" fill="url(#bwall)"/>
       <!-- damp plaster above the tiles, with a tide line of its own -->
       <path d="M0,120 q160,26 320,10 q200,-18 400,8 q180,22 360,4 q120,-10 200,2 l0,-124 l-1280,0 Z" fill="#101416" opacity="0.8"/>
       <path d="M0,296 q220,10 440,2 q260,-8 520,4 q180,8 320,0" stroke="#0a0d0f" stroke-width="3" fill="none" opacity="0.7"/>
       <g id="v_btiles">${tiles}</g>
-      <rect x="0" y="556" width="1280" height="6" fill="#0a0d0f"/>
+      <rect x="-80" y="556" width="1440" height="6" fill="#0a0d0f"/>
       <g id="v_bfloor">${floor}</g>
       <!-- wet sheen on the checkers, and the bath's dark reflection -->
       <polygon points="430,596 900,596 950,668 380,668" fill="#0d1418" opacity="0.5"/>
@@ -4005,7 +4011,9 @@ const Rooms = (() => {
         <path d="M268,424 q12,4 10,16 q-2,10 -10,12" stroke="#8f969b" stroke-width="4" fill="none"/>
         <path d="M246,420 q-4,16 2,34" stroke="#c9cdd0" stroke-width="2" fill="none" opacity="0.4"/>
       </g>
-      <!-- a mirror cabinet, door ajar: the mirror gives back the room -->
+      <!-- a mirror cabinet on a left hinge: the door is one leaf that swings
+           from shut (mirror facing the room) to open (folded back past the
+           hinge, shelves behind). It opens AND closes. -->
       <g id="v_bcab">
         <rect x="196" y="206" width="124" height="150" rx="4" fill="#3a2c1e"/>
         <rect x="204" y="214" width="108" height="134" fill="#101416"/>
@@ -4015,29 +4023,32 @@ const Rooms = (() => {
         <rect x="250" y="232" width="12" height="16" rx="3" fill="#4a3826"/>
         <rect x="272" y="228" width="10" height="20" rx="3" fill="#31503c" opacity="0.7"/>
         <rect x="222" y="312" width="40" height="10" rx="4" fill="#4a4f54"/>
-        <!-- the door, open on its left hinge, mirror catching the sea light -->
-        <polygon points="196,206 148,220 148,368 196,356" fill="#42311f"/>
-        <polygon points="190,214 154,226 154,360 190,348" fill="#1b2731"/>
-        <path d="M162,238 q10,40 4,96" stroke="#33495a" stroke-width="2.4" fill="none" opacity="0.55"/>
-        <path d="M178,232 q-6,52 2,104" stroke="#26374a" stroke-width="2" fill="none" opacity="0.4"/>
-        <circle cx="152" cy="294" r="3" fill="#8a7148"/>
+        <g id="bcab-door" transform="${State.flag("bcabOpen") !== 0 ? "translate(196,0) scale(-0.39,1) translate(-196,0)" : ""}">
+          <rect x="196" y="206" width="124" height="150" rx="4" fill="#42311f"/>
+          <rect x="202" y="212" width="112" height="138" fill="#1b2731"/>
+          <path d="M214,226 q10,44 4,104" stroke="#33495a" stroke-width="2.4" fill="none" opacity="0.55"/>
+          <path d="M236,220 q-6,56 2,112" stroke="#26374a" stroke-width="2" fill="none" opacity="0.4"/>
+          <circle cx="310" cy="282" r="3.4" fill="#8a7148"/>
+        </g>
       </g>
-      <!-- towel rail and a grey towel, damp at the hem; it swings when touched -->
+      <!-- towel rail and a BIG grey towel, damp at the hem. The whole cloth
+           hangs from the rail inside one swing group, so oscillation never
+           tears it: every fold and the hem rotate together about the rail. -->
       <g id="v_btowel">
-        <rect x="946" y="376" width="150" height="7" rx="3.5" fill="#6b5a3a"/>
-        <circle cx="946" cy="379" r="5" fill="#4a3d26"/><circle cx="1096" cy="379" r="5" fill="#4a3d26"/>
-        <g id="towel-swing">
-          <animateTransform id="towelsway" attributeName="transform" type="rotate"
-            values="0 1020 382;5 1020 382;-4 1020 382;3 1020 382;-1.5 1020 382;0 1020 382"
-            dur="1.8s" begin="indefinite" calcMode="spline"
-            keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1"/>
-          <path d="M972,382 l96,0 l6,120 q-52,10 -108,0 Z" fill="#4a4f54"/>
-          <path d="M972,382 l10,0 l6,118 q-8,2 -16,2 Z" fill="#565b60" opacity="0.7"/>
-          <path d="M1058,382 l10,0 l6,116 q-8,3 -18,3 Z" fill="#3d4247" opacity="0.8"/>
-          <path d="M986,382 l4,116 M1016,382 l2,120 M1046,382 l-2,118" stroke="#3d4247" stroke-width="3" fill="none" opacity="0.8"/>
-          <path d="M966,486 q54,10 110,0 l2,16 q-56,10 -114,0 Z" fill="#3d4247"/>
-          <path d="M968,496 q52,9 108,0" stroke="#2a2f33" stroke-width="2" fill="none" opacity="0.7"/>
-          <path d="M976,470 q48,8 96,0" stroke="#565b60" stroke-width="1.6" fill="none" opacity="0.5"/>
+        <rect x="926" y="368" width="188" height="8" rx="4" fill="#6b5a3a"/>
+        <circle cx="926" cy="372" r="6" fill="#4a3d26"/><circle cx="1114" cy="372" r="6" fill="#4a3d26"/>
+        <g class="towel-swing">
+          <animateTransform id="towelsway-btowel" attributeName="transform" type="rotate"
+            values="0 1020 374;5.5 1020 374;-4.4 1020 374;3.2 1020 374;-2.1 1020 374;1.1 1020 374;-0.4 1020 374;0 1020 374"
+            dur="2.8s" begin="indefinite" calcMode="spline"
+            keySplines="0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1"/>
+          <path d="M946,374 L1094,374 L1102,530 q-82,18 -164,0 Z" fill="#4a4f54"/>
+          <path d="M946,374 l16,0 l8,152 q-12,3 -24,3 Z" fill="#565b60" opacity="0.7"/>
+          <path d="M1078,374 l16,0 l8,150 q-12,4 -26,4 Z" fill="#3d4247" opacity="0.8"/>
+          <path d="M972,374 l4,152 M1016,374 l2,158 M1060,374 l-2,154" stroke="#3d4247" stroke-width="3.4" fill="none" opacity="0.8"/>
+          <path d="M938,516 q82,18 166,0 l3,22 q-86,18 -172,0 Z" fill="#3d4247"/>
+          <path d="M941,530 q80,16 162,0" stroke="#2a2f33" stroke-width="2.4" fill="none" opacity="0.7"/>
+          <path d="M952,486 q72,12 144,0" stroke="#565b60" stroke-width="2" fill="none" opacity="0.5"/>
         </g>
       </g>
       <!-- a bath mat, wrung out and laid straight -->
@@ -4053,8 +4064,8 @@ const Rooms = (() => {
       ${hs("bbath", 400, 420, 520, 200, "A clawfoot bath, full and still", "v_bbath")}
       ${hs("bwin", 846, 100, 268, 190, "A high window over a moonlit sea", "v_bwin")}
       ${hs("bstand", 150, 420, 190, 190, "A washstand, jug and basin", "v_bstand")}
-      ${hs("bcab", 144, 200, 180, 172, "A mirror cabinet, half open", "v_bcab")}
-      ${hs("btowel", 940, 366, 168, 140, "A grey towel on a rail", "v_btowel")}
+      ${hs("bcab", 144, 200, 180, 172, State.flag("bcabOpen") !== 0 ? "A mirror cabinet, half open" : "A mirror cabinet, shut", "v_bcab")}
+      ${hs("btowel", 920, 360, 206, 200, "A grey towel on a rail", "v_btowel")}
       ${hs("bmat", 516, 636, 288, 50, "A bath mat, wrung out", "v_bmat")}
     </g>
     </svg>`;
@@ -4081,13 +4092,13 @@ const Rooms = (() => {
     ${DEFS}
     ${(typeof Art !== "undefined") ? Art.paintingDefs("sitting") : ""}
     <g id="layer-back">
-      <rect width="1280" height="500" fill="#3b3128"/>
-      <rect width="1280" height="500" fill="url(#wallg)" opacity="0.5"/>
+      <rect x="-80" width="1440" height="500" fill="#3b3128"/>
+      <rect x="-80" width="1440" height="500" fill="url(#wallg)" opacity="0.5"/>
       ${[...Array(24)].map((_, i) => `<line x1="${i * 56}" y1="96" x2="${i * 56}" y2="500" stroke="#332a20" stroke-width="10" opacity="0.3"/>`).join("")}
-      <rect x="0" y="88" width="1280" height="8" fill="#2c231a"/>
-      <rect x="0" y="500" width="1280" height="220" fill="url(#floorg)"/>
+      <rect x="-80" y="88" width="1440" height="8" fill="#2c231a"/>
+      <rect x="-80" y="500" width="1440" height="220" fill="url(#floorg)"/>
       ${[...Array(8)].map((_, i) => `<line x1="${i * 180}" y1="500" x2="${i * 180 + 46}" y2="720" stroke="#100c09" stroke-width="2" opacity="0.5"/>`).join("")}
-      <rect x="0" y="492" width="1280" height="10" fill="#241b13"/>
+      <rect x="-80" y="492" width="1440" height="10" fill="#241b13"/>
       <!-- firelight washing the back wall, breathing with the flames -->
       <rect x="0" y="120" width="620" height="380" fill="url(#lampglow)" opacity="0.16">
         ${reducedMotion ? "" : `<animate attributeName="opacity" values="0.16;0.11;0.15;0.16" dur="2.8s" repeatCount="indefinite"/>`}
@@ -4097,7 +4108,7 @@ const Rooms = (() => {
       <!-- the fireplace: masonry, mantel, soot, deep firebox -->
       <g id="v_fire">
         ${fp ? fp.svg : `<rect x="120" y="60" width="340" height="400" fill="#463b30"/><rect x="195" y="204" width="190" height="176" fill="#0d0906"/>`}
-        ${fp ? Art.fire(fireCx, fireBase, fp.opening.w * 0.8, { h: fp.opening.h * 0.86 }) : ""}
+        ${/* the live flame is the OOP particle emitter in js/fire.js */ ""}
         <!-- andirons -->
         <path d="M${fireCx - 60},${fireBase + 8} l0,-16 M${fireCx + 60},${fireBase + 8} l0,-16" stroke="#3a3e42" stroke-width="4"/>
         <!-- the fire's pool of light on the hearth and rug -->
@@ -4121,9 +4132,9 @@ const Rooms = (() => {
       </g>
       <!-- rug -->
       ${(typeof Art !== "undefined") ? Art.rug(720, 622, 330, 74) : `<ellipse cx="720" cy="622" rx="330" ry="74" fill="#5d3a30"/>`}
-      <!-- armchair angled toward the fire -->
+      <!-- armchair angled toward the fire: generously sized, feet on the floor -->
       <g id="v_armchair">
-        ${(typeof Art !== "undefined") ? Art.armchair(478, 452, { w: 158, h: 168 }) : ""}
+        ${(typeof Art !== "undefined") ? Art.armchair(452, 436, { w: 210, h: 210 }) : ""}
       </g>
       <!-- side table + reading lamp -->
       <g id="v_slamp">
@@ -4140,14 +4151,14 @@ const Rooms = (() => {
         <circle cx="902" cy="330" r="6" fill="#c9b87f"/>
         <text x="950" y="648" data-roomlabel="1" text-anchor="middle" font-family="Georgia" font-size="14" fill="#6b5d4a" font-style="italic">the washroom</text>
       </g>
-      <!-- the sofa: worn velvet, folded throw -->
+      <!-- the sofa: worn velvet, folded throw; a proper three-seater -->
       <g id="v_sofa">
-        ${(typeof Art !== "undefined") ? Art.sofa(800, 442, { w: 330, h: 178 }) : ""}
+        ${(typeof Art !== "undefined") ? Art.sofa(770, 428, { w: 410, h: 205 }) : ""}
         <!-- a sleeping shape under the throw: just a cushion. Probably. -->
-        <ellipse cx="900" cy="520" rx="46" ry="16" fill="#7d6248" opacity="0.55"/>
+        <ellipse cx="905" cy="522" rx="54" ry="18" fill="#7d6248" opacity="0.55"/>
       </g>
-      <!-- log basket beside the hearth, clear of the armchair -->
-      <g id="v_logs">
+      <!-- log basket beside the hearth: a small stack, kept low -->
+      <g id="v_logs" transform="translate(16,152) scale(0.75)">
         <ellipse cx="64" cy="606" rx="52" ry="10" fill="#0d0a08" opacity="0.45"/>
         <path d="M22,562 q42,-16 84,0 l-8,42 q-34,12 -68,0 Z" fill="#4a3826"/>
         <path d="M26,564 q38,-14 76,0" stroke="#33261a" stroke-width="3" fill="none"/>
@@ -4158,7 +4169,7 @@ const Rooms = (() => {
       <!-- the right edge exit back to the dining room is carried by the arrow -->
     </g>
     <g id="layer-front">
-      <rect width="1280" height="720" fill="#0b0806" opacity="0.06"/>
+      <rect x="-80" y="-80" width="1440" height="880" fill="#0b0806" opacity="0.06"/>
     </g>
     <g id="hotspots">
       ${hs("sitback", 1204, 150, 76, 420, "Back to the dining room", "")}
@@ -4166,10 +4177,10 @@ const Rooms = (() => {
       ${hs("mantel", 160, 120, 280, 70, "Things on the mantel", "v_mantel")}
       ${hs("spaint", 200, 56, 180, 136, "A painting over the mantel", "v_spaint")}
       ${hs("gowashroom", 878, 148, 144, 280, "A green door behind the sofa", "v_washdoor")}
-      ${hs("armchair", 462, 436, 190, 200, "A worn armchair, angled to the fire", "v_armchair")}
-      ${hs("sofa", 786, 428, 360, 210, "The sofa, deep and soft", "v_sofa")}
+      ${hs("armchair", 446, 428, 224, 224, "A worn armchair, angled to the fire", "v_armchair")}
+      ${hs("sofa", 750, 414, 452, 232, "The sofa, deep and soft", "v_sofa")}
       ${hs("slamp", 660, 440, 100, 130, lampOn ? "The reading lamp, lit" : "The reading lamp", "v_slamp")}
-      ${hs("logs", 4, 542, 124, 78, "A basket of logs", "v_logs")}
+      ${hs("logs", 14, 556, 104, 64, "A small basket of logs", "v_logs")}
     </g>
     </svg>`;
   }
@@ -4196,11 +4207,11 @@ const Rooms = (() => {
       <clipPath id="swinclip"><rect x="690" y="110" width="120" height="150"/></clipPath>
     </defs>
     <g id="layer-back">
-      <rect width="1280" height="470" fill="url(#swallg)"/>
+      <rect x="-80" width="1440" height="470" fill="url(#swallg)"/>
       ${QH ? `<line x1="0" y1="300" x2="1280" y2="300" stroke="#bcc7cb" stroke-width="3" opacity="0.7"/><line x1="0" y1="180" x2="1280" y2="180" stroke="#c6cfd3" stroke-width="2" opacity="0.5"/>` : ""}
-      <rect x="0" y="72" width="1280" height="8" fill="#8f9a9f"/>
-      <rect x="0" y="460" width="1280" height="12" fill="#7f8a8f"/>
-      <rect x="0" y="472" width="1280" height="248" fill="#b9c2c6"/>
+      <rect x="-80" y="72" width="1440" height="8" fill="#8f9a9f"/>
+      <rect x="-80" y="460" width="1440" height="12" fill="#7f8a8f"/>
+      <rect x="-80" y="472" width="1440" height="248" fill="#b9c2c6"/>
       ${[...Array(cols + 1)].map((_, i) => `<line x1="${i * (1280 / cols)}" y1="472" x2="${i * (1280 / cols) - 46}" y2="720" stroke="#98a4a9" stroke-width="2" opacity="0.6"/>`).join("")}
       <line x1="0" y1="560" x2="1280" y2="560" stroke="#98a4a9" stroke-width="2" opacity="0.5"/>
       <line x1="0" y1="640" x2="1280" y2="640" stroke="#98a4a9" stroke-width="2" opacity="0.4"/>
@@ -4230,7 +4241,7 @@ const Rooms = (() => {
         <rect x="880" y="120" width="280" height="8" fill="#8fa3a8"/>
         <rect x="1006" y="128" width="10" height="26" fill="#8fa3a8"/>
         <rect x="976" y="152" width="70" height="10" rx="5" fill="#b8c4c8"/>
-        ${shower ? [...Array(QH ? 14 : 8)].map((_, i) => `<line x1="${982 + i * 4.4}" y1="166" x2="${982 + i * 4.4}" y2="556" stroke="#cfe4ec" stroke-width="2" opacity="0.5"/>`).join("") + `<ellipse cx="1011" cy="562" rx="60" ry="8" fill="#cfe4ec" opacity="0.3"/>` : ""}
+        ${/* spray is drawn by the Plumbing overlay so it ramps, never snaps */ ""}
         ${shower && animOn("steam") && !reduced ? [0, 1, 2].map(i => `<path d="M${920 + i * 90},540 q10,-40 0,-80 q-8,-36 6,-70" stroke="#e6f2f6" stroke-width="5" fill="none" opacity="0.16" stroke-linecap="round"><animateTransform attributeName="transform" type="translate" values="0 0; 0 -60" dur="${5 + i}s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.16;0.05;0.16" dur="${5 + i}s" repeatCount="indefinite"/></path>`).join("") : ""}
         <rect x="880" y="560" width="280" height="16" rx="4" fill="#d7dee0"/>
         <rect x="886" y="566" width="268" height="6" fill="#9fb0b5"/>
@@ -4239,21 +4250,27 @@ const Rooms = (() => {
         <line x1="886" y1="126" x2="886" y2="570" stroke="#cfe4ec" stroke-width="2" opacity="0.35"/>
       </g>
       <g id="v_stowel">
-        <rect x="200" y="240" width="120" height="8" rx="4" fill="#8fa3a8"/>
-        <rect x="212" y="248" width="42" height="120" rx="4" fill="#f4f7f7"/>
-        <rect x="262" y="248" width="42" height="104" rx="4" fill="#dfe8ea"/>
-        ${QH ? `<line x1="222" y1="260" x2="222" y2="356" stroke="#d3dfe1" stroke-width="3"/><line x1="272" y1="260" x2="272" y2="340" stroke="#c4d2d5" stroke-width="3"/>` : ""}
+        <rect x="188" y="236" width="154" height="9" rx="4.5" fill="#8fa3a8"/>
+        <g class="towel-swing">
+          <animateTransform id="towelsway-stowel" attributeName="transform" type="rotate"
+            values="0 265 242;4.5 265 242;-3.6 265 242;2.6 265 242;-1.6 265 242;0.8 265 242;0 265 242"
+            dur="2.6s" begin="indefinite" calcMode="spline"
+            keySplines="0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1"/>
+          <rect x="200" y="244" width="58" height="152" rx="5" fill="#f4f7f7"/>
+          <rect x="268" y="244" width="58" height="132" rx="5" fill="#dfe8ea"/>
+          ${QH ? `<line x1="214" y1="258" x2="214" y2="384" stroke="#d3dfe1" stroke-width="3"/><line x1="282" y1="258" x2="282" y2="364" stroke="#c4d2d5" stroke-width="3"/><path d="M200,376 q29,8 58,0 M268,358 q29,8 58,0" stroke="#c4d2d5" stroke-width="2.4" fill="none" opacity="0.8"/>` : ""}
+        </g>
       </g>
       ${QM ? `<polygon points="430,600 620,600 650,660 400,660" fill="#dfe8ea" opacity="0.8"/><polygon points="446,610 606,610 628,650 424,650" fill="none" stroke="#b8c9d0" stroke-width="3" opacity="0.7"/>` : ""}
       ${QH ? `<g id="v_splant"><path d="M120,560 L168,560 L160,620 L128,620 Z" fill="#9fb3b8"/><path d="M144,560 q-30,-40 -52,-48 M144,560 q0,-56 -8,-72 M144,560 q26,-44 50,-52 M144,560 q-14,-52 -30,-60 M144,560 q16,-52 30,-62" stroke="#6f8a6d" stroke-width="5" fill="none" stroke-linecap="round"/></g>` : ""}
     </g>
-    <g id="layer-front"><rect width="1280" height="720" fill="#0b0806" opacity="0.04"/></g>
+    <g id="layer-front"><rect x="-80" y="-80" width="1440" height="880" fill="#0b0806" opacity="0.04"/></g>
     <g id="hotspots">
       ${hs("suback", 0, 150, 60, 380, "Back to the corridor", "")}
       ${hs("ssink", 380, 110, 240, 320, "A floating vanity, chrome still bright", "v_ssink")}
       ${hs("sshower", 880, 110, 280, 480, shower ? "The shower, running" : "A walk-in shower behind glass", "v_sshower")}
       ${hs("swindow", 685, 100, 130, 170, "A narrow window onto a pale dawn", "v_swin")}
-      ${hs("stowel", 196, 232, 130, 150, "Two towels, folded over the rail", "v_stowel")}
+      ${hs("stowel", 184, 228, 162, 180, "Two towels, folded over the rail", "v_stowel")}
     </g>
     </svg>`;
   }
@@ -4292,14 +4309,14 @@ const Rooms = (() => {
       </linearGradient>
     </defs>
     <g id="layer-back">
-      <rect width="1280" height="320" fill="url(#wwallg)"/>
+      <rect x="-80" width="1440" height="320" fill="url(#wwallg)"/>
       ${QH ? [...Array(10)].map((_, i) => `<line x1="${i * 140}" y1="80" x2="${i * 140}" y2="314" stroke="#b3a68b" stroke-width="7" opacity="0.45"/>`).join("") : ""}
       ${QM && !QH ? [...Array(6)].map((_, i) => `<line x1="${i * 240}" y1="80" x2="${i * 240}" y2="314" stroke="#b3a68b" stroke-width="5" opacity="0.35"/>`).join("") : ""}
-      <rect x="0" y="314" width="1280" height="8" fill="#4c634e"/>
-      <rect x="0" y="322" width="1280" height="148" fill="#465c48"/>
+      <rect x="-80" y="314" width="1440" height="8" fill="#4c634e"/>
+      <rect x="-80" y="322" width="1440" height="148" fill="#465c48"/>
       ${tiles}
-      <rect x="0" y="462" width="1280" height="10" fill="#4c634e"/>
-      <rect x="0" y="472" width="1280" height="248" fill="#cfc7b2"/>
+      <rect x="-80" y="462" width="1440" height="10" fill="#4c634e"/>
+      <rect x="-80" y="472" width="1440" height="248" fill="#cfc7b2"/>
       ${QM ? checker : `<line x1="0" y1="560" x2="1280" y2="560" stroke="#b3a68b" stroke-width="3" opacity="0.5"/>`}
       <g id="v_wport">
         <circle cx="260" cy="200" r="62" fill="#b9c8c4" stroke="#4c634e" stroke-width="10"/>
@@ -4335,12 +4352,19 @@ const Rooms = (() => {
         ${QH ? `<line x1="928" y1="182" x2="928" y2="228" stroke="#c9c2ae" stroke-width="3"/>` : ""}
       </g>
       <g id="v_wring">
-        <circle cx="430" cy="270" r="16" fill="none" stroke="#8a7148" stroke-width="4"/>
-        <rect x="410" y="280" width="40" height="86" rx="4" fill="#d8e0d8"/>
-        ${QH ? `<line x1="418" y1="292" x2="418" y2="356" stroke="#c2cec2" stroke-width="3"/>` : ""}
+        <circle cx="430" cy="266" r="18" fill="none" stroke="#8a7148" stroke-width="4.5"/>
+        <g class="towel-swing">
+          <animateTransform id="towelsway-wring" attributeName="transform" type="rotate"
+            values="0 430 268;4 430 268;-3.2 430 268;2.2 430 268;-1.2 430 268;0 430 268"
+            dur="2.4s" begin="indefinite" calcMode="spline"
+            keySplines="0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1"/>
+          <rect x="404" y="278" width="52" height="112" rx="5" fill="#d8e0d8"/>
+          <path d="M404,378 q26,8 52,0 l0,10 q-26,8 -52,0 Z" fill="#c2cec2"/>
+          ${QH ? `<line x1="414" y1="292" x2="414" y2="372" stroke="#c2cec2" stroke-width="3"/><line x1="444" y1="292" x2="444" y2="372" stroke="#b3c0b3" stroke-width="2" opacity="0.7"/>` : ""}
+        </g>
       </g>
     </g>
-    <g id="layer-front"><rect width="1280" height="720" fill="#0b0806" opacity="0.07"/></g>
+    <g id="layer-front"><rect x="-80" y="-80" width="1440" height="880" fill="#0b0806" opacity="0.07"/></g>
     <g id="hotspots">
       ${hs("wback", 0, 150, 60, 380, "Back to the sitting room", "")}
       ${hs("wsink", 550, 100, 190, 380, "A pedestal sink, taps in cross handles", "v_wsink")}
@@ -4360,7 +4384,7 @@ const Rooms = (() => {
     const QH = Q === "high", QM = Q !== "low";
     const reduced = Settings.get("reducedMotion");
     const on = State.flag("steamOn") === 1;
-    const plank = (y, i) => `<rect x="0" y="${y}" width="1280" height="24" fill="${["#7a4f2e", "#8a5a34", "#6e4629"][i % 3]}"/><line x1="0" y1="${y + 24}" x2="1280" y2="${y + 24}" stroke="#4a2e1a" stroke-width="2"/>`;
+    const plank = (y, i) => `<rect x="-80" y="${y}" width="1440" height="24" fill="${["#7a4f2e", "#8a5a34", "#6e4629"][i % 3]}"/><line x1="-80" y1="${y + 24}" x2="1440" y2="${y + 24}" stroke="#4a2e1a" stroke-width="2"/>`;
     const slat = (x, y, w) => `<rect x="${x}" y="${y}" width="${w}" height="12" rx="5" fill="#9a6a3e" stroke="#5d3a20" stroke-width="2"/>`;
     return `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
@@ -4370,11 +4394,11 @@ const Rooms = (() => {
       </radialGradient>
     </defs>
     <g id="layer-back">
-      <rect width="1280" height="80" fill="#2a1a0e"/>
+      <rect x="-80" width="1440" height="80" fill="#2a1a0e"/>
       <line x1="0" y1="80" x2="1280" y2="80" stroke="#1c1108" stroke-width="4"/>
       ${[...Array(15)].map((_, i) => plank(80 + i * 26, i)).join("")}
       ${QH ? `<circle cx="300" cy="150" r="4" fill="#4a2e1a" opacity="0.7"/><circle cx="820" cy="230" r="3" fill="#4a2e1a" opacity="0.6"/><circle cx="1120" cy="120" r="4" fill="#4a2e1a" opacity="0.6"/>` : ""}
-      <rect x="0" y="470" width="1280" height="250" fill="#5d3a20"/>
+      <rect x="-80" y="470" width="1440" height="250" fill="#5d3a20"/>
       ${[...Array(QM ? 5 : 2)].map((_, i) => `<line x1="0" y1="${492 + i * 46}" x2="1280" y2="${492 + i * 46}" stroke="#3f2716" stroke-width="3"/>`).join("")}
       ${QH ? [...Array(16)].map((_, i) => `<line x1="${(i * 173 + 40) % 1140}" y1="${100 + (i * 53) % 340}" x2="${(i * 173 + 40) % 1140 + 120}" y2="${100 + (i * 53) % 340}" stroke="#5d3a20" stroke-width="3" opacity="0.7"/>`).join("") : ""}
       ${QM ? `<ellipse cx="640" cy="170" rx="300" ry="140" fill="url(#stglow)"/>` : ""}
@@ -4414,7 +4438,7 @@ const Rooms = (() => {
       ${QH ? `<g id="v_stthermo"><rect x="480" y="180" width="16" height="90" rx="8" fill="#d8d2c0" stroke="#5d3a20" stroke-width="3"/><circle cx="488" cy="262" r="10" fill="#a84f2e"/><rect x="485" y="210" width="6" height="52" fill="#a84f2e"/></g>
       <g id="v_sttowel"><rect x="760" y="344" width="80" height="14" rx="6" fill="#d8e0d8"/><rect x="764" y="356" width="72" height="14" rx="6" fill="#c2cec2"/><line x1="770" y1="351" x2="830" y2="351" stroke="#b3c0b3" stroke-width="2"/></g>` : ""}
     </g>
-    <g id="layer-front"><rect width="1280" height="720" fill="#120a04" opacity="0.14"/></g>
+    <g id="layer-front"><rect x="-80" y="-80" width="1440" height="880" fill="#120a04" opacity="0.14"/></g>
     <g id="hotspots">
       ${hs("stback", 0, 150, 60, 380, "Back to the basement", "")}
       ${hs("stheater", 232, 356, 166, 170, on ? "The stove, stones hissing" : "A stove piled with stones", "v_stheater")}
@@ -4450,10 +4474,10 @@ const Rooms = (() => {
       <clipPath id="lwinclip"><path d="M900,300 L900,200 q60,-70 120,0 L1020,300 Z"/></clipPath>
     </defs>
     <g id="layer-back">
-      <rect width="1280" height="470" fill="#454d47"/>
+      <rect x="-80" width="1440" height="470" fill="#454d47"/>
       ${stones}
       ${QH ? `<line x1="0" y1="466" x2="1280" y2="466" stroke="#333a34" stroke-width="6"/>` : ""}
-      <rect x="0" y="470" width="1280" height="250" fill="#3c443e"/>
+      <rect x="-80" y="470" width="1440" height="250" fill="#3c443e"/>
       ${QH ? [...Array(14)].map((_, i) => `<ellipse cx="${(i * 197 + 60) % 1280}" cy="${520 + (i * 67) % 170}" rx="${26 + (i % 3) * 10}" ry="${12 + (i % 2) * 6}" fill="${i % 2 ? "#46504a" : "#333b35"}" stroke="#2a312b" stroke-width="2"/>`).join("") : (QM ? [...Array(7)].map((_, i) => `<ellipse cx="${(i * 373 + 90) % 1280}" cy="${540 + (i * 83) % 150}" rx="34" ry="14" fill="#46504a" stroke="#2a312b" stroke-width="2"/>`).join("") : "")}
       <g id="v_lwin">
         <path d="M892,308 L892,198 q68,-80 136,0 L1028,308 Z" fill="#141c26" stroke="#333a34" stroke-width="9"/>
@@ -4497,7 +4521,7 @@ const Rooms = (() => {
         ${QH ? `<rect x="238" y="262" width="28" height="12" rx="4" fill="#c9bda4"/>` : ""}
       </g>
     </g>
-    <g id="layer-front"><rect width="1280" height="720" fill="#0b0d0b" opacity="0.12"/></g>
+    <g id="layer-front"><rect x="-80" y="-80" width="1440" height="880" fill="#0b0d0b" opacity="0.12"/></g>
     <g id="hotspots">
       ${hs("lvback", 0, 150, 60, 380, "Back to the attic", "")}
       ${hs("lbasin", 460, 300, 320, 260, "A deep stone basin, water weeping in", "v_lbasin")}
@@ -4525,12 +4549,12 @@ const Rooms = (() => {
       <clipPath id="guwinclip"><circle cx="960" cy="190" r="52"/></clipPath>
     </defs>
     <g id="layer-back">
-      <rect width="1280" height="470" fill="url(#wallg)"/>
-      <rect width="1280" height="470" fill="#4a4250" opacity="0.35"/>
+      <rect x="-80" width="1440" height="470" fill="url(#wallg)"/>
+      <rect x="-80" width="1440" height="470" fill="#4a4250" opacity="0.35"/>
       ${QH ? [...Array(10)].map((_, i) => `<line x1="${i * 140}" y1="80" x2="${i * 140}" y2="460" stroke="#352c23" stroke-width="10" opacity="0.25"/>`).join("") : ""}
-      <rect x="0" y="72" width="1280" height="8" fill="#241d16"/>
-      <rect x="0" y="460" width="1280" height="12" fill="#1c1610"/>
-      <rect x="0" y="472" width="1280" height="248" fill="url(#floorg)"/>
+      <rect x="-80" y="72" width="1440" height="8" fill="#241d16"/>
+      <rect x="-80" y="460" width="1440" height="12" fill="#1c1610"/>
+      <rect x="-80" y="472" width="1440" height="248" fill="url(#floorg)"/>
       ${(typeof Art !== "undefined") ? Art.wallStains(71, { x0: 300, x1: 1200, y0: 90, y1: 260, count: 3 }) : ""}
       <g id="v_guwin">
         <circle cx="960" cy="190" r="58" fill="#10161f" stroke="#2c241c" stroke-width="9"/>
@@ -4573,7 +4597,7 @@ const Rooms = (() => {
         <rect x="584" y="596" width="10" height="14" rx="2" fill="#8a7148"/><rect x="646" y="596" width="10" height="14" rx="2" fill="#8a7148"/>
       </g>
     </g>
-    <g id="layer-front"><rect width="1280" height="720" fill="#0b0806" opacity="0.1"/></g>
+    <g id="layer-front"><rect x="-80" y="-80" width="1440" height="880" fill="#0b0806" opacity="0.1"/></g>
     <g id="hotspots">
       ${hs("guback", 0, 150, 60, 380, "Back to the attic", "")}
       ${hs("gdesk", 880, 390, 290, 200, "A desk with three brass dials", "v_gudesk")}
@@ -4597,25 +4621,44 @@ const Rooms = (() => {
     if (!svg) return;
     const on = !!State.flag(cfg.flag);
     const [sx, sy] = cfg.at;
+    /* the switch NEVER disappears: it stays on the wall in both states,
+       rocker up when lit, rocker down with its pilot lit when dark. The
+       old build only drew it while dark, so clicking it made it vanish. */
+    const switchArt = on
+      ? `<g id="v_lswitch"><rect x="${sx - 10}" y="${sy - 26}" width="20" height="34" rx="3" fill="#d8d3c4" opacity="0.92"/><rect x="${sx - 3}" y="${sy - 20}" width="6" height="12" rx="2" fill="#efe6cf"/><circle cx="${sx}" cy="${sy + 14}" r="2.4" fill="#4a4234" opacity="0.6"/></g>`
+      : `<g id="v_lswitch"><rect x="${sx - 10}" y="${sy - 26}" width="20" height="34" rx="3" fill="#d8d3c4" opacity="0.92"/><rect x="${sx - 3}" y="${sy - 18}" width="6" height="12" rx="2" fill="#4a4234"/><circle cx="${sx}" cy="${sy + 14}" r="2.4" fill="#c96a2e" opacity="0.85"/></g>`;
+    const switchHs = `<rect class="hotspot" data-hs="lswitch" data-label="A light switch" data-target="v_lswitch" x="${sx - 26}" y="${sy - 42}" width="52" height="72" rx="4"/>`;
+    /* the fixture NEVER disappears with the light: rose, cord, socket, bell
+       shade and bulb are always on the ceiling. Off = dark glass bulb and no
+       pool; on = lit bulb, a breathing pool that falls off with distance,
+       and the random flicker/dim layer on top. Overlays are overscan-sized
+       so parallax can never peel them off the frame edge. */
+    const fixture = `<g id="v_lfix">
+      <path d="M630,0 L650,0 L646,8 L634,8 Z" fill="#2c241c"/>
+      <line x1="640" y1="6" x2="640" y2="66" stroke="#1c1610" stroke-width="3"/>
+      <rect x="634" y="64" width="12" height="12" rx="3" fill="#2c241c"/>
+      <path d="M606,98 Q606,78 622,72 Q640,66 658,72 Q674,78 674,98 L678,101 L602,101 Z" fill="${on ? "#6b6f66" : "#43463f"}"/>
+      <path d="M612,84 Q620,74 634,71" stroke="${on ? "#8a8f86" : "#565952"}" stroke-width="2" fill="none" opacity="0.7"/>
+      <ellipse cx="640" cy="101" rx="38" ry="5" fill="#171009"/>
+      ${on
+        ? `<ellipse cx="640" cy="105" rx="11" ry="9" fill="#f6d896"><animate attributeName="opacity" values="1;0.86;1;0.95;1" dur="5.7s" repeatCount="indefinite"/></ellipse><ellipse cx="637" cy="102" rx="4" ry="3" fill="#fff6dc" opacity="0.9"/><path d="M634,105 q3,3 6,0 q3,-3 6,0" stroke="#c98a2e" stroke-width="1.2" fill="none" opacity="0.7"/>
+           <polygon points="604,102 676,102 810,520 470,520" fill="#e8a04c" opacity="0.09"><animate attributeName="opacity" values="0.09;0.06;0.085;0.075;0.09" dur="9.1s" repeatCount="indefinite"/></polygon>
+           <polygon points="606,102 674,102 706,190 574,190" fill="#f2c98c" opacity="0.10"><animate attributeName="opacity" values="0.10;0.07;0.10" dur="6.7s" repeatCount="indefinite"/></polygon>`
+        : `<ellipse cx="640" cy="105" rx="11" ry="9" fill="#57534a"/><ellipse cx="637" cy="102" rx="3.4" ry="2.6" fill="#6b675e" opacity="0.9"/><path d="M634,105 q3,3 6,0 q3,-3 6,0" stroke="#3d3a34" stroke-width="1.2" fill="none" opacity="0.8"/>`}
+    </g>`;
+    const mid = svg.querySelector("#layer-mid");
+    const hsG = svg.querySelector("#hotspots");
+    const front = svg.querySelector("#layer-front");
+    if (mid) mid.insertAdjacentHTML("beforeend", fixture + switchArt);
+    if (hsG) hsG.insertAdjacentHTML("beforeend", switchHs);
     if (!on) {
-      const front = svg.querySelector("#layer-front");
       if (front) front.insertAdjacentHTML("beforeend",
-        `<rect id="light-dark" width="1280" height="720" fill="#05060a" opacity="0.66" pointer-events="none"/>`);
-      const mid = svg.querySelector("#layer-mid");
-      if (mid) mid.insertAdjacentHTML("beforeend",
-        `<g id="v_lswitch"><rect x="${sx - 10}" y="${sy - 26}" width="20" height="34" rx="3" fill="#d8d3c4" opacity="0.92"/><rect x="${sx - 3}" y="${sy - 18}" width="6" height="12" rx="2" fill="#4a4234"/><circle cx="${sx}" cy="${sy + 14}" r="2.4" fill="#c96a2e" opacity="0.85"/></g>`);
-      const hsG = svg.querySelector("#hotspots");
-      if (hsG) hsG.insertAdjacentHTML("beforeend",
-        `<rect class="hotspot" data-hs="lswitch" data-label="A light switch" data-target="v_lswitch" x="${sx - 26}" y="${sy - 42}" width="52" height="72" rx="4"/>`);
+        `<rect id="light-dark" x="-80" y="-80" width="1440" height="880" fill="#05060a" opacity="0.66" pointer-events="none"/>`);
     } else {
       svg.insertAdjacentHTML("afterbegin",
         `<defs><radialGradient id="lvign" cx="0.5" cy="0.45" r="0.78"><stop offset="0.55" stop-color="#000000" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity="0.38"/></radialGradient></defs>`);
-      const mid = svg.querySelector("#layer-mid");
-      if (mid) mid.insertAdjacentHTML("afterbegin",
-        `<g id="v_lfix"><line x1="640" y1="0" x2="640" y2="64" stroke="#3a382f" stroke-width="3"/><rect x="630" y="62" width="20" height="10" rx="3" fill="#565b60"/><path d="M612,96 L668,96 L656,72 L624,72 Z" fill="#6b6f66"/><circle cx="640" cy="98" r="7" fill="#f2d8a0"/><polygon points="612,98 668,98 760,470 520,470" fill="#e8a04c" opacity="0.07"/></g>`);
-      const front = svg.querySelector("#layer-front");
       if (front) front.insertAdjacentHTML("beforeend",
-        `<rect id="light-vign" width="1280" height="720" fill="url(#lvign)" pointer-events="none"/><rect id="light-flick" width="1280" height="720" fill="#05060a" opacity="0" pointer-events="none"/>`);
+        `<rect id="light-vign" x="-80" y="-80" width="1440" height="880" fill="url(#lvign)" pointer-events="none"/><rect id="light-flick" x="-80" y="-80" width="1440" height="880" fill="#05060a" opacity="0" pointer-events="none"/>`);
     }
   }
 
@@ -4631,6 +4674,8 @@ const Rooms = (() => {
     updateNavArrows(holder, room);
     if (typeof FX !== "undefined" && FX.apply) FX.apply(holder, room);
     if (typeof Fog !== "undefined" && Fog.apply) Fog.apply(holder, room);
+    if (typeof Plumbing !== "undefined" && Plumbing.mount) Plumbing.mount(room);
+    if (typeof Fire !== "undefined" && Fire.mount) Fire.mount(holder, room);
     // the birds live on their own canvas overlay, mounted only on the porch
     // and removed everywhere else so other rooms cost nothing.
     if (typeof Birds !== "undefined" && Birds.mount && Birds.unmount) {

@@ -14,7 +14,7 @@ window.HTMLCanvasElement.prototype.getContext = window.HTMLCanvasElement.prototy
   window.setTimeout = function(fn, d){ return o(fn, (d||0)/20); };
 })();
 </script>`;
-const files = ["js/config.js","js/audio.js","js/core.js","js/debug.js","js/condition.js","js/windows.js","js/painting-data.js","js/artlib.js","js/previews.js","js/forest-data.js","js/window-data.js","js/roof-data.js","js/moon-data.js","js/bird-data.js","js/birds.js","js/tree-perches.js","js/anim-registry.js","js/rooms.js","js/puzzles.js","js/fx.js","js/fog.js","js/mirror.js","js/main.js"];
+const files = ["js/config.js","js/audio.js","js/core.js","js/debug.js","js/condition.js","js/windows.js","js/painting-data.js","js/artlib.js","js/previews.js","js/forest-data.js","js/window-data.js","js/roof-data.js","js/moon-data.js","js/bird-data.js","js/birds.js","js/tree-perches.js","js/anim-registry.js","js/rooms.js","js/plumbing.js","js/puzzles.js","js/fx.js","js/fog.js","js/mirror.js","js/main.js"];
 for (const f of files) {
   const code = fs.readFileSync(path.join(root,f), "utf8").replace(/<\/script>/gi, "<\\/script>");
   html = html.replace(`<script src="${f}"></script>`, `<script>${code}</script>`);
@@ -182,6 +182,35 @@ const w = dom.window, wait = ms => new Promise(r=>setTimeout(r,ms)), ev = c => w
   ev(`(${JSON.stringify(ROOMS_ALL)}).forEach(r => { State.setRoom(r); Rooms.render(); })`);
   const ovals = ev(`(${JSON.stringify(ROOMS_ALL)}).reduce((n,r)=>{ State.setRoom(r); Rooms.render(); return n + document.querySelectorAll('#scene-holder ellipse[fill="url(#lampglow)"], #scene-holder ellipse[fill="url(#coldglow)"]').length; }, 0)`);
   check("no oval glow ellipses in any room", ovals === 0);
+
+  // --- wave 4: plumbing simulation + switch persistence ---
+  ev("State.setRoom('suite'); Rooms.render()"); await wait(60);
+  check("suite: switch visible while dark", ev("!!document.querySelector('#v_lswitch') && !!document.querySelector('.hotspot[data-hs=lswitch]')"));
+  ev("if (!State.flag('suiteLightOn')) RoomActions.suite.lswitch()"); await wait(40);
+  check("suite: switch STILL visible after click (never disappears)", ev("!!document.querySelector('#v_lswitch') && !!document.querySelector('.hotspot[data-hs=lswitch]')"));
+  ev("RoomActions.suite.ssink()"); await wait(500);
+  check("suite: sink stream ramps in (physical water)", ev("(() => { const s = document.querySelector('#pw-stream-ssink'); return !!s && parseFloat(s.getAttribute('opacity')) > 0; })()"));
+  ev("RoomActions.suite.ssink()"); await wait(1300);
+  check("suite: stream ramps out, never abrupt", ev("(() => { const s = document.querySelector('#pw-stream-ssink'); return !!s && parseFloat(s.getAttribute('opacity')) === 0; })()"));
+  ev("RoomActions.suite.sshower()"); await wait(500);
+  check("suite: shower spray ramps in", ev("(() => { const s = document.querySelector('#pw-spray-sshower'); return !!s && parseFloat(s.getAttribute('opacity')) > 0; })()"));
+  ev("RoomActions.suite.sshower()"); await wait(200);
+  ev("State.setRoom('washroom'); Rooms.render()"); await wait(60);
+  ev("RoomActions.washroom.wtoilet()"); await wait(600);
+  check("washroom: flush raises bowl water", ev("(() => { const b = document.querySelector('#pw-basin-wtoilet'); return !!b && parseFloat(b.getAttribute('opacity')) > 0; })()"));
+  ev("RoomActions.washroom.wsink()"); await wait(500);
+  check("washroom: sink works like the kitchen tap", ev("(() => { const s = document.querySelector('#pw-stream-wsink'); return !!s && parseFloat(s.getAttribute('opacity')) > 0; })()"));
+  ev("RoomActions.washroom.wsink()");
+  ev("State.setRoom('lavatory'); Rooms.render()"); await wait(60);
+  ev("RoomActions.lavatory.lbasin()"); await wait(500);
+  check("lavatory: basin tap runs", ev("(() => { const s = document.querySelector('#pw-stream-lbasin'); return !!s && parseFloat(s.getAttribute('opacity')) > 0; })()"));
+  ev("RoomActions.lavatory.lbasin()");
+  // abuse: rapid toggles close the main for the whole house
+  ev("for (let i = 0; i < 6; i++) RoomActions.suite.ssink()"); await wait(60);
+  check("abuse: main valve closes after 3-5 quick repeats", ev("Plumbing.houseOff()"));
+  ev("State.setRoom('washroom'); Rooms.render()"); await wait(60);
+  ev("RoomActions.washroom.wsink()"); await wait(400);
+  check("house off: no source runs while the main is closed", ev("(() => { const s = document.querySelector('#pw-stream-wsink'); return !!s && parseFloat(s.getAttribute('opacity')) === 0; })()"));
 
   console.log(fail.length ? "FAILURES: " + fail.join(" | ") : "ALL CHECKS PASSED");
   process.exit(fail.length ? 1 : 0);

@@ -12,7 +12,7 @@ const boot = `<script>
 window.matchMedia = window.matchMedia || (q => ({ matches:false, media:q, addEventListener(){}, removeEventListener(){}, addListener(){}, removeListener(){} }));
 window.HTMLCanvasElement.prototype.getContext = window.HTMLCanvasElement.prototype.getContext || (() => null);
 </script>`;
-const files = ["js/config.js","js/audio.js","js/core.js","js/debug.js","js/condition.js","js/windows.js","js/painting-data.js","js/artlib.js","js/previews.js","js/forest-data.js","js/window-data.js","js/roof-data.js","js/moon-data.js","js/bird-data.js","js/birds.js","js/tree-perches.js","js/anim-registry.js","js/rooms.js","js/puzzles.js","js/fx.js","js/fog.js","js/mirror.js","js/main.js"];
+const files = ["js/config.js","js/audio.js","js/core.js","js/debug.js","js/condition.js","js/windows.js","js/painting-data.js","js/artlib.js","js/previews.js","js/forest-data.js","js/window-data.js","js/roof-data.js","js/moon-data.js","js/bird-data.js","js/birds.js","js/tree-perches.js","js/anim-registry.js","js/rooms.js","js/plumbing.js","js/puzzles.js","js/fx.js","js/fog.js","js/mirror.js","js/main.js"];
 for (const f of files) {
   const code = fs.readFileSync(path.join(root, f), "utf8").replace(/<\/script>/gi, "<\\/script>");
   html = html.replace(`<script src="${f}"></script>`, `<script>${code}</script>`);
@@ -70,8 +70,8 @@ const svgStr = () => ev(`(() => { const s = document.querySelector('#scene-holde
   check("bathroom: water clipped to the basin shape", s.includes('clip-path="url(#bwater)"'));
   check("bathroom: glints live inside the water clip", /clip-path="url\(#bwater\)">[\s\S]*?bwater-glints|bwater[\s\S]{0,4000}opacity="0\.(?:1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]|6[0-9])"/.test(s));
   check("bathroom: steam animates (rising wisps)", /<g opacity="0">\s*<animate attributeName="opacity" values="0;0\.22/.test(s));
-  check("bathroom: towel carries its swing trigger", s.includes('id="towelsway"'));
-  check("bathroom: towel is above the waterline visually", /id="towel-swing"/.test(s));
+  check("bathroom: towel carries its swing trigger", s.includes('id="towelsway-btowel"'));
+  check("bathroom: towel is above the waterline visually", /class="towel-swing"/.test(s));
 
   /* ---------- moon: crescent has no visible occluder disc ---------- */
   check("moon: night side is translucent earthshine, not a solid disc", /opacity="0\.07"/.test(fs.readFileSync(path.join(root, "js/rooms.js"), "utf8")));
