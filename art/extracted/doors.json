@@ -1,0 +1,4 @@
+{
+  "white": { "base": "#94928e", "light": "#bebcb0", "shade": "#4c4c4a", "src": "art/refs/door_white.png" },
+  "green": { "base": "#455044", "light": "#7b866f", "shade": "#1e231c", "src": "art/refs/door_green.png" }
+}

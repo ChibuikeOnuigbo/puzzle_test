@@ -40,14 +40,14 @@ const Plumbing = (() => {
     },
     wsink: {
       room: "washroom", kind: "tap",
-      spout: [640, 320], streamTo: 336,
-      basin: { cx: 640, top: 358, rx: 70, ry: 6, span: 20 },
+      spout: [640, 293], streamTo: 312,
+      basin: { cx: 640, top: 338, rx: 83, ry: 7, span: 24 },
       puddle: { cx: 640, cy: 560, rx: 150, ry: 14 },
     },
     wtoilet: {
       room: "washroom", kind: "flush",
-      chain: [1006, 240, 336],
-      bowl: { cx: 980, cy: 362, rx: 42, ry: 12 },
+      chain: [1012, 190, 307],
+      bowl: { cx: 980, cy: 338, rx: 51, ry: 15 },
     },
     lbasin: {
       room: "lavatory", kind: "tap",

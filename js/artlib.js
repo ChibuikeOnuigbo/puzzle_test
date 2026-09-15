@@ -635,11 +635,12 @@ const Art = (() => {
     /* caps */
     s += `<rect x="${x - 3}" y="${y - 8}" width="${hbW + 6}" height="10" rx="4" fill="${woodL}"/>`;
     s += `<rect x="${x + w - fbW - 3}" y="${footY - 7}" width="${fbW + 6}" height="9" rx="4" fill="${woodL}"/>`;
-    /* optional under-bed drawer (sits between the legs, in the rail shadow) */
+    /* optional under-bed drawer: inset between the legs, clearly part of the
+       frame (narrower than the rail span, tucked under the rail shadow) */
     if (opt.drawer) {
-      s += `<rect x="${x + w * 0.22}" y="${railY + railH + 6}" width="${w * 0.5}" height="${legDrop - 14}" rx="4" fill="${woodD}"/>`;
-      s += `<rect x="${x + w * 0.22 + 8}" y="${railY + railH + 12}" width="${w * 0.5 - 16}" height="${legDrop - 26}" rx="3" fill="${wood}" opacity="0.8"/>`;
-      s += `<circle cx="${x + w * 0.47}" cy="${railY + railH + 6 + (legDrop - 14) / 2}" r="4" fill="${woodL}"/>`;
+      s += `<rect x="${x + w * 0.27}" y="${railY + railH + 8}" width="${w * 0.42}" height="${legDrop - 24}" rx="4" fill="${woodD}"/>`;
+      s += `<rect x="${x + w * 0.27 + 7}" y="${railY + railH + 13}" width="${w * 0.42 - 14}" height="${legDrop - 34}" rx="3" fill="${wood}" opacity="0.85"/>`;
+      s += `<circle cx="${x + w * 0.48}" cy="${railY + railH + 8 + (legDrop - 24) / 2}" r="4" fill="${woodL}"/>`;
     }
     /* centre leg */
     if (q !== "low" && !opt.drawer) s += `<rect x="${x + w * 0.52}" y="${railY + railH}" width="12" height="${legDrop}" fill="${woodD}"/>`;
@@ -658,12 +659,13 @@ const Art = (() => {
       s += `<path d="M${x + hbW + 14},${mTop - 12} q30,-12 72,-6" stroke="${pillowD}" stroke-width="2" fill="none" opacity="0.8"/>`;
       s += `<ellipse cx="${x + hbW + 44}" cy="${mTop - 6}" rx="20" ry="7" fill="${pillowD}" opacity="0.5"/>`;
     }
-    /* blanket: over the mattress, draped past the rail at the foot side */
-    const bTop = mTop - 6, bBot = railY + railH + 12, bR = x + w - fbW + 6;
+    /* blanket: seated ON the mattress (top edge just above the sheet line),
+       draped a little past the rail at the foot side, tucked to the post */
+    const bTop = mTop - 2, bBot = railY + railH + 8, bR = x + w - fbW + 4;
     s += `<rect x="${bx0}" y="${bTop}" width="${bR - bx0}" height="${bBot - bTop}" rx="8" fill="${blanket}"/>`;
-    /* the fold-over edge that hangs at the blanket's head-side */
-    s += `<rect x="${bx0 - 4}" y="${bTop}" width="20" height="${bBot - bTop + 6}" rx="8" fill="${blanket}"/>`;
-    s += `<rect x="${bx0 - 4}" y="${bTop}" width="20" height="${bBot - bTop + 6}" rx="8" fill="${blanketD}" opacity="0.35"/>`;
+    /* the fold-over edge at the blanket's head-side, same drop as the cloth */
+    s += `<rect x="${bx0 - 4}" y="${bTop}" width="18" height="${bBot - bTop}" rx="7" fill="${blanket}"/>`;
+    s += `<rect x="${bx0 - 4}" y="${bTop}" width="18" height="${bBot - bTop}" rx="7" fill="${blanketD}" opacity="0.35"/>`;
     s += `<rect x="${bx0}" y="${bTop}" width="${bR - bx0}" height="10" rx="5" fill="${blanketL}" opacity="0.9"/>`;
     if (pattern === "stripes") {
       for (let px = bx0 + 26; px < bR - 10; px += 30) s += `<line x1="${px}" y1="${bTop + 12}" x2="${px}" y2="${bBot - 6}" stroke="${blanketD}" stroke-width="5" opacity="0.7"/>`;
@@ -706,25 +708,71 @@ const Art = (() => {
   }
 
   /* COBWEB — corner web: radial spokes + sagging rings. opt.o = visibility. */
+  /* ---- natural corner webs. The structure (spoke angles, ring radii, sag,
+     broken gaps, anchor strands) is generated ONCE per seed and stored in a
+     module-level array cache, so every render of a room rebuilds the exact
+     same web — each room keeps its own web's structure. Spokes are slightly
+     curved silk, capture rings sag between spokes like real orb webs, a few
+     segments are missing (torn), and 2-3 anchor strands run past the rim to
+     the wall so the web reads GLUED to the corner under parallax. ---- */
+  const WEB_CACHE = {};
+  function webStructure(key, seedNum, spokes, rings) {
+    if (WEB_CACHE[key]) return WEB_CACHE[key];
+    const R = rng(seedNum);
+    const st = { spokes: [], rings: [], anchors: [] };
+    for (let i = 0; i <= spokes; i++) {
+      const a = (Math.PI / 2) * (i / spokes) + (R() - 0.5) * 0.06;
+      st.spokes.push({ a, bow: (R() - 0.5) * 0.10, len: 0.92 + R() * 0.1 });
+    }
+    for (let k = 1; k <= rings; k++) {
+      const rr = 0.28 + 0.72 * (k / rings) + (R() - 0.5) * 0.05;
+      const seg = [];
+      for (let i = 0; i < spokes; i++) seg.push({ sag: 0.06 + R() * 0.10, torn: R() < 0.12 });
+      st.rings.push({ rr, seg });
+    }
+    const na = 2 + Math.floor(R() * 2);
+    for (let i = 0; i < na; i++) st.anchors.push({ a: (Math.PI / 2) * R(), len: 1.15 + R() * 0.25 });
+    WEB_CACHE[key] = st;
+    return st;
+  }
   function cobweb(x, y, r, opt = {}) {
     const q = tier();
     const o = opt.o != null ? opt.o : 0.25;
-    const spokes = q === "high" ? 7 : 5;
-    const col = opt.col || "#9aa19b";
-    let s = `<g opacity="${o}" stroke="${col}" fill="none" stroke-width="1.2">`;
-    for (let i = 0; i <= spokes; i++) {
-      const a = Math.PI / 2 * i / spokes;
-      s += `<line x1="${x}" y1="${y}" x2="${(x + Math.cos(a) * r).toFixed(0)}" y2="${(y + Math.sin(a) * r).toFixed(0)}"/>`;
-    }
-    for (let k = 1; k <= 3; k++) {
-      const rr = r * k / 3.4;
-      let d = `M${(x + rr).toFixed(0)},${y}`;
-      for (let i = 1; i <= spokes; i++) {
-        const a = Math.PI / 2 * i / spokes;
-        d += ` L${(x + Math.cos(a) * rr).toFixed(0)},${(y + Math.sin(a) * rr).toFixed(0)}`;
+    const spokes = q === "high" ? 9 : q === "medium" ? 7 : 5;
+    const rings = q === "high" ? 5 : q === "medium" ? 4 : 2;
+    const col = opt.col || "#aeb6b0";
+    const key = `${x},${y},${r},${opt.seed || 0}`;
+    const st = webStructure(key, (opt.seed || Math.round(r * 7 + x)) + 5, spokes, rings);
+    const P = (a, rr) => [x + Math.cos(a) * r * rr, y + Math.sin(a) * r * rr];
+    let s = `<g opacity="${o}" stroke="${col}" fill="none" stroke-linecap="round">`;
+    /* anchor strands first: silk glued past the rim into the corner */
+    st.anchors.forEach((an) => {
+      const [ax, ay] = P(an.a, an.len);
+      s += `<path d="M${x},${y} Q${(x + Math.cos(an.a) * r * 0.6).toFixed(1)},${(y + Math.sin(an.a) * r * 0.6 + 2).toFixed(1)} ${ax.toFixed(1)},${ay.toFixed(1)}" stroke-width="0.9" opacity="0.9"/>`;
+    });
+    /* spokes: curved silk from the hub */
+    st.spokes.forEach((sp) => {
+      const [ex, ey] = P(sp.a, sp.len);
+      const mx = x + Math.cos(sp.a + sp.bow) * r * sp.len * 0.5;
+      const my = y + Math.sin(sp.a + sp.bow) * r * sp.len * 0.5 + 1.5;
+      s += `<path d="M${x},${y} Q${mx.toFixed(1)},${my.toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)}" stroke-width="1"/>`;
+    });
+    /* capture rings: sagging arcs between spokes, some torn away */
+    st.rings.forEach((ring) => {
+      for (let i = 0; i < spokes; i++) {
+        const seg = ring.seg[i];
+        if (seg.torn) continue;
+        const a0 = st.spokes[i].a, a1 = st.spokes[i + 1].a;
+        const [x0, y0] = P(a0, ring.rr * st.spokes[i].len);
+        const [x1, y1] = P(a1, ring.rr * st.spokes[i + 1].len);
+        const am = (a0 + a1) / 2;
+        const [mx, my] = P(am, ring.rr * (1 - seg.sag));
+        s += `<path d="M${x0.toFixed(1)},${y0.toFixed(1)} Q${mx.toFixed(1)},${my.toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}" stroke-width="0.8" opacity="0.85"/>`;
       }
-      s += `<path d="${d}" opacity="0.8"/>`;
-    }
+    });
+    /* hub knot + a single glint thread on high */
+    s += `<circle cx="${x}" cy="${y}" r="1.6" fill="${col}" stroke="none" opacity="0.8"/>`;
+    if (q === "high") s += `<path d="M${x},${y} Q${(x + r * 0.4).toFixed(1)},${(y + r * 0.16).toFixed(1)} ${(x + r * 0.8).toFixed(1)},${(y + r * 0.3).toFixed(1)}" stroke="#e8f0ea" stroke-width="0.6" opacity="0.5"/>`;
     return s + "</g>";
   }
 

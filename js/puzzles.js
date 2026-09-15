@@ -1995,6 +1995,24 @@ const RoomActions = {
       ]));
       maybeFakeRealization();
     },
+    chdrawers() {
+      if (!State.flag("chDrawerOpen")) {
+        State.setFlag("chDrawerOpen");
+        AudioM.open();
+        Dialogue.say(Dialogue.pick("chdrawO", [
+          "The top drawer slides out on smooth runners. Inside: a ribbon, and a jack with a chipped corner.",
+          "Opened. The drawer holds its small hoard, arranged as if for a photograph.",
+        ]));
+      } else {
+        State.setFlag("chDrawerOpen", false);
+        AudioM.close();
+        Dialogue.say(Dialogue.pick("chdrawC", [
+          "I push the drawer shut. It closes with a soft, oiled click.",
+          "Closed. The chest keeps its grain and its silence.",
+        ]));
+      }
+      Rooms.render();
+    },
     cdrawings() {
       if (State.flag("pageEaten") && !State.flag("pageRewritten") && !State.hasItem("paper")) {
         if (State.hasItem("pen")) {

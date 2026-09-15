@@ -31,6 +31,7 @@ const CASES = [
   { room: "kitchen",  hs: "lockbox",   flag: "lockboxOpen", group: "v_lockbox", pre: "State.setFlag('tookStudyKey', true); State.setFlag('lockboxOpen', true);" },
   { room: "diningroom", hs: "sideboard", flag: "sbOpen", group: "v_sideboard" },
   { room: "bathroom", hs: "bcab", flag: "bcabOpen", group: "v_bcab", pre: "State.setFlag('bcabOpen', 0);" },
+  { room: "childroom", hs: "chdrawers", flag: "chDrawerOpen", group: "v_musicbox" },
 ];
 
 (async () => {
