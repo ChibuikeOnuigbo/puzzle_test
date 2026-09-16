@@ -32,6 +32,9 @@ const CASES = [
   { room: "diningroom", hs: "sideboard", flag: "sbOpen", group: "v_sideboard" },
   { room: "bathroom", hs: "bcab", flag: "bcabOpen", group: "v_bcab", pre: "State.setFlag('bcabOpen', 0);" },
   { room: "childroom", hs: "chdrawers", flag: "chDrawerOpen", group: "v_musicbox" },
+  { room: "study", hs: "drawer1", flag: "sdrawerOpen", group: "v_desk" },
+  { room: "guestroom", hs: "gdesk", flag: "guestShut", group: "v_gudesk", pre: "State.setFlag('guestboxOpen', true);" },
+  { room: "attic", hs: "trunk", flag: "trunkShut", group: "v_trunk", pre: "State.setFlag('atticTruth', true);" },
 ];
 
 (async () => {

@@ -2136,11 +2136,23 @@ const RoomActions = {
           <p>Four of them have people in them, blurred with motion, alive. The fifth chair is empty and pulled out, waiting.</p>
           <p class="small-note">On the back, in pencil: tally marks. Seventeen of them. Then the pencil pressed hard enough to tear.</p>`);
         Rooms.render();
+      } else if (!State.flag("trunkShut")) {
+        /* the lid can be shut again, and re-opened; the truth stays found */
+        State.setFlag("trunkShut");
+        AudioM.close();
+        Dialogue.say(Dialogue.pick("trunkC", [
+          "I lower the lid. The latch clicks like a full stop.",
+          "Shut again. The photograph's rectangle of cleaner wood stays in my head.",
+        ]));
+        Rooms.render();
       } else {
+        State.setFlag("trunkShut", false);
+        AudioM.open();
         Dialogue.say(Dialogue.pick("trunk2", [
           "Empty now, except the smell of old paper and a rectangle of cleaner wood where the photograph waited.",
           "The trunk has nothing left to say.",
         ]));
+        Rooms.render();
       }
     },
     fifthchair() {
@@ -2304,11 +2316,23 @@ const RoomActions = {
       ]));
     },
     drawer1() {
-      Dialogue.say(Dialogue.pick("sdrawer", [
-        "Pencils, string, a broken watch. The watch says 8:17. Naturally.",
-        "Receipts. All groceries, all the same four items, week after week: milk, bread, apples, batteries.",
-        "Empty envelopes addressed to “The Visitor.” No street. No stamp.",
-      ]));
+      if (!State.flag("sdrawerOpen")) {
+        State.setFlag("sdrawerOpen");
+        AudioM.open();
+        Dialogue.say(Dialogue.pick("sdrawer", [
+          "Pencils, string, a broken watch. The watch says 8:17. Naturally.",
+          "Receipts. All groceries, all the same four items, week after week: milk, bread, apples, batteries.",
+          "Empty envelopes addressed to “The Visitor.” No street. No stamp.",
+        ]));
+      } else {
+        State.setFlag("sdrawerOpen", false);
+        AudioM.close();
+        Dialogue.say(Dialogue.pick("sdrawerC", [
+          "I push the drawer home. The broken watch stays at 8:17 in the dark.",
+          "Closed. The desk keeps its two neat fronts and its secrets.",
+        ]));
+      }
+      Rooms.render();
     },
   },
 
@@ -2586,7 +2610,13 @@ const RoomActions = {
     guback() { Rooms.goto("attic", null); },
     gdesk() {
       if (State.flag("guestboxOpen")) {
-        Dialogue.say("The drawer stands open. The dials rest at nothing, keeping their own counsel.");
+        const shut = !State.flag("guestShut");
+        State.setFlag("guestShut", shut);
+        if (shut) AudioM.close(); else AudioM.open();
+        Dialogue.say(shut
+          ? "I slide the drawer shut. The dials rest at nothing, keeping their own counsel."
+          : "The drawer runs open again on waxed runners. The ledger waits where I left it.");
+        Rooms.render();
         return;
       }
       Puzzles.guestDial();

@@ -3367,7 +3367,7 @@ const Rooms = (() => {
   function svgAttic() {
     const Q = quality();
     const QH = Q === "high", QM = Q !== "low";
-    const trunkOpen = State.flag("atticTruth");
+    const trunkOpen = State.flag("atticTruth") && !State.flag("trunkShut");
     const torchOn = State.hasItem("torch") && State.flag("torchOn") === true;
     return `<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
     ${DEFS}
@@ -3539,8 +3539,25 @@ const Rooms = (() => {
         <rect x="380" y="400" width="480" height="24" fill="#4a3826"/>
         <rect x="396" y="424" width="120" height="150" fill="url(#woodg)"/>
         <rect x="724" y="424" width="120" height="150" fill="url(#woodg)"/>
-        <rect x="404" y="438" width="104" height="30" rx="3" fill="#33261a" stroke="#241a11" stroke-width="2"/>
+        ${State.flag("sdrawerOpen") ? `
+          <!-- top drawer pulled toward the viewer: interior + sides + hoard -->
+          <polygon points="408,442 504,442 498,470 414,470" fill="#241a11"/>
+          <polygon points="408,442 414,470 414,475 408,447" fill="#33261a"/>
+          <polygon points="504,442 498,470 498,475 504,447" fill="#2c2115"/>
+          <rect x="424" y="450" width="34" height="7" rx="3" fill="#8a7148" transform="rotate(7 441 453)"/>
+          <circle cx="474" cy="456" r="8" fill="#c9bb9b" stroke="#8a7148" stroke-width="2"/>
+          <line x1="474" y1="456" x2="474" y2="450" stroke="#4a3826" stroke-width="1.6"/>
+          <line x1="474" y1="456" x2="479" y2="458" stroke="#4a3826" stroke-width="1.6"/>
+          <rect x="448" y="460" width="18" height="9" rx="4" fill="#5d6b52"/>
+          <polygon points="400,470 512,470 518,504 394,504" fill="#3f2f20" stroke="#241a11" stroke-width="3"/>
+          <circle cx="424" cy="487" r="4" fill="#8a7148"/><circle cx="488" cy="487" r="4" fill="#8a7148"/>
+          <ellipse cx="456" cy="508" rx="62" ry="5" fill="#0d0a08" opacity="0.3"/>
+        ` : `
+          <rect x="404" y="438" width="104" height="30" rx="3" fill="#33261a" stroke="#241a11" stroke-width="2"/>
+          <rect x="446" y="450" width="20" height="6" rx="3" fill="#8a7148"/>
+        `}
         <rect x="404" y="476" width="104" height="30" rx="3" fill="#33261a" stroke="#241a11" stroke-width="2"/>
+        <rect x="446" y="488" width="20" height="6" rx="3" fill="#8a7148"/>
       </g>
       ${State.flag("act2") && !State.flag("hasBag") ? `
       <!-- a child's school satchel, pushed into the desk's knee space -->
@@ -4620,9 +4637,21 @@ const Rooms = (() => {
         <ellipse cx="1020" cy="586" rx="150" ry="10" fill="#0d0a08" opacity="0.4"/>
         <rect x="880" y="420" width="290" height="16" fill="#4a3826"/>
         <rect x="890" y="436" width="16" height="146" fill="#33261a"/><rect x="1144" y="436" width="16" height="146" fill="#33261a"/>
-        <rect x="906" y="436" width="238" height="60" fill="#3a2c1e" stroke="#241a11" stroke-width="3"/>
-        <circle cx="1025" cy="466" r="7" fill="#8a7148"/>
-        ${["wave", "leaf", "bell"].map((k, i) => `<circle cx="${965 + i * 60}" cy="466" r="14" fill="#5d4a35" stroke="#8a7148" stroke-width="2"/>${k === "wave" ? `<path d="M${957 + i * 60},466 q4,-6 8,0 q4,6 8,0" stroke="#c9a35f" stroke-width="2" fill="none"/>` : k === "leaf" ? `<path d="M${965 + i * 60},458 q7,8 0,16 q-7,-8 0,-16" fill="#c9a35f"/>` : `<path d="M${961 + i * 60},470 q4,-12 8,0 l2,2 l-12,0 Z" fill="#c9a35f"/>`}`).join("")}
+        ${State.flag("guestboxOpen") && !State.flag("guestShut") ? `
+          <!-- drawer run open on waxed runners: interior, sides, the ledger -->
+          <polygon points="912,440 1138,440 1126,472 924,472" fill="#241a11"/>
+          <polygon points="912,440 924,472 924,478 912,446" fill="#33261a"/>
+          <polygon points="1138,440 1126,472 1126,478 1138,446" fill="#2c2115"/>
+          <rect x="962" y="450" width="96" height="16" rx="2" fill="#c9bb9b" transform="rotate(-2 1010 458)"/>
+          <line x1="972" y1="456" x2="1046" y2="454" stroke="#8a7f6c" stroke-width="1.6" opacity="0.8"/>
+          <polygon points="906,470 1144,470 1152,512 898,512" fill="#453322" stroke="#241a11" stroke-width="3"/>
+          ${["wave", "leaf", "bell"].map((k, i) => `<circle cx="${965 + i * 60}" cy="491" r="14" fill="#5d4a35" stroke="#8a7148" stroke-width="2"/>${k === "wave" ? `<path d="M${957 + i * 60},491 q4,-6 8,0 q4,6 8,0" stroke="#c9a35f" stroke-width="2" fill="none"/>` : k === "leaf" ? `<path d="M${965 + i * 60},483 q7,8 0,16 q-7,-8 0,-16" fill="#c9a35f"/>` : `<path d="M${961 + i * 60},495 q4,-12 8,0 l2,2 l-12,0 Z" fill="#c9a35f"/>`}`).join("")}
+          <ellipse cx="1025" cy="516" rx="120" ry="6" fill="#0d0a08" opacity="0.35"/>
+        ` : `
+          <rect x="906" y="436" width="238" height="60" fill="#3a2c1e" stroke="#241a11" stroke-width="3"/>
+          <circle cx="1025" cy="466" r="7" fill="#8a7148"/>
+          ${["wave", "leaf", "bell"].map((k, i) => `<circle cx="${965 + i * 60}" cy="466" r="14" fill="#5d4a35" stroke="#8a7148" stroke-width="2"/>${k === "wave" ? `<path d="M${957 + i * 60},466 q4,-6 8,0 q4,6 8,0" stroke="#c9a35f" stroke-width="2" fill="none"/>` : k === "leaf" ? `<path d="M${965 + i * 60},458 q7,8 0,16 q-7,-8 0,-16" fill="#c9a35f"/>` : `<path d="M${961 + i * 60},470 q4,-12 8,0 l2,2 l-12,0 Z" fill="#c9a35f"/>`}`).join("")}
+        `}
         ${QH ? `<rect x="1080" y="398" width="44" height="22" rx="3" fill="#6b5d4a"/><rect x="1086" y="392" width="32" height="8" rx="2" fill="#8a7f6c"/>` : ""}
       </g>
       <g id="v_guchair">
