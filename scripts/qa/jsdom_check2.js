@@ -218,6 +218,12 @@ const w = dom.window, wait = ms => new Promise(r=>setTimeout(r,ms)), ev = c => w
   check("kitchen: 8 taps knock the bowl", ev("State.flag('knock:bowl') === true"));
   await wait(1500);
   check("kitchen: bowl hidden and shards + apples on the floor", ev("(() => { const b = document.querySelector('#v_bowl'); const dyn = document.querySelector('#knock-dyn'); return !!b && b.style.display === 'none' && !!dyn && dyn.querySelectorAll('polygon').length >= 8 && dyn.querySelectorAll('circle').length >= 2; })()"));
+  // asset tree: the table's cup rides the fall; the shadow follows the body
+  ev("for (let i = 0; i < 8; i++) Knock.tap('ktable', 'kitchen')");
+  check("kitchen: 8 taps tip the table", ev("State.flag('knock:ktable') === true"));
+  await wait(1200);
+  check("kitchen: the cup rode the table down", ev("(() => { const c = document.querySelector('#v_cup'); return !!c && /rotate\\(9[0-9]/.test(c.getAttribute('transform') || ''); })()"));
+  check("kitchen: table shadow counter-rotated and stretched", ev("(() => { const s = document.querySelector('#v_table .kshadow'); return !!s && /rotate\\(-9[0-9]/.test(s.getAttribute('transform') || '') && parseFloat(s.getAttribute('rx')) > 50; })()"));
   ev("Knock.leave('kitchen')");
   check("kitchen: leaving schedules a house repair 17-34s out", ev("(() => { const f = State.flag('knockFix:bowl'); return typeof f === 'number' && f - Date.now() > 16000 && f - Date.now() < 35000; })()"));
   ev("State.setFlag('knockFix:bowl', Date.now() - 5); State.setRoom('hallway'); Rooms.render()"); await wait(60);

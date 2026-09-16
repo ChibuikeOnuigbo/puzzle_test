@@ -5,22 +5,32 @@
    fruit with velocity, restitution and friction), the crash/thud carries a
    reverb tail, and the pieces stay on the floor.
 
+   ASSET TREE: entries may declare children (things resting on them) and a
+   parent. When a parent falls, every child rides the same rotation about
+   the parent's pivot — the cup goes over with the table, the jug with the
+   washstand — while each child can still be knocked on its own.
+
+   SHADOWS: every knockable's contact shadow (class .kshadow) is
+   counter-rotated while the object falls and stretched out under the
+   lying body once it lands; shatter debris casts its own scatter shadow.
+
    The house disagrees with entropy: leave the room and after a random
    17-34 seconds it puts everything back, whole; on return the player
-   notices. Knocked state and the house's repair schedule persist in State
-   flags so saves keep the mess (or the tidied shelf).
+   notices. Knocked state and the repair schedule persist in State flags.
 ===================================================================== */
 /* global State, AudioM, Dialogue */
 const Knock = (() => {
   "use strict";
 
-  /* bb: the object's own bounding box in its local coordinates, read from
-     the room art, so the physics is identical with or without getBBox. */
+  /* bb: the object's own bounding box in local coordinates, read from the
+     room art, so the physics is identical with or without getBBox. */
   const CFG = [
     { room: "kitchen", hs: "bowl", target: "v_bowl", kind: "shatter", dir: 1, label: "the bowl of apples", shard: "#9fb3b8", n: 9, apples: 3, bb: { x: 390, y: 562, w: 176, h: 72 } },
-    { room: "kitchen", hs: "cup", target: "v_cup", kind: "shatter", dir: -1, label: "the teacup", shard: "#c9b8a0", n: 6, bb: { x: 556, y: 578, w: 50, h: 34 } },
+    { room: "kitchen", hs: "ktable", target: "v_table", kind: "tip", dir: 1, label: "the kitchen table", bb: { x: 290, y: 584, w: 364, h: 122 }, children: ["cup"] },
+    { room: "kitchen", hs: "cup", target: "v_cup", kind: "shatter", dir: -1, parent: "ktable", label: "the teacup", shard: "#c9b8a0", n: 6, bb: { x: 556, y: 578, w: 50, h: 34 } },
     { room: "diningroom", hs: "smallchair", target: "v_smallchair", kind: "tip", dir: 1, label: "the small chair", bb: { x: 834, y: 464, w: 70, h: 224 } },
     { room: "bathroom", hs: "bstand", target: "v_bstand", kind: "tip", dir: 1, label: "the washstand", shard: "#b8bdc1", n: 6, bb: { x: 160, y: 414, w: 160, h: 196 } },
+    { room: "bathroom", hs: "bjug", target: "v_bjug", kind: "tip", dir: 1, parent: "bstand", label: "the jug", bb: { x: 232, y: 408, w: 46, h: 62 } },
     { room: "study", hs: "slamp", target: "v_slamp", kind: "tip", dir: -1, label: "the desk lamp", shard: "#d8b46a", n: 5, bb: { x: 436, y: 364, w: 42, h: 38 } },
     { room: "conservatory", hs: "wcan", target: "v_wcan", kind: "tip", dir: 1, label: "the watering can", bb: { x: 530, y: 638, w: 60, h: 28 } },
     { room: "washroom", hs: "wstool", target: "v_wstool", kind: "tip", dir: -1, label: "the stool", bb: { x: 180, y: 440, w: 80, h: 104 } },
@@ -47,6 +57,11 @@ const Knock = (() => {
     if (el.dataset.ot === undefined) el.dataset.ot = el.getAttribute("transform") || "";
     return el.dataset.ot;
   }
+  const pivotOf = (cfg) => {
+    const bb = cfg.bb;
+    return [cfg.dir > 0 ? bb.x + bb.w : bb.x, bb.y + bb.h];
+  };
+  const ANG = 94;
 
   /* ---------- shard physics: shared by live fall and static rebuild ---- */
   function makePieces(cfg, bb, floorY, R) {
@@ -94,14 +109,39 @@ const Knock = (() => {
     const s = p.s;
     return `<polygon points="${(-s * 0.6).toFixed(1)},${(s * 0.4).toFixed(1)} ${(s * 0.5).toFixed(1)},${(s * 0.5).toFixed(1)} ${(s * 0.1).toFixed(1)},${(-s * 0.6).toFixed(1)}" fill="${p.col}" stroke="#0d0a08" stroke-width="0.6" opacity="0.95" transform="translate(${p.x.toFixed(1)},${p.y.toFixed(1)}) rotate(${p.rot.toFixed(0)})"/>`;
   }
+  /* pieces plus one soft scatter shadow under the whole cluster */
+  function drawPieces(pieces, floorY) {
+    let mn = 1e9, mx = -1e9;
+    pieces.forEach((p) => { mn = Math.min(mn, p.x - p.s); mx = Math.max(mx, p.x + p.s); });
+    return `<ellipse cx="${((mn + mx) / 2).toFixed(0)}" cy="${(floorY + 3).toFixed(0)}" rx="${((mx - mn) / 2 + 5).toFixed(0)}" ry="3.5" fill="#0d0a08" opacity="0.3"/>`
+      + pieces.map(drawPiece).join("");
+  }
 
   /* settled pieces, deterministic per object: for re-renders after the fall */
   function settledArt(cfg, bb, floorY) {
     const R = rng32(hash(cfg.hs));
     const pieces = makePieces(cfg, bb, floorY, R);
     for (let t = 0; t < 2.4; t += 0.03) stepPieces(pieces, 0.03, floorY);
-    return pieces.map(drawPiece).join("");
+    return drawPieces(pieces, floorY);
   }
+
+  /* ---------- the contact shadow follows the fall ---------------------- */
+  function shadowPose(el, cfg, a, settle) {
+    const sh = el.querySelector(".kshadow");
+    if (!sh) return;
+    const [px, py] = pivotOf(cfg);
+    sh.setAttribute("transform", `rotate(${(-a).toFixed(1)} ${px.toFixed(0)} ${py.toFixed(0)})`);
+    if (settle) {
+      sh.setAttribute("cx", (px + cfg.dir * cfg.bb.h * 0.42).toFixed(0));
+      sh.setAttribute("rx", (cfg.bb.h * 0.5).toFixed(0));
+    }
+  }
+
+  const childEls = (holder, cfg, el) => (cfg.children || [])
+    .map((h) => byHs[cfg.room + ":" + h])
+    .filter(Boolean)
+    .map((cc) => holder.querySelector("#" + cc.target))
+    .filter((ce) => ce && (!el || !el.contains(ce))); /* nested art rides for free */
 
   /* ---------- applying a knocked pose to the live DOM ------------------ */
   function applyPose(holder, cfg) {
@@ -109,10 +149,14 @@ const Knock = (() => {
     if (!el) return;
     const bb = cfg.bb;
     const floorY = bb.y + bb.h + (cfg.kind === "tip" ? 2 : 4);
+    const [px, py] = pivotOf(cfg);
     if (cfg.kind === "tip") {
-      const px = cfg.dir > 0 ? bb.x + bb.w : bb.x;
-      const py = bb.y + bb.h;
-      el.setAttribute("transform", `${origT(el)} rotate(${(94 * cfg.dir).toFixed(0)} ${px.toFixed(0)} ${py.toFixed(0)})`);
+      const a = ANG * cfg.dir;
+      el.setAttribute("transform", `${origT(el)} rotate(${a.toFixed(0)} ${px.toFixed(0)} ${py.toFixed(0)})`);
+      shadowPose(el, cfg, a, true);
+      /* the asset tree: anything resting on it goes over with it */
+      childEls(holder, cfg, el).forEach((ce) =>
+        ce.setAttribute("transform", `${origT(ce)} rotate(${a.toFixed(0)} ${px.toFixed(0)} ${py.toFixed(0)})`));
     } else {
       el.style.display = "none";
     }
@@ -138,8 +182,9 @@ const Knock = (() => {
     State.setFlag("knock:" + cfg.hs, true);
     if (reduced() || typeof requestAnimationFrame === "undefined") { applyPose(holder, cfg); return; }
     const ot = origT(el);
-    const px = cfg.dir > 0 ? bb.x + bb.w : bb.x, py = bb.y + bb.h;
-    const ang = 94 * cfg.dir;
+    const [px, py] = pivotOf(cfg);
+    const ang = ANG * cfg.dir;
+    const kids = childEls(holder, cfg, el).map((ce) => [ce, origT(ce)]);
     const t0 = performance.now();
     let impacted = false, pieces = null, lastT = t0;
     let dyn = holder.querySelector("#knock-dyn");
@@ -156,6 +201,9 @@ const Knock = (() => {
         if (t > 0.5 && t < 0.62) a = ang * 1.06; /* the little bounce */
         if (t >= 0.62) a = ang;
         el.setAttribute("transform", `${ot} rotate(${a.toFixed(1)} ${px.toFixed(0)} ${py.toFixed(0)})`);
+        shadowPose(el, cfg, a, t >= 0.62);
+        kids.forEach(([ce, cot]) =>
+          ce.setAttribute("transform", `${cot} rotate(${a.toFixed(1)} ${px.toFixed(0)} ${py.toFixed(0)})`));
         if (t >= 0.5 && !impacted) {
           impacted = true;
           if (cfg.kind === "shatter" || cfg.shard) {
@@ -166,16 +214,14 @@ const Knock = (() => {
           } else AudioM.thud();
           try {
             Dialogue.say(cfg.kind === "shatter"
-              ? [`${cap(cfg.label)} lets go all at once. The sound is bigger than the thing; the walls hand it back twice.`,
-                 `It breaks the way small things do — completely. Pieces everywhere, and my ears ringing with the room's own echo.`][hash(cfg.hs) % 2]
-              : [`${cap(cfg.label)} tips over slow, then fast, and the floor takes it with a dull knock.`,
-                 `Over it goes. I watched the whole fall and did nothing. That is the worst part.`][hash(cfg.hs) % 2]);
+              ? ["Smashed. The echo outlasts it.", "It breaks all at once. Hm."][hash(cfg.hs) % 2]
+              : ["Over it goes.", "Down it comes. The floor barely notices."][hash(cfg.hs) % 2]);
           } catch (e) {}
         }
       }
       if (pieces) {
         stepPieces(pieces, dt, floorY);
-        dyn.innerHTML = pieces.map(drawPiece).join("");
+        dyn.innerHTML = drawPieces(pieces, floorY);
         const calm = pieces.every((p) => p.vy === 0 && Math.abs(p.vx) < 3);
         if (calm && t > 1.4) { raf = 0; return; }
       } else if (t > 0.8) { raf = 0; return; }
@@ -231,8 +277,8 @@ const Knock = (() => {
             try {
               State.addAware(1);
               Dialogue.say([
-                `${cap(cfg.label)} is back where it was. Whole. The floor keeps no memory of the pieces.`,
-                `Someone set ${cfg.label} upright again. No sound of it happening. No sound of anything happening.`,
+                `${cap(cfg.label)} is back where it was. Whole.`,
+                `Set upright again. No sound of it happening.`,
               ][hash(cfg.hs) % 2]);
             } catch (e) {}
           }

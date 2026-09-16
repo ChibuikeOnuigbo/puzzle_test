@@ -1256,6 +1256,12 @@ const RoomActions = {
         ]));
       }
     },
+    ktable() {
+      Dialogue.say(Dialogue.pick("ktable", [
+        "The kitchen table, scarred by a thousand meals.",
+        "It stands solid. The cup on it would not survive me leaning on it.",
+      ]));
+    },
     kwin() {
       if (State.flag("falseKitchen")) {
         Dialogue.say([
@@ -1618,6 +1624,12 @@ const RoomActions = {
       Dialogue.say(Dialogue.pick("bstand", [
         "A washstand, small and scrubbed. The jug is full of water and the basin is empty and clean, the opposite way round to any basin I have ever left.",
         "A folded towel on the shelf beneath, edges aligned. Someone kept this room ready. Someone keeps it ready still.",
+      ]));
+    },
+    bjug() {
+      Dialogue.say(Dialogue.pick("bjug", [
+        "The jug, heavy with water.",
+        "It wobbles if I nudge it. I don't nudge it. Yet.",
       ]));
     },
     bcab() {

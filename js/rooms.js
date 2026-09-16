@@ -141,38 +141,36 @@ const Rooms = (() => {
         ? `<animateTransform attributeName="transform" type="scale" values="1 1;1 0.28;1 1;1 0.3;1 1;${holds}1 1" dur="${flapDur}s" repeatCount="indefinite"/>`
           + `<animateTransform attributeName="transform" type="rotate" additive="sum" values="0;-14;5;-12;0;${sweeps}0" dur="${flapDur}s" repeatCount="indefinite"/>`
         : "";
-      // wings root at the shoulder (just behind the head) and sweep BACK
-      // toward the tail; three species: 0 corvid, 1 swallow (scythe wings,
-      // deep fork), 2 finch (short round wings, plump body, notched tail)
+      // wings root at the shoulder and sweep BACK; smooth curved leading
+      // edge, separated primaries (feather fingers) on the trailing edge —
+      // anatomy taken from the 3D bird refs in artifacts/refs/.
+      // three species: 0 corvid, 1 swallow (long scythe wings, deep fork),
+      // 2 finch (short round wings, plump body, short fan tail)
       const wing = kind === 1
-        ? `M1.8,-0.4 L-0.2,-5.4 L-1.6,-11.2 L-2.6,-9.8 L-3.0,-7.2 L-4.2,-8.6 L-4.6,-6.6 L-5.4,-5.2 Q-4.6,-2.2 -2.6,-0.5 Z`   // swallow: scythe wings
+        ? `M1.9,-0.8 Q1.4,-3.6 0.6,-6.6 Q0.0,-9.8 -1.4,-12.6 L-2.4,-11.6 Q-2.2,-10.8 -2.9,-10.4 L-3.5,-9.2 Q-3.2,-8.5 -3.9,-8.2 L-4.3,-7.0 Q-3.7,-4.0 -2.8,-1.8 Q-2.0,-0.9 -0.9,-0.7 Z`
         : kind === 2
-        ? `M1.4,-0.4 L-0.4,-4.8 L-1.8,-8.4 L-3.2,-7.2 L-3.6,-4.8 Q-3.4,-1.8 -2.2,-0.4 Z`                                     // finch: short round wing
-        : `M1.6,-0.4 L-0.6,-6.2 L-2.4,-10.4 L-3.2,-9.6 L-3.4,-7.4 L-4.6,-9.0 L-5.0,-8.0 L-4.6,-6.0 L-5.8,-7.0 L-5.8,-5.6 Q-5.0,-2.6 -3.0,-0.6 Z`;
-      const wingDn = kind === 1
-        ? `M1.8,0.4 L-0.2,5.4 L-1.6,11.2 L-2.6,9.8 L-3.0,7.2 L-4.2,8.6 L-4.6,6.6 L-5.4,5.2 Q-4.6,2.2 -2.6,0.5 Z`
-        : kind === 2
-        ? `M1.4,0.4 L-0.4,4.8 L-1.8,8.4 L-3.2,7.2 L-3.6,4.8 Q-3.4,1.8 -2.2,0.4 Z`
-        : `M1.6,0.4 L-0.6,6.2 L-2.4,10.4 L-3.2,9.6 L-3.4,7.4 L-4.6,9.0 L-5.0,8.0 L-4.6,6.0 L-5.8,7.0 L-5.8,5.6 Q-5.0,2.6 -3.0,0.6 Z`;
+        ? `M1.7,-0.8 Q1.2,-2.9 0.4,-4.9 Q-0.2,-7.0 -1.4,-8.6 L-2.3,-7.9 Q-2.1,-7.3 -2.7,-7.0 L-3.2,-6.0 Q-2.9,-5.4 -3.4,-5.1 L-3.6,-4.2 Q-3.1,-2.4 -2.4,-1.3 Q-1.7,-0.8 -0.8,-0.7 Z`
+        : `M1.8,-0.8 Q1.3,-3.3 0.5,-5.9 Q-0.2,-8.8 -1.6,-11.0 L-2.6,-10.2 Q-2.4,-9.4 -3.0,-9.1 L-3.6,-7.9 Q-3.3,-7.2 -3.9,-6.9 L-4.3,-5.8 Q-3.8,-3.2 -2.9,-1.6 Q-2.1,-0.8 -1.0,-0.7 Z`;
+      const wingDn = wing.replace(/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g, (_m, x, y) => `${x},${+(-parseFloat(y)).toFixed(2)}`);
       const tail = kind === 1
-        ? `M-4.2,0 L-8.6,-2.6 L-7.0,0 L-8.6,2.6 Z`   // deep fork
+        ? `M-4.0,0 L-8.6,-2.2 Q-7.4,0 -8.6,2.2 Z`                       // deep fork
         : kind === 2
-        ? `M-3.6,0 L-6.2,-1.6 L-5.4,0 L-6.2,1.6 Z`   // short notch
-        : `M-4.4,0 L-7.6,-2 L-6.6,0 L-7.6,2 Z`;
+        ? `M-3.8,-0.35 L-6.4,-1.3 Q-6.9,0 -6.4,1.3 L-3.8,0.35 Q-4.3,0 -3.8,-0.35 Z`  // short fan
+        : `M-4.0,-0.4 L-7.4,-1.6 Q-7.9,0 -7.4,1.6 L-4.0,0.4 Q-4.5,0 -4.0,-0.4 Z`;    // rounded fan
+      // one continuous silhouette: beak -> crown -> back -> rump -> belly ->
+      // throat. No separate head blob, no neck pinch.
       const bodyD = kind === 1
-        ? `M-4.2,0 Q-1,-1.4 3.6,-0.6 Q5.6,-0.2 6.4,0 Q5.6,0.2 3.6,0.6 Q-1,1.4 -4.2,0 Z`
+        ? `M8.0,0 L6.9,-0.4 Q6.0,-0.9 5.0,-0.95 Q3.0,-1.35 0.8,-1.35 Q-1.8,-1.25 -3.4,-0.55 L-4.4,-0.3 L-4.4,0.3 L-3.4,0.55 Q-1.8,1.25 0.8,1.35 Q3.0,1.35 5.0,0.95 Q6.0,0.9 6.9,0.4 Z`
         : kind === 2
-        ? `M-3.8,0 Q-0.8,-1.9 3.0,-0.9 Q5.0,-0.3 5.6,0 Q5.0,0.3 3.0,0.9 Q-0.8,1.9 -3.8,0 Z`   // plumper
-        : `M-4.6,0 Q-1,-1.7 3.4,-0.7 Q5.5,-0.2 6.2,0 Q5.5,0.2 3.4,0.7 Q-1,1.7 -4.6,0 Z`;
+        ? `M7.2,0 L6.2,-0.45 Q5.4,-1.0 4.4,-1.1 Q2.4,-1.7 0.2,-1.7 Q-2.2,-1.55 -3.6,-0.7 L-4.4,-0.35 L-4.4,0.35 L-3.6,0.7 Q-2.2,1.55 0.2,1.7 Q2.4,1.7 4.4,1.1 Q5.4,1.0 6.2,0.45 Z`
+        : `M7.6,0 L6.5,-0.45 Q5.6,-0.95 4.6,-1.05 Q2.6,-1.5 0.4,-1.5 Q-2.0,-1.4 -3.6,-0.6 L-4.5,-0.3 L-4.5,0.3 L-3.6,0.6 Q-2.0,1.4 0.4,1.5 Q2.6,1.5 4.6,1.05 Q5.6,0.95 6.5,0.45 Z`;
       // a faint moonlit rim so a dark bird still reads against a dark sky
       const rim = opt.rim === false ? "" : ` stroke="${opt.rimColor || "#93a6ba"}" stroke-width="0.45" stroke-opacity="0.42" stroke-linejoin="round" paint-order="stroke"`;
       return `<g class="wb-bird" transform="scale(${s.toFixed(2)})" fill="${col}"${rim}>
         <g class="wb-w">${flap}<path d="${wing}"/></g>
         <g class="wb-w">${flap}<path d="${wingDn}"/></g>
+        <path d="${tail}"/>
         <path d="${bodyD}"/>
-        ${tail}
-        <circle cx="5.3" cy="0" r="1.25"/>
-        <path d="M6.3,-0.5 L8.3,0 L6.3,0.5 Z"/>
       </g>`;
     };
 
@@ -1250,7 +1248,7 @@ const Rooms = (() => {
       </g>` : `
       <!-- the long table, laid for five, plates for four -->
       <g id="v_smallchair" transform="translate(${moved ? -258 : 0},0) rotate(3.4 868 600)">
-        <ellipse cx="868" cy="688" rx="42" ry="7" fill="#0d0a08" opacity="0.4"/>
+        <ellipse class="kshadow" cx="868" cy="688" rx="42" ry="7" fill="#0d0a08" opacity="0.4"/>
         <!-- a child's chair: the back posts mortise into the seat rail, three
              slats, turned legs joined front to back, a worn cushion -->
         <rect x="842" y="470" width="7" height="132" rx="3" fill="#4a3826"/>
@@ -1737,7 +1735,7 @@ const Rooms = (() => {
       </g>
       <!-- a watering can, left where someone set it down -->
       <g id="v_wcan">
-        <ellipse cx="560" cy="662" rx="24" ry="5" fill="#0a120f" opacity="0.5"/>
+        <ellipse class="kshadow" cx="560" cy="662" rx="24" ry="5" fill="#0a120f" opacity="0.5"/>
         <path d="M540,642 L588,642 L584,666 L544,666 Z" fill="#4a5550"/>
         <path d="M584,646 q16,-4 18,2 l-4,6 q-14,-2 -16,-4 Z" fill="#4a5550"/>
         <path d="M544,646 q-14,6 -10,20 q6,10 18,6" fill="none" stroke="#4a5550" stroke-width="4"/>
@@ -2995,7 +2993,7 @@ const Rooms = (() => {
       </g>` : ""}
       <!-- table: perspective top, apron, four legs, contact shadows -->
       <g id="v_table">
-        <ellipse cx="472" cy="706" rx="190" ry="11" fill="#0d0a08" opacity="0.45"/>
+        <ellipse class="kshadow" cx="472" cy="706" rx="190" ry="11" fill="#0d0a08" opacity="0.45"/>
         <polygon points="348,646 360,646 356,690 346,690" fill="#241a11"/>
         <polygon points="584,646 596,646 600,690 590,690" fill="#241a11"/>
         <polygon points="322,584 622,584 654,646 290,646" fill="#4a3826"/>
@@ -3010,7 +3008,7 @@ const Rooms = (() => {
       
       <!-- fruit bowl: apples clearly separated (counting puzzle: unambiguous) -->
       <g id="v_bowl">
-        <ellipse cx="478" cy="626" rx="92" ry="8" fill="#0d0a08" opacity="0.4"/>
+        <ellipse class="kshadow" cx="478" cy="626" rx="92" ry="8" fill="#0d0a08" opacity="0.4"/>
         <path d="M392,592 q86,38 172,0 q-16,36 -86,36 q-70,0 -86,-36" fill="#6b5544"/>
         <path d="M392,592 q86,38 172,0 q-6,10 -20,16 q-66,26 -132,0 q-14,-6 -20,-16 Z" fill="#57432f" opacity="0.9"/>
         <path d="M398,594 q80,32 160,0" stroke="#8a6a4a" stroke-width="2" fill="none" opacity="0.6"/>
@@ -3046,6 +3044,7 @@ const Rooms = (() => {
       ${hs("godining", 0, 156, 66, 406, "Through to the dining room", "")}
       ${hs("tap", 552, 392, 176, 64, "The tap", "v_tap")}
       ${hs("bread", 276, 392, 120, 56, "The bread board", "v_bread")}
+      ${hs("ktable", 290, 584, 364, 122, "The kitchen table", "v_table")}
       ${hs("bowl", 392, 556, 158, 64, "A bowl of apples", "v_bowl")}
       ${hs("drawer", 408, 458, 174, drawerHitH, "A kitchen drawer", "v_drawer")}
       ${hs("lockbox", 766, 344, 146, 100, "A small steel lockbox", "v_lockbox")}
@@ -4043,7 +4042,7 @@ const Rooms = (() => {
       </g>
       <!-- a washstand: jug full, basin clean, towel folded beneath -->
       <g id="v_bstand">
-        <ellipse cx="240" cy="606" rx="96" ry="10" fill="#0a0d0f" opacity="0.5"/>
+        <ellipse class="kshadow" cx="240" cy="606" rx="96" ry="10" fill="#0a0d0f" opacity="0.5"/>
         <rect x="160" y="470" width="160" height="12" rx="4" fill="#4a3826"/>
         <rect x="166" y="482" width="9" height="120" rx="3" fill="#3a2c1e"/>
         <rect x="305" y="482" width="9" height="120" rx="3" fill="#3a2c1e"/>
@@ -4053,10 +4052,12 @@ const Rooms = (() => {
         <ellipse cx="262" cy="468" rx="46" ry="12" fill="#b8bdc1"/>
         <ellipse cx="262" cy="464" rx="40" ry="9" fill="#8f969b"/>
         <ellipse cx="262" cy="464" rx="32" ry="6.4" fill="#16222a"/>
+        <g id="v_bjug">
         <path d="M250,462 q-16,-2 -18,-16 q-2,-12 6,-20 q-4,-8 2,-12 l22,0 q6,4 2,12 q8,8 6,20 q-2,14 -20,16 Z" fill="#8f969b"/>
         <path d="M240,414 l22,0 l-3,6 l-16,0 Z" fill="#7d848a"/>
         <path d="M268,424 q12,4 10,16 q-2,10 -10,12" stroke="#8f969b" stroke-width="4" fill="none"/>
         <path d="M246,420 q-4,16 2,34" stroke="#c9cdd0" stroke-width="2" fill="none" opacity="0.4"/>
+        </g>
       </g>
       <!-- a mirror cabinet on a left hinge: the door is one leaf that swings
            from shut (mirror facing the room) to open (folded back past the
@@ -4111,6 +4112,7 @@ const Rooms = (() => {
       ${hs("bbath", 400, 420, 520, 200, "A clawfoot bath, full and still", "v_bbath")}
       ${hs("bwin", 846, 100, 268, 190, "A high window over a moonlit sea", "v_bwin")}
       ${hs("bstand", 150, 420, 190, 190, "A washstand, jug and basin", "v_bstand")}
+      ${hs("bjug", 236, 404, 46, 68, "A jug on the washstand", "v_bjug")}
       ${hs("bcab", 144, 200, 180, 172, State.flag("bcabOpen") !== 0 ? "A mirror cabinet, half open" : "A mirror cabinet, shut", "v_bcab")}
       ${hs("btowel", 920, 360, 206, 200, "A grey towel on a rail", "v_btowel")}
       ${hs("bmat", 516, 636, 288, 50, "A bath mat, wrung out", "v_bmat")}
@@ -4419,7 +4421,7 @@ const Rooms = (() => {
       <ellipse cx="640" cy="566" rx="130" ry="15" fill="#8a8168" opacity="0.45"/>
       <ellipse cx="640" cy="564" rx="112" ry="11" fill="#9a9178" opacity="0.4"/>
       <g id="v_wstool">
-        <ellipse cx="225" cy="548" rx="52" ry="7" fill="#0d0a08" opacity="0.35"/>
+        <ellipse class="kshadow" cx="225" cy="548" rx="52" ry="7" fill="#0d0a08" opacity="0.35"/>
         <rect x="180" y="470" width="90" height="12" rx="4" fill="#5d4a35"/>
         <rect x="188" y="482" width="10" height="62" fill="#453527"/>
         <rect x="252" y="482" width="10" height="62" fill="#453527"/>
