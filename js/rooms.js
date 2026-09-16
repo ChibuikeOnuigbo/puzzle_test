@@ -219,9 +219,14 @@ const Rooms = (() => {
       }
       const T = 9 + R() * 12;                       // seconds per pass incl. the wait
       const cross = 0.3 + R() * 0.3;                // fraction of T spent crossing
+      /* rotate="auto" turns the +x (beak) into the travel direction; on a
+         right-to-left pass the tangent is ~180° which would leave the bird
+         belly-up, so rtl art is pre-flipped vertically: auto-rotation then
+         yields a proper mirrored, upright, head-first bird. */
+      const oriented = ltr ? body : `<g transform="scale(1,-1)">${body}</g>`;
       out += `<g>
         <animateMotion dur="${T.toFixed(1)}s" begin="${(-R() * T).toFixed(1)}s" repeatCount="indefinite" rotate="auto" path="${path}" calcMode="linear" keyPoints="0;1;1" keyTimes="0;${cross.toFixed(2)};1"/>
-        ${body}
+        ${oriented}
       </g>`;
     }
     return out + `</g>`;

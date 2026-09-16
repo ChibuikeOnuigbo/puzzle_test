@@ -18,13 +18,18 @@ w.eval(`State.setRoom('${room}'); Rooms.render()`); await new Promise(r => setTi
 w.eval(`(() => {
   document.querySelectorAll('animateMotion').forEach(m => {
     const d = m.getAttribute('path') || '';
-    const nums = (d.match(/-?\\d+(?:\\.\\d+)?/g) || []).map(Number);
-    if (nums.length >= 2) {
-      const x = nums[0], y = nums[1];
-      const ex = nums.length >= 8 ? nums[nums.length - 2] : nums[0];
-      const ey = nums.length >= 8 ? nums[nums.length - 1] : nums[1];
-      const g = m.parentElement;
-      g.setAttribute('transform', 'translate(' + ((x + ex) / 2).toFixed(1) + ',' + ((y + ey) / 2).toFixed(1) + ')');
+    const n = (d.match(/-?\\d+(?:\\.\\d+)?/g) || []).map(Number);
+    if (n.length >= 8) {
+      const P = [[n[0], n[1]], [n[2], n[3]], [n[4], n[5]], [n[6], n[7]]];
+      const bez = t => { const u = 1 - t; return [
+        u*u*u*P[0][0] + 3*u*u*t*P[1][0] + 3*u*t*t*P[2][0] + t*t*t*P[3][0],
+        u*u*u*P[0][1] + 3*u*u*t*P[1][1] + 3*u*t*t*P[2][1] + t*t*t*P[3][1]]; };
+      const mid = bez(0.5);
+      const tan = [0.75*(P[1][0]-P[0][0]) + 1.5*(P[2][0]-P[1][0]) + 0.75*(P[3][0]-P[2][0]),
+                   0.75*(P[1][1]-P[0][1]) + 1.5*(P[2][1]-P[1][1]) + 0.75*(P[3][1]-P[2][1])];
+      const ang = Math.atan2(tan[1], tan[0]) * 180 / Math.PI;
+      m.parentElement.setAttribute('transform',
+        'translate(' + mid[0].toFixed(1) + ',' + mid[1].toFixed(1) + ') rotate(' + ang.toFixed(1) + ')');
     }
     m.remove();
   });
