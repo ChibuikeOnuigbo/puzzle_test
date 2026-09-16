@@ -2578,6 +2578,12 @@ const RoomActions = {
       ]));
       try { const t = document.getElementById("towelsway-wring"); if (t && t.beginElement) t.beginElement(); } catch (e) {}
     },
+    wstool() {
+      Dialogue.say(Dialogue.pick("wstool", [
+        "A low stool, linen folded on it with hotel precision. It would tip if I leaned on it. I don't lean. Yet.",
+        "The stool holds folded linen, edges square. Someone does this every day. For no one.",
+      ]));
+    },
   },
 
   /* ============ THE STEAM ROOM ============ */

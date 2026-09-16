@@ -4433,6 +4433,7 @@ const Rooms = (() => {
       ${hs("wtoilet", 896, 96, 170, 380, "A high-tank toilet with a pull chain", "v_wtoilet")}
       ${hs("wport", 196, 136, 128, 128, "A round window, frosted", "v_wport")}
       ${hs("wring", 402, 248, 60, 130, "A hand towel on a brass ring", "v_wring")}
+      ${hs("wstool", 172, 430, 110, 120, "A low stool with folded linen", "v_wstool")}
     </g>
     </svg>`;
   }
@@ -4750,6 +4751,7 @@ const Rooms = (() => {
     if (typeof Fog !== "undefined" && Fog.apply) Fog.apply(holder, room);
     if (typeof Plumbing !== "undefined" && Plumbing.mount) Plumbing.mount(room);
     if (typeof Fire !== "undefined" && Fire.mount) Fire.mount(holder, room);
+    if (typeof Knock !== "undefined" && Knock.sync) Knock.sync(room);
     // the birds live on their own canvas overlay, mounted only on the porch
     // and removed everywhere else so other rooms cost nothing.
     if (typeof Birds !== "undefined" && Birds.mount && Birds.unmount) {
@@ -4834,6 +4836,7 @@ const Rooms = (() => {
       el.addEventListener("click", (e) => {
         e.stopPropagation();
         AudioM.click();
+        if (typeof Knock !== "undefined" && Knock.tap) Knock.tap(el.dataset.hs, room);
         if (typeof Game !== "undefined" && Game.noteClick) Game.noteClick();
         const acts = (typeof RoomActions !== "undefined") ? RoomActions : null;
         const fn = acts && acts[room] && acts[room][el.dataset.hs];
@@ -4862,6 +4865,7 @@ const Rooms = (() => {
   }
 
   function goto(room, msg) {
+    if (typeof Knock !== "undefined" && Knock.leave) Knock.leave(State.get().room);
     Dialogue.clear();
     fadeTransition(() => {
       State.setRoom(room);

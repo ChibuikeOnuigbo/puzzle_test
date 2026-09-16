@@ -14,7 +14,7 @@ window.HTMLCanvasElement.prototype.getContext = window.HTMLCanvasElement.prototy
   window.setTimeout = function(fn, d){ return o(fn, (d||0)/20); };
 })();
 </script>`;
-const files = ["js/config.js","js/audio.js","js/core.js","js/debug.js","js/condition.js","js/windows.js","js/painting-data.js","js/artlib.js","js/previews.js","js/forest-data.js","js/window-data.js","js/roof-data.js","js/moon-data.js","js/bird-data.js","js/birds.js","js/tree-perches.js","js/anim-registry.js","js/rooms.js","js/plumbing.js","js/puzzles.js","js/fx.js","js/fog.js","js/mirror.js","js/main.js"];
+const files = ["js/config.js","js/audio.js","js/core.js","js/debug.js","js/condition.js","js/windows.js","js/painting-data.js","js/artlib.js","js/previews.js","js/forest-data.js","js/window-data.js","js/roof-data.js","js/moon-data.js","js/bird-data.js","js/birds.js","js/tree-perches.js","js/anim-registry.js","js/rooms.js","js/plumbing.js","js/fire.js","js/knock.js","js/puzzles.js","js/fx.js","js/fog.js","js/mirror.js","js/main.js"];
 for (const f of files) {
   const code = fs.readFileSync(path.join(root,f), "utf8").replace(/<\/script>/gi, "<\\/script>");
   html = html.replace(`<script src="${f}"></script>`, `<script>${code}</script>`);
@@ -211,6 +211,18 @@ const w = dom.window, wait = ms => new Promise(r=>setTimeout(r,ms)), ev = c => w
   ev("State.setRoom('washroom'); Rooms.render()"); await wait(60);
   ev("RoomActions.washroom.wsink()"); await wait(400);
   check("house off: no source runs while the main is closed", ev("(() => { const s = document.querySelector('#pw-stream-wsink'); return !!s && parseFloat(s.getAttribute('opacity')) === 0; })()"));
+
+  // --- knockables: 8 taps tip the bowl, pieces land, the house repairs it ---
+  ev("State.setRoom('kitchen'); Rooms.render()"); await wait(80);
+  ev("for (let i = 0; i < 8; i++) Knock.tap('bowl', 'kitchen')");
+  check("kitchen: 8 taps knock the bowl", ev("State.flag('knock:bowl') === true"));
+  await wait(1500);
+  check("kitchen: bowl hidden and shards + apples on the floor", ev("(() => { const b = document.querySelector('#v_bowl'); const dyn = document.querySelector('#knock-dyn'); return !!b && b.style.display === 'none' && !!dyn && dyn.querySelectorAll('polygon').length >= 8 && dyn.querySelectorAll('circle').length >= 2; })()"));
+  ev("Knock.leave('kitchen')");
+  check("kitchen: leaving schedules a house repair 17-34s out", ev("(() => { const f = State.flag('knockFix:bowl'); return typeof f === 'number' && f - Date.now() > 16000 && f - Date.now() < 35000; })()"));
+  ev("State.setFlag('knockFix:bowl', Date.now() - 5); State.setRoom('hallway'); Rooms.render()"); await wait(60);
+  ev("State.setRoom('kitchen'); Rooms.render()"); await wait(80);
+  check("kitchen: the house put the bowl back", ev("State.flag('knock:bowl') !== true && !!document.querySelector('#v_bowl') && document.querySelector('#v_bowl').style.display !== 'none' && !document.querySelector('#knock-dyn')"));
 
   console.log(fail.length ? "FAILURES: " + fail.join(" | ") : "ALL CHECKS PASSED");
   process.exit(fail.length ? 1 : 0);

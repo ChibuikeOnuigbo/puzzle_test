@@ -72,6 +72,40 @@ const AudioM = (() => {
     error()  { tone(140, "square", 0.16, 0.07); tone(110, "square", 0.2, 0.06, 0.1); },
     unlock() { tone(420, "sine", 0.1, 0.1); tone(630, "sine", 0.12, 0.1, 0.09); tone(840, "sine", 0.2, 0.09, 0.18); },
     creakDoor(){ tone(90, "sawtooth", 0.5, 0.035, 0, null, 60); noiseBurst(0.35, 0.03, 500, 0, 2); },
+    /* --- knock-about physics sounds (wave 4d) --- */
+    clink(step) { /* small ceramic tap, pitch rises as the object loosens */
+      const f = 1250 + (step || 0) * 90;
+      tone(f, "triangle", 0.05, 0.07); noiseBurst(0.025, 0.05, 3200, 0, 2);
+    },
+    thud() { /* wood meeting floor: low body + short scrape */
+      tone(72, "sine", 0.24, 0.22, 0, null, 52);
+      noiseBurst(0.1, 0.12, 240, 0, 0.8);
+      noiseBurst(0.16, 0.05, 500, 0.05, 0.8); /* one bounce echo off the boards */
+    },
+    crash() { /* ceramic shatter with a small feedback-delay reverb tail */
+      if (!ensure()) return;
+      let dly = api._rev;
+      if (!dly) {
+        dly = api._rev = ctx.createDelay(0.5);
+        dly.delayTime.value = 0.11;
+        const fb = ctx.createGain(); fb.gain.value = 0.34;
+        const wet = ctx.createGain(); wet.gain.value = 0.5;
+        dly.connect(fb); fb.connect(dly); dly.connect(wet); wet.connect(sfxBus);
+      }
+      const t0 = ctx.currentTime;
+      const len = Math.ceil(ctx.sampleRate * 0.4);
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 900;
+      const g = ctx.createGain(); env(g, t0, 0.003, 0.34, 0.35);
+      src.connect(hp); hp.connect(g); g.connect(sfxBus); g.connect(dly);
+      src.start(t0);
+      /* a few discrete shard ticks landing after the burst */
+      for (let i = 0; i < 4; i++) noiseBurst(0.02, 0.09 - i * 0.018, 2600 + i * 300, 0.08 + i * 0.09, 2);
+      tone(190, "square", 0.08, 0.06);
+    },
     knockShort(){ noiseBurst(0.07, 0.22, 220, 0, 1.4); tone(95, "sine", 0.09, 0.16); },
     knockLong() { noiseBurst(0.16, 0.22, 170, 0, 1.4); tone(70, "sine", 0.3, 0.18); },
     flicker(){ noiseBurst(0.2, 0.05, 3000, 0, 0.6); tone(58, "sawtooth", 0.22, 0.03); },
